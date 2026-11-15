@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.1.7-dbg';
+    const CLIENT_REV = '0.2.0-fb';
     const TAB_ID = PKG;
     const KIND = 'team-board';
     const LANES = ['pending', 'in_progress', 'completed'];
@@ -440,7 +440,8 @@ window.__ModuleLoader__.load({
       const projectedCatalog = useProjection('subagentCatalog');
       const listedTeam = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
       const listedCatalog = useSessions((state) => state.projectionsBySession[sessionId]?.values.subagentCatalog);
-      const team = projectedTeam || listedTeam;
+      const pulledTeam = useFallbackTeam(sessionId);
+      const team = freshestTeam(projectedTeam, listedTeam, pulledTeam);
       const catalog = projectedCatalog || listedCatalog;
       /* The host may publish a new wrapper around the same task objects, or
          reuse an array while replacing members. The memo below must follow the
@@ -1182,6 +1183,66 @@ window.__ModuleLoader__.load({
      * Visibility watcher (no rendering)
      * ------------------------------------------------------------------ */
 
+    /* ------------------------------------------------------------------ *
+     * Projection fallback
+     *
+     * The Session control stream is the only carrier of projection frames, and
+     * on desktop 0.2.2-rc.3 it stops delivering them for a live Session: the
+     * board keeps the baseline it was opened with while `running` still moves,
+     * because that rides the remote event channel. This pulls the Host's
+     * current whole values on a bounded timer instead — only while the Session
+     * is running or the board still has unfinished work.
+     * ------------------------------------------------------------------ */
+
+    const fallbackTeams = new Map();
+    const fallbackListeners = new Set();
+
+    function setFallbackTeam(sessionId, value) {
+      const current = fallbackTeams.get(sessionId);
+      /* Every pull returns a fresh object, so compare by task weight: publishing
+         an equal view would re-run the poll effect and pull again, forever. */
+      if (current !== undefined && teamWeight(value) <= teamWeight(current)) return;
+      fallbackTeams.set(sessionId, value);
+      fallbackListeners.forEach((listener) => listener(sessionId));
+    }
+
+    function useFallbackTeam(sessionId) {
+      const [, bump] = useState(0);
+      useEffect(() => {
+        const listener = (id) => {
+          if (id === sessionId) bump((count) => count + 1);
+        };
+        fallbackListeners.add(listener);
+        return () => fallbackListeners.delete(listener);
+      }, [sessionId]);
+      return fallbackTeams.get(sessionId);
+    }
+
+    /* A Team's task revisions only grow, so the highest sum is the newest view.
+       Comparing weights keeps a stale projection from shadowing a fresh pull. */
+    function teamWeight(team) {
+      if (!team || !Array.isArray(team.tasks)) return -1;
+      return team.tasks.reduce((sum, task) => {
+        const revision = task && Number(task.revision);
+        return sum + (Number.isFinite(revision) && revision > 0 ? revision : 0);
+      }, 0);
+    }
+
+    function freshestTeam() {
+      let best;
+      let weight = -1;
+      for (let index = 0; index < arguments.length; index += 1) {
+        const candidate = arguments[index];
+        if (!candidate) continue;
+        const next = teamWeight(candidate);
+        if (next > weight) {
+          best = candidate;
+          weight = next;
+        }
+      }
+      return best;
+    }
+
     const dismissedSessions = new Set();
     const openConfirmed = new Map();
     /* Sessions whose board this plugin is closing itself; the host runs the
@@ -1233,7 +1294,50 @@ window.__ModuleLoader__.load({
       const listedChild = useSessions(selectListedChild);
       const projectedTeam = useProjection('agentTeam');
       const listedTeam = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
-      const team = projectedTeam || listedTeam;
+      const pulledTeam = useFallbackTeam(sessionId);
+      const team = freshestTeam(projectedTeam, listedTeam, pulledTeam);
+      const runningNow = useSession((state) => (state && state.running ? 1 : 0));
+
+      /* Bounded pull of the Host's current values: only while this Session is
+         running or the board still has unfinished work, so an idle board costs
+         nothing. This is the fallback for the control stream that never lands a
+         projection frame on desktop 0.2.2-rc.3. */
+      useEffect(() => {
+        const unfinished = !!(team && team.enabled === true && Array.isArray(team.tasks)
+          && team.tasks.some((task) => task && task.status !== 'completed' && task.status !== 'deleted'));
+        if (!runningNow && !unfinished) return undefined;
+        let live = true;
+        let busy = false;
+        const pull = async () => {
+          if (busy) return;
+          busy = true;
+          try {
+            const result = await ctx.remote.session.projections({ sessionId });
+            if (!live) return;
+            const value = result && result.ok && result.value ? result.value : null;
+            const next = value && value.values ? value.values.agentTeam : undefined;
+            if (next) {
+              setFallbackTeam(sessionId, next);
+              diagNote('pull', {
+                sid: String(sessionId).slice(-12),
+                n: Array.isArray(next.tasks) ? next.tasks.length : -1,
+                st: (next.tasks || []).map((task) => String(task.status)[0]).join(''),
+              });
+            }
+          } catch (error) {
+            diagNote('pull-error', String(error && error.message).slice(0, 100));
+          } finally {
+            busy = false;
+          }
+        };
+        pull();
+        const timer = setInterval(pull, 2500);
+        return () => {
+          live = false;
+          clearInterval(timer);
+        };
+      }, [sessionId, ctx, runningNow, team]);
+
       /* Reference projections: these move on the same frame feed, so comparing
          them with `agentTeam` tells a dead feed from a key-specific gap. */
       const liveCatalog = useProjection('subagentCatalog');
@@ -1256,8 +1360,6 @@ window.__ModuleLoader__.load({
 
       /* Independent of React: subscribe to the session binding's own projection
          face, and watch `running` as an oracle for "is this session live at all". */
-      const runningNow = useSession((state) => (state && state.running ? 1 : 0));
-
       useEffect(() => {
         diagNote('running', { sid: String(sessionId).slice(-12), running: runningNow });
       }, [runningNow, sessionId]);
@@ -2052,7 +2154,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'layout'],
+      inject: ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'layout', 'remote'],
       apply,
     };
   },
