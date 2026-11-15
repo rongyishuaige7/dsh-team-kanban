@@ -75,11 +75,11 @@ dsh plugin --profile desktop add /path/to/dsh-team-kanban
 
 | 宿主版本 | 状态 |
 |---|---|
-| `0.2.2-rc.3`（desktop） | 开发基线 |
+| `0.2.2-rc.3`（desktop） | 已验证：T3（清空自动关闭）、T4（流转与角标同步）；T1/T2/T5/T6 待补 |
 | `0.2.1-alpha.4` 的 Team 结构（隐式根团队、名册、无 `ownerId`） | 读取路径已兼容（`normalizeTeam`），未实机验证 |
 | 其他版本 | 未验证 |
 
-`package.json` 声明 `engines.dsh: ">=0.2.2-rc.1 <0.3.0"`。宿主侧目前有一个已上报的缺陷会让桌面端收不到投影帧（[discussion #13416](https://github.com/deepseek-ai/deepseek-harness/discussions/13416)），排查过程见 [`docs/issues/`](docs/issues/)。
+`package.json` 声明 `engines.dsh: ">=0.2.2-rc.1 <0.3.0"`，并在 `dsh.compatibility` 里记录已验收的宿主版本。宿主侧目前有一个已上报的缺陷会让桌面端收不到投影帧（[discussion #13416](https://github.com/deepseek-ai/deepseek-harness/discussions/13416)），排查过程见 [`docs/issues/`](docs/issues/)。
 
 ## 工作原理
 
@@ -150,7 +150,7 @@ dsh-team-kanban/
 
 - 等宿主修复投影推送后，删掉拉取兜底，回到纯事件驱动。
 - 在只读看板稳定后，评估认领 / 完成等最小写操作。
-- 补齐 `dsh.compatibility` 的实机验收矩阵。
+- 补齐 T1 / T2 / T5 / T6 的实机验收矩阵。
 
 ## License
 

@@ -2,6 +2,19 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.3] - 2026-11-15
+
+发布收尾：把已经验证过的宿主版本写进清单，并把验收结果入库。功能与 0.4.2 一致。
+
+### Added
+
+- `dsh.compatibility.dshReleases`：`0.2.2-rc.3` 标记为 `compatible`，附注已验收 T3/T4、T1/T2/T5/T6 待补。
+- [`docs/records/2026-11-15-acceptance-t3-t4.md`](docs/records/2026-11-15-acceptance-t3-t4.md)：0.4.2 的桌面端验收记录，含「插件没加载」的根因摘要与旁证。
+
+### Changed
+
+- README 兼容表从「开发基线」改为「已验证：T3/T4」，路线图改为补齐 T1/T2/T5/T6。
+
 ## [0.4.2] - 2026-11-15
 
 把「插件根本没加载」这一层失败变成可读的证据。

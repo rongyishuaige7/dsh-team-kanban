@@ -34,7 +34,7 @@ test('the published name is unscoped and no longer the local placeholder', () =>
 
 test('the client revision tracks the package version', () => {
   assert.equal(constant('CLIENT_REV'), manifest.version);
-  assert.equal(manifest.version, '0.4.2');
+  assert.equal(manifest.version, '0.4.3');
 });
 
 test('the sidebar tab kind is namespaced away from the host vocabulary', () => {
