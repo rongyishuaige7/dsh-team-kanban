@@ -9,6 +9,9 @@ window.__ModuleLoader__.load({
 
     const PKG = '@local/dsh-client-ui-team-kanban';
     const NS = 'teamKanban';
+    /* Stamped on the board root and on `window` so a running host can be told
+       apart from the repository without reading the served bundle. */
+    const CLIENT_REV = '0.1.2';
     const TAB_ID = PKG;
     const KIND = 'team-board';
     const LANES = ['pending', 'in_progress', 'completed'];
@@ -363,7 +366,6 @@ window.__ModuleLoader__.load({
 
     function TeamKanbanBoard(props) {
       const { sessionId, runtime, useProjection, useSessions, useSessionStatus, useTabInfo, t } = props;
-      const [, setTick] = useState(0);
 
       /* Two live roads to the same finished projection value:
          - `useProjection` binds the per-key session face (same-tick),
@@ -491,19 +493,6 @@ window.__ModuleLoader__.load({
           Object.keys(timers).forEach((key) => clearTimeout(timers[key]));
         };
       }, []);
-
-      useEffect(() => {
-        const hasUnfinished = model.counts.pending > 0 || model.counts.in_progress > 0;
-        if (!hasUnfinished) return undefined;
-        const timer = setInterval(() => {
-          try {
-            const p = runtime.sessions.refreshProjections(sessionId);
-            if (p && typeof p.catch === 'function') p.catch(() => {});
-          } catch (e) {}
-          setTick((n) => n + 1);
-        }, 500);
-        return () => clearInterval(timer);
-      }, [model.counts.pending, model.counts.in_progress, runtime, sessionId]);
 
       useEffect(() => {
         const tab = tabInfo && tabInfo.tab;
@@ -962,6 +951,7 @@ window.__ModuleLoader__.load({
         tabIndex: -1,
         role: 'region',
         'aria-label': t('a11y.board'),
+        'data-tkb-rev': CLIENT_REV,
         'data-alldone': model.allDone ? '' : undefined,
         'data-spot': spot || undefined,
         'data-lineage': lineage ? '' : undefined,
@@ -1063,14 +1053,9 @@ window.__ModuleLoader__.load({
      * ------------------------------------------------------------------ */
 
     function TeamKanbanTitle({ sessionId, useProjection, useSessions, t }) {
-      const [, setTick] = useState(0);
       const projected = useProjection('agentTeam');
       const listed = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
       const team = projected || listed;
-      useEffect(() => {
-        const timer = setInterval(() => setTick((n) => n + 1), 500);
-        return () => clearInterval(timer);
-      }, []);
       const tasks = team && team.enabled === true && Array.isArray(team.tasks)
         ? team.tasks.filter((task) => task && task.status !== 'deleted')
         : EMPTY;
@@ -1118,6 +1103,21 @@ window.__ModuleLoader__.load({
 
     const dismissedSessions = new Set();
     const openConfirmed = new Map();
+    /* Sessions whose board this plugin is closing itself; the host runs the
+       close handler inside `closeIn`, so an unflagged close would read as a
+       user dismissal and keep the board shut for the rest of the process. */
+    const selfClosing = new Set();
+
+    function closeBoardTab(ctx, sessionId, tabId) {
+      selfClosing.add(sessionId);
+      try {
+        ctx.sidebarRight.closeIn(sessionId, tabId);
+      } catch (error) {
+        /* The Session surface is already gone; nothing remains to close. */
+      } finally {
+        selfClosing.delete(sessionId);
+      }
+    }
 
     function useTeamKanbanWatcher(ctx, props) {
       const { sessionId, useSession, useSessions, useProjection } = props;
@@ -1131,13 +1131,17 @@ window.__ModuleLoader__.load({
       const listedTeam = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
       const team = projectedTeam || listedTeam;
 
-      let shouldShow = false;
-      if (team != null && team.enabled === true && Array.isArray(team.tasks)) {
-        shouldShow = team.tasks.some((task) => task && task.status !== 'deleted');
-      }
+      /* Three states, never two. An absent projection means the frame or the
+         Session baseline has not landed yet, which must not be read as "no
+         tasks": doing so closed the board on reconnect and cold start, and the
+         close handler then kept it closed. Only an explicit empty board closes. */
+      const absent = team === undefined;
+      const hasTask = !absent && team.enabled === true && Array.isArray(team.tasks)
+        && team.tasks.some((task) => task && task.status !== 'deleted');
 
       useEffect(() => {
         if (addressedChild || listedChild) return undefined;
+        if (absent) return undefined;
 
         const listTabs = () => {
           try {
@@ -1148,38 +1152,56 @@ window.__ModuleLoader__.load({
         };
         const findBoardTab = () => listTabs().find((tab) => tab && tab.kind === KIND);
 
-        if (!shouldShow) {
+        if (!hasTask) {
           dismissedSessions.delete(sessionId);
           const tab = findBoardTab();
-          if (tab) {
-            try { ctx.sidebarRight.closeIn(sessionId, tab.id); } catch (e) {}
-          }
+          if (tab) closeBoardTab(ctx, sessionId, tab.id);
           return undefined;
         }
 
         if (dismissedSessions.has(sessionId)) return undefined;
+        /* An open board belongs to the user: a later frame must not force the
+           column back open after they folded it. */
+        if (findBoardTab()) return undefined;
 
-        const openBoard = () => {
+        /* The column must reserve its grid track before the tab asks the seat
+           to expand. `shell/SidebarRight.tsx` folds `expanded` straight back
+           while `canShow` (rightbar track width > 0) is still false, so opening
+           the tab alone can never slide a closed column out. */
+        const attemptOpen = () => {
           if (findBoardTab()) return true;
+          const layout = ctx.layout;
+          try {
+            if (layout && typeof layout.openRightbar === 'function') layout.openRightbar(true, false);
+          } catch (error) {
+            /* Presentation is best effort; the tab still lands in the store. */
+          }
           try {
             ctx.sidebarRight.openTabIn(sessionId, KIND);
           } catch (error) {
-            return false;
+            /* Type not registered yet, or this Session's surface is unadopted. */
           }
-          return !!findBoardTab();
+          if (findBoardTab()) return true;
+          try {
+            if (layout && typeof layout.closeRightbar === 'function') layout.closeRightbar();
+          } catch (error) {}
+          return false;
         };
 
-        if (openBoard()) return undefined;
+        if (attemptOpen()) {
+          openConfirmed.set(sessionId, true);
+          return undefined;
+        }
 
-        const timers = [60, 150, 300, 600, 1200, 2400].map((delay) =>
+        const timers = [120, 400, 1200].map((delay) =>
           setTimeout(() => {
             if (dismissedSessions.has(sessionId)) return;
-            openBoard();
+            if (attemptOpen()) openConfirmed.set(sessionId, true);
           }, delay)
         );
 
         return () => timers.forEach(clearTimeout);
-      }, [sessionId, addressedChild, listedChild, shouldShow, team, ctx]);
+      }, [sessionId, addressedChild, listedChild, absent, hasTask, team, ctx]);
 
       return null;
     }
@@ -1727,6 +1749,7 @@ window.__ModuleLoader__.load({
 
     function apply(ctx) {
       const t = ctx.locale.bind(NS);
+      if (typeof window !== 'undefined') window.__teamKanbanRev = CLIENT_REV;
 
       /* Disabling or unloading the bundle must not leave a dead `team-board`
          chip in the saved right-sidebar layout: close what this plugin opened. */
@@ -1734,6 +1757,7 @@ window.__ModuleLoader__.load({
         const sessions = new Set(openConfirmed.keys());
         openConfirmed.clear();
         dismissedSessions.clear();
+        selfClosing.clear();
         try {
           const openTabs = ctx.sidebarRight.openTabs && ctx.sidebarRight.openTabs.getSnapshot
             ? ctx.sidebarRight.openTabs.getSnapshot()
@@ -1747,7 +1771,7 @@ window.__ModuleLoader__.load({
         sessions.forEach((sessionId) => {
           try {
             const tab = (ctx.sidebarRight.tabsIn(sessionId) || []).find((entry) => entry && entry.kind === KIND);
-            if (tab) ctx.sidebarRight.closeIn(sessionId, tab.id);
+            if (tab) closeBoardTab(ctx, sessionId, tab.id);
           } catch (error) {
             /* The Session surface is already gone; nothing remains to close. */
           }
@@ -1777,6 +1801,10 @@ window.__ModuleLoader__.load({
       ctx.effect(() => {
         try {
           return ctx.sidebarRight.registerCloseHandler(KIND, (sessionId) => {
+            /* The host runs this handler inside every `closeIn`, including the
+               ones this plugin issues to clear an empty board. Only a close the
+               plugin did not start counts as the user dismissing it. */
+            if (selfClosing.has(sessionId)) return;
             dismissedSessions.add(sessionId);
           });
         } catch (e) {
@@ -1823,7 +1851,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs', 'sessions'],
+      inject: ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'layout'],
       apply,
     };
   },
