@@ -22,7 +22,7 @@ function fakeReact() {
   };
 }
 
-function boot(pulledValues, { tabs = [] } = {}) {
+function boot(pulledValues, { tabs = [], teamControl = true } = {}) {
   const { React, effects } = fakeReact();
   let definition;
   const storage = new Map();
@@ -43,6 +43,7 @@ function boot(pulledValues, { tabs = [] } = {}) {
   const slots = {};
   const opened = [];
   const closed = [];
+  const teamCalls = [];
   const disposers = [];
   const ctx = {
     locale: { bind: () => (key) => key, register: () => () => {} },
@@ -67,9 +68,20 @@ function boot(pulledValues, { tabs = [] } = {}) {
       },
     },
     remote: { session: { projections: async () => ({ ok: true, value: { values: pulledValues } }) } },
+    inject: (deps, callback) => {
+      if (!teamControl) return;
+      callback({
+        remote: {
+          agentTeams: {
+            setEnabled: async (sessionId, enabled) => { teamCalls.push([sessionId, enabled]); },
+          },
+        },
+        effect: () => () => {},
+      });
+    },
   };
   plugin.apply(ctx);
-  return { plugin, slots, effects, opened, closed, tabs, storage, disposers, window };
+  return { plugin, slots, effects, opened, closed, teamCalls, tabs, storage, disposers, window };
 }
 
 function sessionProps(team, { running = false } = {}) {
@@ -102,6 +114,16 @@ function renderTree(node, visit) {
   }
   visit(node);
   renderTree(node.props.children, visit);
+}
+
+function findByClass(node, name) {
+  let found = null;
+  renderTree(node, (element) => {
+    if (found) return;
+    const className = element.props && element.props.className;
+    if (typeof className === 'string' && className.split(' ').includes(name)) found = element;
+  });
+  return found;
 }
 
 function textOf(node) {
@@ -215,6 +237,26 @@ test('apply leaves a diagnostic record that needs no DevTools', () => {
   assert.match(record.rev, /^\d+\.\d+\.\d+$/);
   assert.equal(record.phase, 'registered');
   assert.equal(record.kind, 'dsh-team-kanban.board');
+});
+
+test('the board renders one team switch in the header', () => {
+  const { slots } = boot({ agentTeam: rcTeam });
+  const board = slots['sidebar.right.pane.tab'](sessionProps(rcTeam));
+  const button = findByClass(board, 'tkb-team__btn');
+  assert.ok(button, 'the team control sits next to the header');
+  assert.equal(button.props['aria-label'], 'team.disable');
+  assert.equal(button.props['aria-haspopup'], 'dialog');
+});
+
+test('disabling the team calls the only exposed remote method', async () => {
+  const { plugin, teamCalls } = boot({ agentTeam: rcTeam });
+  await plugin.__internals.disableTeam('S-lead');
+  assert.deepEqual(teamCalls, [['S-lead', false]]);
+});
+
+test('a host without the team service reports the missing control', async () => {
+  const { plugin } = boot({ agentTeam: rcTeam }, { teamControl: false });
+  await assert.rejects(() => plugin.__internals.disableTeam('S-lead'), /unavailable/);
 });
 
 test('a chip left under the 0.3.x kind is closed and replaced', async () => {

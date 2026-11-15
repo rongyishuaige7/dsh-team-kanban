@@ -26,7 +26,7 @@ DSH 已内置多智能体团队协作能力（`@deepseek-ai/dsh-agent-team` 提�
 ### 2.2 硬性边界（不可突破）
 1. **无任务/未开启时零存在感**：团队模式关闭（`enabled !== true`）或可见任务数为 0 时，不显示标签页胶囊、不自动弹出右侧栏、不占位、不报错。
 2. **纯事件/投影驱动**：只通过 DSH 客户端投影订阅（`useProjection` / `useSessions` / `useSessionStatus`）实时刷新；**严禁轮询**，**严禁直接读取 `~/.dsh/sessions` 文件**。
-3. **只读 v1**：第一版仅做只读展示，不提供创建、认领、完成、修改状态、停用团队模式等任何写操作，不调用 `remote.agentTeams` 写入接口。
+3. **只读（0.5.0 起有一个例外）**：不提供创建、认领、完成、修改状态的写操作，也不调用 `team_task_*`；唯一写操作是**停用团队协作**（`remote.agentTeams.setEnabled(sessionId, false)`），必须经看板内二次确认。
 4. **零侵入交付**：禁止修改 `/Applications/DeepSeek Harness.app/.../app.asar` 内任何文件；必须以独立 bundle 包交付，通过 `plugin_manager` / `dsh plugin` 安装到 `desktop` profile 生效。
 
 ---

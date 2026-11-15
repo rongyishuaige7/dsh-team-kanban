@@ -2,6 +2,21 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.0] - 2026-11-15
+
+看板从「只能看」变成「能收口」：新增停用团队协作的入口。
+
+### Added
+
+- header 右侧「团队」按钮：点击弹板内确认，确认后调用宿主唯一暴露的团队远程方法 `agentTeams.setEnabled(sessionId, false)`。成功后投影变为 `enabled:false`，watcher 按既有 T2 语义关闭标签，不新增分支。
+- 失败就地显示（`team.failed`），不吞错、不弹宿主级弹窗；宿主没有该服务时按钮仍可见，点击会提示 `team.unavailable`。
+- 服务通过 `ctx.inject(['remote', 'remote.agentTeams'])` 子插件注入：宿主不带 Agent Teams 时 bundle 照常加载，只是控件不可用。
+- 测试增至 33 项：按钮渲染、停用调用、缺少服务时的报错。
+
+### Changed
+
+- 「纯只读」的表述统一改为「除停用团队外只读」；README 的对比表、隐私边界与 PRD §2.2 同步。
+
 ## [0.4.3] - 2026-11-15
 
 发布收尾：把已经验证过的宿主版本写进清单，并把验收结果入库。功能与 0.4.2 一致。

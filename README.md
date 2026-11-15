@@ -20,7 +20,7 @@ A living three-column kanban board for [DeepSeek Harness](https://github.com/dee
 | 卡片粒度 | 一次派发 = 一个独立会话 | 会话内 Lead + Workers 的共享任务 |
 | 依赖关系 | 通常没有 | 原生 `blockedBy` DAG，实时算就绪/阻塞 |
 | 生命周期 | 常驻，需要手动管理 | 有团队任务才出现，清空即消失 |
-| 写入 | 自己写库 | 只读，一个字节都不写 |
+| 写入 | 自己写库 | 不写任务；唯一写操作是停用团队协作 |
 
 ## 功能
 
@@ -30,6 +30,7 @@ A living three-column kanban board for [DeepSeek Harness](https://github.com/dee
 - **顶部概览**：完成进度条 + 分类统计 + 队友运行态（名册 `phase`、`useSessionStatus`、子会话运行态三路合一）。
 - **标签角标**：标签页标题内嵌完成度圆环与计数，停留在文件树或浏览器标签时也能看到进度。
 - **几何与主题**：`@container` 响应式适配 360px 窄栏 / 分栏 / 全屏 / 浮动窗；只用宿主 `--dsw-alias-*` token，Light / Dark 自动跟随；中英双语。
+- **一键停用团队**：header 上的「团队」按钮可以直接停用本会话的团队协作（带确认），不用回模型菜单；任务会保留，看板随团队关闭而收起。
 - **手动关闭防打扰**：你亲手关掉的看板不会因为下一次状态流转又弹回来。
 
 ## 视觉预览
@@ -79,7 +80,7 @@ dsh plugin --profile desktop add /path/to/dsh-team-kanban
 
 | 宿主版本 | 状态 |
 |---|---|
-| `0.2.2-rc.3`（desktop） | 已验证：T3（清空自动关闭）、T4（流转与角标同步）；T1/T2/T5/T6 待补 |
+| `0.2.2-rc.3`（desktop） | 已验证：T3（清空自动关闭）、T4（流转与角标同步）；0.5.0 的停用按钮、T1/T2/T5/T6 待补 |
 | `0.2.1-alpha.4` 的 Team 结构（隐式根团队、名册、无 `ownerId`） | 读取路径已兼容（`normalizeTeam`），未实机验证 |
 | 其他版本 | 未验证 |
 
@@ -102,8 +103,8 @@ client.js               Client 侧 bundle：注册标签类型 team kind、标�
 
 ## 隐私与边界
 
-- 不写会话、不调 `team_task_*`、不改团队开关，纯只读。
-- 不读 `~/.dsh/sessions`，不发任何网络请求；唯一的宿主 RPC 是只读的 `ctx.remote.session.projections({ sessionId })`。
+- 不写会话、不调 `team_task_*`、不改任务状态。**唯一的写操作是停用团队协作**（`agentTeams.setEnabled(sessionId, false)`），且必须由你在看板里确认。
+- 不读 `~/.dsh/sessions`，不发任何网络请求。宿主 RPC 只有两个：只读的 `ctx.remote.session.projections({ sessionId })`，以及停用按钮触发的 `ctx.remote.agentTeams.setEnabled(...)`。
 - 不 require 宿主的内部 UI 包（`dsh-client-ui-primitives`、`dsh-client-ui-agent-team` 等），只依赖公开的 slot / projection / locale / sidebarRight 契约。
 - 唯一写入是浏览器内的 UI 状态（卡片展开、手动关闭标记）以及一条排障记录 `localStorage['team-kanban:diag.v1']`；两者都不含对话内容，也不离开本机。
 
@@ -113,7 +114,7 @@ Node ≥ 20，无第三方依赖，无构建步骤——`client.js` 是手写的
 
 ```bash
 npm run check   # node --check 两个入口
-npm test        # node:test，30 项：纯函数、双结构渲染冒烟、清单一致性、旧标签清理、空闲探测、诊断记录
+npm test        # node:test，33 项：纯函数、双结构渲染冒烟、清单一致性、旧标签清理、空闲探测、诊断记录、团队开关
 ```
 
 测试用假的 `__ModuleLoader__` 加载 `client.js`，用 hook 形状的 React 替身走完渲染路径，不需要浏览器或宿主。

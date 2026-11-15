@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.4.3';
+    const CLIENT_REV = '0.5.0';
     const TAB_ID = PKG;
     /* Namespaced on purpose: the host turns a kind into the opaque page
        address `sidebar://<kind>`, and a bare `team-board` would be the first
@@ -53,6 +53,15 @@ window.__ModuleLoader__.load({
       'header.summary': '{completed} 已完成 · {active} 进行中 · {pending} 待处理',
       'header.teammates': '队友运行中 {running}/{total}',
       'header.noTeammates': '暂无活跃队友',
+      'team.label': '团队',
+      'team.disable': '停用智能体团队协作',
+      'team.confirmTitle': '停用智能体团队协作？',
+      'team.confirmBody': '本会话将不再使用共享任务工具；已有任务会保留，看板会关闭。',
+      'team.confirm': '停用',
+      'team.cancel': '取消',
+      'team.working': '正在停用…',
+      'team.failed': '停用失败：{message}',
+      'team.unavailable': '当前宿主没有提供团队控制接口',
       'column.pending': '待处理',
       'column.in_progress': '进行中',
       'column.completed': '已完成',
@@ -87,6 +96,15 @@ window.__ModuleLoader__.load({
       'header.summary': '{completed} completed · {active} in progress · {pending} pending',
       'header.teammates': 'Teammates active {running}/{total}',
       'header.noTeammates': 'No active teammates',
+      'team.label': 'Team',
+      'team.disable': 'Disable agent teamwork',
+      'team.confirmTitle': 'Disable agent teamwork?',
+      'team.confirmBody': 'This session stops using shared task tools. Existing tasks are kept and the board closes.',
+      'team.confirm': 'Disable',
+      'team.cancel': 'Cancel',
+      'team.working': 'Disabling…',
+      'team.failed': 'Could not disable: {message}',
+      'team.unavailable': 'This host does not offer the team control API',
       'column.pending': 'Pending',
       'column.in_progress': 'In progress',
       'column.completed': 'Completed',
@@ -757,6 +775,9 @@ window.__ModuleLoader__.load({
       const [tip, setTip] = useState(null);
       const [entering, setEntering] = useState(true);
       const [announcement, setAnnouncement] = useState('');
+      const [teamMenu, setTeamMenu] = useState(false);
+      const [teamBusy, setTeamBusy] = useState(false);
+      const [teamError, setTeamError] = useState(null);
 
       const rootRef = useRef(null);
       const gridRef = useRef(null);
@@ -765,6 +786,7 @@ window.__ModuleLoader__.load({
       const uiTimers = useRef({});
       const previousTasks = useRef(null);
       const pinnedRef = useRef(false);
+      const teamRef = useRef(null);
 
       const model = useMemo(
         () => buildModel(team, catalog, statuses, summaries, sessionId),
@@ -794,6 +816,35 @@ window.__ModuleLoader__.load({
         tipTimer.current = 0;
         setTip(null);
       }, []);
+
+      const closeTeamMenu = useCallback(() => {
+        setTeamMenu(false);
+        setTeamError(null);
+      }, []);
+
+      const confirmDisarm = useCallback(() => {
+        if (teamBusy) return;
+        setTeamBusy(true);
+        setTeamError(null);
+        disableTeam(sessionId).then(() => {
+          setTeamBusy(false);
+          setTeamMenu(false);
+        }, (error) => {
+          setTeamBusy(false);
+          setTeamError(t('team.failed', { message: error && error.message ? error.message : String(error) }));
+        });
+      }, [sessionId, teamBusy, t]);
+
+      useEffect(() => {
+        if (!teamMenu) return undefined;
+        const onDown = (event) => {
+          const node = teamRef.current;
+          if (node && typeof node.contains === 'function' && event.target && node.contains(event.target)) return;
+          closeTeamMenu();
+        };
+        document.addEventListener('pointerdown', onDown, true);
+        return () => document.removeEventListener('pointerdown', onDown, true);
+      }, [teamMenu, closeTeamMenu]);
 
       const queueTip = useCallback((target, title, sub) => {
         if (!target) return;
@@ -1356,6 +1407,78 @@ window.__ModuleLoader__.load({
             })
             : h('span', { className: 'tkb-mates__empty' }, t('header.noTeammates')))),
       h('div', {
+        className: 'tkb-team',
+        ref: teamRef,
+        onKeyDown: (event) => {
+          if (event.key !== 'Escape') return;
+          event.stopPropagation();
+          closeTeamMenu();
+        },
+      },
+        h('button', {
+          type: 'button',
+          className: 'tkb-team__btn',
+          'aria-haspopup': 'dialog',
+          'aria-expanded': teamMenu ? 'true' : 'false',
+          'aria-label': t('team.disable'),
+          title: t('team.disable'),
+          onClick: (event) => {
+            event.stopPropagation();
+            hideTip();
+            setTeamError(null);
+            setTeamMenu((open) => !open);
+          },
+        },
+        h('svg', {
+          className: 'tkb-team__icon',
+          viewBox: '0 0 16 16',
+          width: 12,
+          height: 12,
+          'aria-hidden': 'true',
+        },
+        h('path', {
+          d: 'M8 2.3v5.2',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.6,
+          strokeLinecap: 'round',
+        }),
+        h('path', {
+          d: 'M4.4 4.2a4.9 4.9 0 1 0 7.2 0',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.6,
+          strokeLinecap: 'round',
+        })),
+        h('span', { className: 'tkb-team__label' }, t('team.label'))),
+        teamMenu ? h('div', {
+          className: 'tkb-team__pop',
+          role: 'dialog',
+          'aria-label': t('team.confirmTitle'),
+        },
+        h('p', { className: 'tkb-team__title' }, t('team.confirmTitle')),
+        h('p', { className: 'tkb-team__body' }, t('team.confirmBody')),
+        teamError ? h('p', { className: 'tkb-team__err', role: 'alert' }, teamError) : null,
+        h('div', { className: 'tkb-team__actions' },
+          h('button', {
+            type: 'button',
+            className: 'tkb-team__ghost',
+            disabled: teamBusy || undefined,
+            onClick: (event) => {
+              event.stopPropagation();
+              closeTeamMenu();
+            },
+          }, t('team.cancel')),
+          h('button', {
+            type: 'button',
+            className: 'tkb-team__danger',
+            disabled: teamBusy || undefined,
+            onClick: (event) => {
+              event.stopPropagation();
+              confirmDisarm();
+            },
+          }, teamBusy ? t('team.working') : t('team.confirm')))) : null),
+      h('div', {
         className: 'tkb-banner',
         'data-open': failure !== null ? '' : undefined,
       },
@@ -1437,6 +1560,14 @@ window.__ModuleLoader__.load({
 
     const dismissedSessions = new Set();
     const openConfirmed = new Map();
+    /* Agent Teams exposes exactly one remote method, the per-Session mode
+       switch; `ctx.inject` in `apply` fills this in only where it exists. */
+    let teamControl = null;
+
+    async function disableTeam(sessionId) {
+      if (typeof teamControl !== 'function') throw new Error('team control is unavailable on this Host');
+      await teamControl(sessionId, false);
+    }
     /* Sessions whose board this plugin is closing itself; the host runs the
        close handler inside `closeIn`, so an unflagged close would read as a
        user dismissal and keep the board shut for the rest of the process. */
@@ -1910,6 +2041,113 @@ window.__ModuleLoader__.load({
   font-size: 11px;
   color: var(--dsw-alias-label-tertiary);
   white-space: nowrap;
+}
+
+/* =====================================================================
+   团队控制（本插件唯一的写入口：停用团队协作）
+   ===================================================================== */
+.tkb-team {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+.tkb-team__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 11px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color var(--tkb-d2) var(--tkb-ease),
+              border-color var(--tkb-d2) var(--tkb-ease),
+              color var(--tkb-d2) var(--tkb-ease);
+}
+.tkb-team__btn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+.tkb-team__btn:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+.tkb-team__btn[aria-expanded="true"] {
+  border-color: var(--dsw-alias-border-l3);
+  color: var(--dsw-alias-label-primary);
+}
+.tkb-team__icon { display: block; flex: none; color: currentColor; }
+.tkb-team__label { white-space: nowrap; }
+.tkb-team__pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 6;
+  width: 232px;
+  padding: 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-layer-2);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent);
+  animation: tkb-pop-in 160ms var(--tkb-ease) both;
+}
+.tkb-team__title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+.tkb-team__body {
+  margin: 0 0 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-secondary);
+}
+.tkb-team__err {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--dsw-alias-state-error-primary);
+}
+.tkb-team__actions { display: flex; justify-content: flex-end; gap: 6px; }
+.tkb-team__ghost,
+.tkb-team__danger {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  appearance: none;
+}
+.tkb-team__ghost {
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+}
+.tkb-team__ghost:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.tkb-team__danger {
+  border: 1px solid transparent;
+  background: var(--dsw-alias-state-error-primary);
+  color: #fff;
+}
+.tkb-team__ghost:disabled,
+.tkb-team__danger:disabled { opacity: .55; cursor: default; }
+@keyframes tkb-pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+@container tkb (max-width: 520px) {
+  .tkb-team__label { display: none; }
+  .tkb-team__btn { padding: 0 6px; }
+  .tkb-mates { max-width: calc(100% - 180px); }
 }
 .tkb-mc {
   position: relative;
@@ -2942,6 +3180,19 @@ window.__ModuleLoader__.load({
 
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'team-kanban: dictionaries');
 
+      /* A sub-plugin waits for the service instead of failing the bundle on a
+         Host without Agent Teams. The board only shows when the `agentTeam`
+         projection exists, so in practice the service is there when the
+         control is visible; this keeps the load path defensive anyway. */
+      ctx.inject(['remote', 'remote.agentTeams'], (scope) => {
+        const control = (sessionId, enabled) => scope.remote.agentTeams.setEnabled(sessionId, enabled);
+        teamControl = control;
+        scope.effect(() => () => {
+          /* A reload may already have installed the next control. */
+          if (teamControl === control) teamControl = null;
+        }, 'team-kanban: team control');
+      });
+
       ctx.effect(() => {
         if (typeof document === 'undefined') return () => {};
         const style = document.createElement('style');
@@ -3045,6 +3296,7 @@ window.__ModuleLoader__.load({
         pullPlan,
         buildModel,
         ownerDisplay,
+        disableTeam,
         FALLBACK_LIMIT,
       }),
     });

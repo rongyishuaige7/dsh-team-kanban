@@ -427,3 +427,51 @@ DSH 桌面端 `0.2.2-rc.3` 上，客户端**收不到 `Session` 投影的实时�
 ### 9.4 右侧栏打开的时序约束
 
 `dsh-client-ui-sidebar-right` 的 Seat 中有：`if (shown && !canShow) setExpanded(false)`，而 `canShow = rightbar 轨道宽度 > 0`。因此**从收起状态程序化打开时，必须先 `ctx.layout.openRightbar(true, false)` 再 `openTabIn`**，否则同一轮 commit 里 `expanded` 会被撤回，标签留在 store、列永远不滑出。布局恢复路径（标签已在持久化布局里、但列是收起）由 `ensureColumnOnce` 一次性补轨道。
+
+---
+
+## 10. 看板内停用团队（0.5.0，唯一写入口）
+
+### 10.1 为什么只有一个方向
+
+看板的存在前提是 `enabled === true` 且可见任务数 > 0（§4.4）。团队没开时看板根本不渲染，因此放在看板里的开关**没有“开启”的语义**，它只能把当前会话的团队协作停掉。真要“开”，入口仍在模型菜单（官方的 `TeamModeToggle`）——这与 T2「关闭团队后不占位」的既有约束一致，不新增“关闭态看板”。
+
+### 10.2 调用链
+
+```text
+apply(ctx)
+└─ ctx.inject(['remote', 'remote.agentTeams'], scope => {      // 子插件，等依赖就绪
+     teamControl = (sessionId, enabled) =>
+       scope.remote.agentTeams.setEnabled(sessionId, enabled)  // 宿主唯一 @Remote 方法
+   })
+
+TeamKanbanBoard header
+└─ 「团队」按钮 → 板内确认 → disableTeam(sessionId)
+   → agentTeams.setEnabled(sessionId, false)
+   → 投影 enabled:false → watcher 走 !hasTask 分支 → closeIn 关闭标签
+```
+
+要点：
+
+- `agentTeams/setEnabled` 是 `dsh-agent-team` 唯一的远程方法（见其 `typert.remote-client.js`）；任务的 `createTask` / `updateTask` 都没有暴露，所以停用是本插件唯一能做的写操作。
+- 只在根会话可用：宿主对子会话抛 `TEAM_LEAD_REQUIRED`；watcher 与 header 本身已按 `subagent` / `origin` 过滤。
+- 服务缺失（宿主未挂 Agent Teams）时用 `ctx.inject` 子插件等待，**不能让整个 bundle 因 inject 不满足而失败**；按钮点击时 `disableTeam` 抛 `team control is unavailable on this Host`，并在弹层内就地显示。
+
+### 10.3 交互与失败态
+
+| 场景 | 表现 |
+|---|---|
+| 点击「团队」 | 232px 弹层：标题、影响说明（不再使用共享任务工具、任务保留、看板关闭）、取消 / 停用 |
+| 确认中 | 确认按钮禁用并显示「正在停用…」，防重复提交 |
+| 成功 | 投影 `enabled:false` → 标签关闭；若为唯一标签，右栏收起（T2 语义） |
+| 宿主拒绝 / 抛错 | 弹层内红色 `team.failed: <message>`，弹层不关闭，可重试 |
+| 无该服务 | 弹层内 `team.unavailable` |
+| Escape / 点击弹层外 | 关闭弹层，不发请求 |
+
+无障碍：按钮 `aria-haspopup="dialog"` + `aria-expanded`，弹层 `role="dialog"` + `aria-label`，错误 `role="alert"`；窄容器（≤520px）只显示电源图标，保留 `title` 与 `aria-label`。
+
+### 10.4 边界
+
+- 不写任务、不调 `team_task_*`、不改任务状态；停用后任务留在宿主日志里，重新开启即可继续。
+- 停用不删除队友、不中断正在运行的子智能体（宿主语义），看板只是不再显示。
+- 该操作不可撤销于本会话内——想恢复只能回模型菜单重新开启；这是只做单向开关的已知代价。
