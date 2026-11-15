@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.1.3-dbg';
+    const CLIENT_REV = '0.1.4-dbg';
     const TAB_ID = PKG;
     const KIND = 'team-board';
     const LANES = ['pending', 'in_progress', 'completed'];
@@ -34,6 +34,47 @@ window.__ModuleLoader__.load({
         localStorage.setItem(DIAG_KEY, JSON.stringify(diag));
       } catch (error) {
         /* Diagnosis must never break the plugin. */
+      }
+    }
+
+    /* One geometry sample of the sidebar frame around the board. */
+    function diagFrame(tag) {
+      try {
+        if (typeof document === 'undefined') return;
+        const round = (value) => Math.round(value);
+        const root = document.querySelector('.tkb-root');
+        const columns = Array.prototype.slice.call(document.querySelectorAll('[data-rightbar-col]'));
+        const seats = Array.prototype.slice.call(document.querySelectorAll('[data-sidebar-right-session]'), 0, 6)
+          .map((el) => {
+            const rect = el.getBoundingClientRect();
+            const column = el.closest('[data-rightbar-col]');
+            return {
+              sid: String(el.getAttribute('data-sidebar-right-session') || '').slice(-8),
+              hidden: el.hasAttribute('hidden'),
+              w: round(rect.width),
+              x: round(rect.left),
+              inCol: !!column,
+              colW: column ? round(column.getBoundingClientRect().width) : null,
+            };
+          });
+        const rect = root ? root.getBoundingClientRect() : null;
+        diagNote('frame:' + tag, {
+          vw: typeof window === 'undefined' ? null : window.innerWidth,
+          cols: columns.map((col) => ({
+            w: round(col.getBoundingClientRect().width),
+            x: round(col.getBoundingClientRect().left),
+            collapsed: col.hasAttribute('data-rightbar-collapsed'),
+            full: col.hasAttribute('data-rightbar-fullscreen'),
+            display: typeof getComputedStyle === 'function' ? getComputedStyle(col).display : null,
+          })),
+          root: rect ? [round(rect.left), round(rect.width), round(rect.height)] : null,
+          visible: root && typeof root.checkVisibility === 'function'
+            ? root.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
+            : null,
+          seats,
+        });
+      } catch (error) {
+        diagNote('frame-error', String(error && error.message).slice(0, 120));
       }
     }
 
@@ -454,18 +495,10 @@ window.__ModuleLoader__.load({
       );
 
       /* Diagnostic: what this body renders with, and what the sidebar frame
-         actually measures around it. */
+         actually measures around it — sampled again once the open animation
+         has settled, because the first samples catch it mid-flight. */
       useEffect(() => {
         diag.renders += 1;
-        const root = typeof document === 'undefined' ? null : document.querySelector('.tkb-root');
-        const col = typeof document === 'undefined' ? null : document.querySelector('[data-rightbar-col]');
-        const seats = typeof document === 'undefined' ? [] : Array.prototype.slice
-          .call(document.querySelectorAll('[data-sidebar-right-session]'), 0, 4)
-          .map((el) => ({
-            sid: String(el.getAttribute('data-sidebar-right-session') || '').slice(-8),
-            hidden: el.hasAttribute('hidden'),
-            w: Math.round(el.getBoundingClientRect().width),
-          }));
         diagNote('render', {
           n: diag.renders,
           sid: String(sessionId).slice(-8),
@@ -476,18 +509,9 @@ window.__ModuleLoader__.load({
               st: (team.tasks || []).map((task) => String(task && task.status)[0]).join(''),
             }
             : null,
-          root: root
-            ? [Math.round(root.getBoundingClientRect().width), Math.round(root.getBoundingClientRect().height)]
-            : null,
-          col: col
-            ? {
-              w: Math.round(col.getBoundingClientRect().width),
-              collapsed: col.hasAttribute('data-rightbar-collapsed'),
-              hidden: col.getAttribute('aria-hidden'),
-            }
-            : null,
-          seats,
         });
+        const timers = [0, 300, 1000, 2000].map((delay) => setTimeout(() => diagFrame('t+' + delay), delay));
+        return () => timers.forEach(clearTimeout);
       }, [team, sessionId]);
 
       useEffect(() => {
@@ -1164,6 +1188,8 @@ window.__ModuleLoader__.load({
        close handler inside `closeIn`, so an unflagged close would read as a
        user dismissal and keep the board shut for the rest of the process. */
     const selfClosing = new Set();
+    /* Sessions whose restored board already had its column reserved once. */
+    const columnEnsured = new Set();
 
     function closeBoardTab(ctx, sessionId, tabId) {
       selfClosing.add(sessionId);
@@ -1173,6 +1199,27 @@ window.__ModuleLoader__.load({
         /* The Session surface is already gone; nothing remains to close. */
       } finally {
         selfClosing.delete(sessionId);
+      }
+    }
+
+    /* Reserve the right column once for a board that a saved layout restored,
+       because the seat folds `expanded` back while the frame still reports zero
+       track width. One shot only: a column the user folds later stays folded. */
+    function ensureColumnOnce(ctx, sessionId) {
+      if (columnEnsured.has(sessionId)) return;
+      columnEnsured.add(sessionId);
+      try {
+        if (typeof document === 'undefined') return;
+        if (document.querySelector('[data-rightbar-fullscreen]')) return;
+        const column = document.querySelector('[data-rightbar-col]');
+        const width = column ? column.getBoundingClientRect().width : 0;
+        if (width >= 8) return;
+        if (ctx.layout && typeof ctx.layout.openRightbar === 'function') {
+          ctx.layout.openRightbar(true, false);
+          diagNote('ensure-column', { sid: String(sessionId).slice(-8), width: Math.round(width) });
+        }
+      } catch (error) {
+        diagNote('ensure-error', String(error && error.message).slice(0, 120));
       }
     }
 
@@ -1223,10 +1270,15 @@ window.__ModuleLoader__.load({
           openApi: ctx.layout && typeof ctx.layout.openRightbar,
           child: !!(addressedChild || listedChild),
           teamN: Array.isArray(team && team.tasks) ? team.tasks.length : -1,
+          colW: (() => {
+            const col = typeof document === 'undefined' ? null : document.querySelector('[data-rightbar-col]');
+            return col ? Math.round(col.getBoundingClientRect().width) : null;
+          })(),
         });
 
         if (!hasTask) {
           dismissedSessions.delete(sessionId);
+          columnEnsured.delete(sessionId);
           const tab = findBoardTab();
           if (tab) closeBoardTab(ctx, sessionId, tab.id);
           return undefined;
@@ -1234,8 +1286,15 @@ window.__ModuleLoader__.load({
 
         if (dismissedSessions.has(sessionId)) return undefined;
         /* An open board belongs to the user: a later frame must not force the
-           column back open after they folded it. */
-        if (findBoardTab()) return undefined;
+           column back open after they folded it. The one exception is the first
+           sight of a board restored from the saved layout — that tab can arrive
+           while the column is still closed, because the seat folds `expanded`
+           back before the frame reserves its grid track. */
+        if (findBoardTab()) {
+          ensureColumnOnce(ctx, sessionId);
+          diagFrame('board-present');
+          return undefined;
+        }
 
         /* The column must reserve its grid track before the tab asks the seat
            to expand. `shell/SidebarRight.tsx` folds `expanded` straight back
