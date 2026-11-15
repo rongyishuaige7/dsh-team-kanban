@@ -197,17 +197,20 @@ button { font: inherit; }
 
 /* =====================================================================
    2. 看板插件样式 —— 与正式 client.js 注入的 <style> 一致
+      全新高阶动态视觉语言（Hyper-Refined Modern Motion & Living UI）
       规则：只引用 --dsw-alias-* / --dsw-radius-*，派生色一律 color-mix
    ===================================================================== */
 @property --tkb-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@property --tkb-sweep { syntax: "<percentage>"; inherits: false; initial-value: -100%; }
 
 .tkb-root, .tkb-title {
-  --tkb-d1: calc(120ms * var(--tkb-speed, 1));
-  --tkb-d2: calc(220ms * var(--tkb-speed, 1));
-  --tkb-d3: calc(440ms * var(--tkb-speed, 1));
-  --tkb-d4: calc(1200ms * var(--tkb-speed, 1));
+  --tkb-d1: calc(140ms * var(--tkb-speed, 1));
+  --tkb-d2: calc(240ms * var(--tkb-speed, 1));
+  --tkb-d3: calc(480ms * var(--tkb-speed, 1));
+  --tkb-d4: calc(1400ms * var(--tkb-speed, 1));
   --tkb-ease: cubic-bezier(.2, .8, .2, 1);
-  --tkb-ease-spring: linear(0, .12 4%, .42 11%, .72 20%, .9 29%, .99 38%, 1.03 47%, 1.035 54%, 1.02 64%, 1.005 78%, 1);
+  --tkb-ease-spring: cubic-bezier(.34, 1.42, .64, 1);
+  --tkb-ease-out-back: cubic-bezier(.175, .885, .32, 1.275);
   --tkb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   --tkb-c-pending: var(--dsw-alias-state-idle-primary);
   --tkb-c-active: var(--dsw-alias-state-business-primary);
@@ -215,370 +218,1112 @@ button { font: inherit; }
   --tkb-c-warn: var(--dsw-alias-state-warn-primary);
   --tkb-c-error: var(--dsw-alias-state-error-primary);
 }
-@supports not (transition-timing-function: linear(0, 1)) {
-  .tkb-root, .tkb-title { --tkb-ease-spring: cubic-bezier(.34, 1.36, .64, 1); }
+@supports (transition-timing-function: linear(0, 1)) {
+  .tkb-root, .tkb-title {
+    --tkb-ease-spring: linear(0, .12 4%, .42 11%, .72 20%, .9 29%, .99 38%, 1.03 47%, 1.035 54%, 1.02 64%, 1.005 78%, 1);
+  }
 }
+
 .tkb-root {
   container: tkb / inline-size;
-  position: relative; display: flex; flex-direction: column;
-  height: 100%; min-height: 0; overflow: hidden; outline: none;
-  background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary);
-  font-size: 13px; line-height: 1.45;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  outline: none;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
 }
 .tkb-root *, .tkb-root *::before, .tkb-root *::after { box-sizing: border-box; }
 .tkb-root svg { display: block; flex: none; }
 .tkb-root [hidden] { display: none !important; }
-.tkb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tkb-sr {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
 
-/* ---- 状态图标族 ○ ◐ ● ---- */
+/* =====================================================================
+   状态图标族与动效
+   ===================================================================== */
 .tkb-glyph { width: 12px; height: 12px; }
 .tkb-glyph--pending { color: var(--tkb-c-pending); }
 .tkb-glyph--in_progress { color: var(--tkb-c-active); }
 .tkb-glyph--completed { color: var(--tkb-c-done); }
-.tkb-glyph__check { stroke: var(--dsw-alias-bg-base); }
+.tkb-glyph__check {
+  stroke: var(--dsw-alias-bg-base);
+  stroke-dasharray: 10;
+  stroke-dashoffset: 0;
+}
 
-/* ---- 数字滚动 ---- */
+/* =====================================================================
+   数字与指标微动效
+   ===================================================================== */
 .tkb-roll { display: inline-flex; font-variant-numeric: tabular-nums; }
 .tkb-roll__c { position: relative; display: inline-block; overflow: hidden; line-height: 1.15; vertical-align: top; }
-.tkb-roll__in { display: inline-block; }
+.tkb-roll__in { display: inline-block; animation: tkb-num-in 340ms var(--tkb-ease) both; }
 .tkb-roll__out { position: absolute; left: 0; top: 0; }
 
-/* ---- 顶部：大数字 + 任务段 + 队友 ---- */
+/* =====================================================================
+   顶部全局状态条（Omni Header & Quantum Fuel Strip）
+   ===================================================================== */
 .tkb-head {
-  flex: none; display: flex; align-items: center; gap: 12px; min-width: 0;
-  padding: 12px 14px 11px; border-bottom: 1px solid var(--dsw-alias-border-l1);
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 14px 11px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-base);
+  transition: background-color var(--tkb-d3) var(--tkb-ease);
 }
-.tkb-score { flex: none; display: inline-flex; align-items: flex-end; gap: 1px; }
+.tkb-score {
+  flex: none;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1px;
+  cursor: default;
+}
 .tkb-score__done {
-  font-size: 20px; font-weight: 650; letter-spacing: -.02em;
-  transition: color var(--tkb-d3) var(--tkb-ease) var(--tkb-sd, 0ms);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--tkb-d3) var(--tkb-ease);
 }
-.tkb-score__total { font-size: 12px; font-weight: 500; color: var(--dsw-alias-label-tertiary); padding-bottom: 2px; }
-.tkb-root[data-alldone] .tkb-score__done { color: var(--tkb-c-done); }
+.tkb-score__total {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-tertiary);
+  padding-bottom: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.tkb-root[data-alldone] .tkb-score__done {
+  color: var(--tkb-c-done);
+  text-shadow: 0 0 16px color-mix(in srgb, var(--tkb-c-done) 60%, transparent);
+}
 
-.tkb-strip { position: relative; flex: 1; min-width: 48px; height: 18px; display: flex; align-items: center; gap: 2px; }
+/* 量子能量进度槽 (Quantum Lumen Strip) */
+.tkb-strip {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 48px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  padding: 2px 3px;
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-1);
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l1) 60%, transparent);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
 .tkb-slot {
-  position: relative; flex: 1 1 0; height: 6px; border-radius: 2px; overflow: hidden; cursor: pointer;
-  background-color: color-mix(in srgb, var(--tkb-c-pending) 28%, transparent);
-  transition: background-color var(--tkb-d3) var(--tkb-ease) var(--tkb-sd, 0ms), transform var(--tkb-d1) var(--tkb-ease), flex-grow var(--tkb-d3) var(--tkb-ease);
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  display: flex;
+  align-items: center;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  appearance: none;
+  transition: flex-grow var(--tkb-d3) var(--tkb-ease);
 }
-.tkb-slot::before {
-  content: ""; position: absolute; inset: 0; opacity: 0;
-  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--tkb-c-pending) 60%, transparent) 0 1.5px, transparent 1.5px 4px);
-  transition: opacity var(--tkb-d3) var(--tkb-ease) var(--tkb-sd, 0ms);
+.tkb-slot:focus-visible { outline: none; }
+.tkb-slot__bar {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 3px;
+  overflow: hidden;
+  background-color: color-mix(in srgb, var(--tkb-c-pending) 30%, transparent);
+  transition: background-color var(--tkb-d3) var(--tkb-ease),
+              transform var(--tkb-d1) var(--tkb-ease),
+              box-shadow var(--tkb-d2) var(--tkb-ease);
 }
-.tkb-slot[data-s="blocked"] { background-color: color-mix(in srgb, var(--tkb-c-pending) 10%, transparent); }
-.tkb-slot[data-s="blocked"]::before { opacity: 1; }
-.tkb-slot[data-s="ready"] { background-color: color-mix(in srgb, var(--tkb-c-pending) 62%, transparent); }
-.tkb-slot[data-s="active"] { background-color: var(--tkb-c-active); }
-.tkb-slot[data-s="done"] { background-color: var(--tkb-c-done); }
-.tkb-slot:hover { transform: scaleY(1.7); }
+.tkb-slot:hover .tkb-slot__bar {
+  transform: scaleY(1.5);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tkb-c-active) 40%, transparent);
+}
+.tkb-slot[data-s="blocked"] .tkb-slot__bar {
+  background-color: color-mix(in srgb, var(--tkb-c-pending) 12%, transparent);
+}
+.tkb-slot[data-s="blocked"] .tkb-slot__bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(135deg,
+    color-mix(in srgb, var(--tkb-c-pending) 70%, transparent) 0 2px,
+    transparent 2px 5px);
+}
+.tkb-slot[data-s="ready"] .tkb-slot__bar {
+  background-color: color-mix(in srgb, var(--tkb-c-pending) 68%, transparent);
+}
+.tkb-slot[data-s="active"] .tkb-slot__bar {
+  background: linear-gradient(90deg,
+    var(--tkb-c-active) 0%,
+    color-mix(in srgb, var(--tkb-c-active) 65%, #fff) 50%,
+    var(--tkb-c-active) 100%);
+  background-size: 200% 100%;
+  animation: tkb-shimmer calc(2200ms * var(--tkb-speed, 1)) linear infinite;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tkb-c-active) 55%, transparent);
+}
+.tkb-slot[data-s="done"] .tkb-slot__bar {
+  background-color: var(--tkb-c-done);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--tkb-c-done) 35%, transparent);
+}
 
-.tkb-mates { flex: none; display: flex; align-items: center; padding-left: 4px; }
-.tkb-mc { position: relative; display: flex; align-items: center; gap: 6px; border-radius: 14px; cursor: pointer; transition: opacity var(--tkb-d2) var(--tkb-ease), background-color var(--tkb-d2); }
+/* 全达成极光庆典 (Aurora Sweep) */
+.tkb-root[data-alldone] .tkb-head::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 100% at 20% 0%,
+    color-mix(in srgb, var(--tkb-c-done) 18%, transparent) 0%,
+    transparent 70%);
+  pointer-events: none;
+  animation: tkb-aurora-glow 4000ms ease-in-out infinite alternate;
+}
+.tkb-root[data-alldone] .tkb-head::after {
+  content: "";
+  position: absolute;
+  top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--tkb-c-done) 22%, transparent) 50%,
+    transparent 100%);
+  transform: skewX(-20deg);
+  animation: tkb-aurora-sweep calc(3600ms * var(--tkb-speed, 1)) ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* =====================================================================
+   智能体指挥官视窗 (Agent Cockpit Strip)
+   ===================================================================== */
+.tkb-mates {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding-left: 4px;
+  min-width: 0;
+  max-width: calc(100% - 140px);
+  overflow: clip;
+  overflow-clip-margin: 6px;
+}
+.tkb-mates__empty {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+  white-space: nowrap;
+}
+.tkb-mc {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: opacity var(--tkb-d2) var(--tkb-ease),
+              background-color var(--tkb-d2) var(--tkb-ease),
+              transform var(--tkb-d1) var(--tkb-ease);
+}
 .tkb-mc + .tkb-mc { margin-left: 7px; }
-.tkb-mc:hover { z-index: 2; }
-.tkb-mc:hover .tkb-mate { transform: translateY(-1px); }
-.tkb-mc__name { display: none; font-size: 12px; color: var(--dsw-alias-label-secondary); white-space: nowrap; }
-.tkb-root[data-spot] .tkb-mc:not(.is-spot) { opacity: .4; }
-.tkb-mc.is-pinned .tkb-mate { background: color-mix(in srgb, var(--tkb-c-active) 20%, var(--dsw-alias-bg-layer-2)); color: var(--tkb-c-active); }
-.tkb-mc.is-new { animation: tkb-pop calc(520ms * var(--tkb-speed, 1)) var(--tkb-ease-spring) both; }
+.tkb-mc:hover { z-index: 3; }
+.tkb-mc:hover .tkb-mate {
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);
+}
+.tkb-mc__name {
+  display: none;
+  max-width: 12ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  white-space: nowrap;
+}
+.tkb-root[data-spot] .tkb-mc:not(.is-spot) { opacity: .35; filter: grayscale(30%); }
+.tkb-mc.is-pinned .tkb-mate {
+  background: color-mix(in srgb, var(--tkb-c-active) 25%, var(--dsw-alias-bg-layer-2));
+  color: var(--tkb-c-active);
+  box-shadow: 0 0 0 2px var(--tkb-c-active), 0 4px 12px color-mix(in srgb, var(--tkb-c-active) 35%, transparent);
+}
 
 .tkb-mate {
-  position: relative; flex: none; width: 24px; height: 24px; border-radius: 50%;
-  display: grid; place-items: center; user-select: none;
-  font-size: 11px; font-weight: 600; color: var(--dsw-alias-label-secondary);
-  background: var(--dsw-alias-bg-layer-2); box-shadow: 0 0 0 2px var(--dsw-alias-bg-base);
-  transition: transform var(--tkb-d1) var(--tkb-ease), opacity var(--tkb-d2) var(--tkb-ease), background-color var(--tkb-d2), color var(--tkb-d2);
+  position: relative;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  user-select: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-layer-2);
+  box-shadow: 0 0 0 2px var(--dsw-alias-bg-base);
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  transition: transform var(--tkb-d1) var(--tkb-ease),
+              opacity var(--tkb-d2) var(--tkb-ease),
+              background-color var(--tkb-d2),
+              color var(--tkb-d2),
+              box-shadow var(--tkb-d2);
 }
-.tkb-mate[data-lead] { border-radius: 7px; }
+.tkb-mate[data-lead] {
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, var(--dsw-alias-bg-layer-2));
+}
 .tkb-mate::before {
-  content: ""; position: absolute; inset: -3.5px; border-radius: 50%; padding: 1.5px; pointer-events: none;
-  background: conic-gradient(from var(--tkb-angle), transparent 0 35%, color-mix(in srgb, var(--tkb-c-active) 25%, transparent) 60%, var(--tkb-c-active) 94%, transparent 100%);
+  content: "";
+  position: absolute;
+  inset: -3.5px;
+  border-radius: 50%;
+  padding: 1.5px;
+  pointer-events: none;
+  background: conic-gradient(from var(--tkb-angle),
+    transparent 0% 30%,
+    color-mix(in srgb, var(--tkb-c-active) 35%, transparent) 55%,
+    var(--tkb-c-active) 92%,
+    transparent 100%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  opacity: 0; transition: opacity var(--tkb-d3) var(--tkb-ease);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--tkb-d3) var(--tkb-ease);
 }
 .tkb-mate[data-lead]::before { border-radius: 10px; }
-.tkb-mate[data-running]::before { opacity: 1; }
-.tkb-mate[data-running]::before, .tkb-mate[data-running-out]::before {
-  animation: tkb-orbit calc(2400ms * var(--tkb-speed, 1)) linear var(--tkb-phase, 0ms) infinite;
+.tkb-mate[data-running]::before {
+  opacity: 1;
+  animation: tkb-orbit calc(2200ms * var(--tkb-speed, 1)) linear infinite;
 }
-@keyframes tkb-orbit { to { --tkb-angle: 360deg; } }
-.tkb-mate[data-none] { background: transparent; box-shadow: none; border: 1px dashed var(--dsw-alias-border-l3); cursor: default; }
-.tkb-mate.is-pop { animation: tkb-pop calc(480ms * var(--tkb-speed, 1)) var(--tkb-ease-spring) both; }
+.tkb-mate[data-none] {
+  background: transparent;
+  box-shadow: none;
+  border: 1px dashed var(--dsw-alias-border-l3);
+  color: var(--dsw-alias-label-tertiary);
+  cursor: default;
+}
+.tkb-mate__dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dsw-alias-state-idle-primary);
+  box-shadow: 0 0 0 2px var(--dsw-alias-bg-base);
+  transition: background-color var(--tkb-d2), transform var(--tkb-d1);
+}
+.tkb-mate[data-running] .tkb-mate__dot {
+  background: var(--tkb-c-active);
+  box-shadow: 0 0 8px var(--tkb-c-active), 0 0 0 2px var(--dsw-alias-bg-base);
+  animation: tkb-blink calc(1400ms * var(--tkb-speed, 1)) ease-in-out infinite;
+}
+/* 智能体运行态：声呐外扩雷达波纹 */
+.tkb-mate[data-running]::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 1.5px solid var(--tkb-c-active);
+  pointer-events: none;
+  animation: tkb-sonar-ping calc(2200ms * var(--tkb-speed, 1)) cubic-bezier(0, .2, .8, 1) infinite;
+}
 
-/* ---- 异常横幅 ---- */
-.tkb-banner { flex: none; display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--tkb-d3) var(--tkb-ease); }
+/* =====================================================================
+   异常横幅
+   ===================================================================== */
+.tkb-banner {
+  flex: none;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--tkb-d3) var(--tkb-ease);
+}
 .tkb-banner[data-open] { grid-template-rows: 1fr; }
 .tkb-banner__clip { min-height: 0; overflow: hidden; }
 .tkb-banner__box {
-  display: flex; align-items: flex-start; gap: 8px; margin: 10px 10px 2px; padding: 8px 10px;
-  border-radius: var(--dsw-radius-md); font-size: 12px; color: var(--tkb-c-error);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 10px 2px;
+  padding: 8px 10px;
+  border-radius: var(--dsw-radius-md);
+  font-size: 12px;
+  color: var(--tkb-c-error);
   background: color-mix(in srgb, var(--tkb-c-error) 8%, var(--dsw-alias-bg-base));
   border: 1px solid color-mix(in srgb, var(--tkb-c-error) 22%, transparent);
 }
 .tkb-banner__icon { width: 14px; height: 14px; margin-top: 1px; }
 .tkb-banner__text { min-width: 0; }
 .tkb-banner__title { font-weight: 600; }
-.tkb-banner__msg { margin-top: 2px; font-family: var(--tkb-mono); font-size: 11px; color: var(--dsw-alias-label-secondary); overflow-wrap: anywhere; }
-
-/* ---- 分区（窄栏：纵向堆叠 + 吸顶） ---- */
-.tkb-lanes {
-  position: relative; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
-  scrollbar-width: thin; scrollbar-color: var(--dsw-alias-border-l3) transparent;
-  transition: filter var(--tkb-d3) var(--tkb-ease), opacity var(--tkb-d3) var(--tkb-ease);
+.tkb-banner__msg {
+  margin-top: 2px;
+  font-family: var(--tkb-mono);
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+  overflow-wrap: anywhere;
 }
-.tkb-root[data-stale] .tkb-lanes { filter: saturate(.3); opacity: .78; }
+
+/* =====================================================================
+   泳道与容器
+   ===================================================================== */
+.tkb-lanes {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dsw-alias-border-l3) transparent;
+}
 .tkb-lane { position: relative; }
 .tkb-lane__head {
-  position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px;
-  font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary);
-  background: color-mix(in srgb, var(--dsw-alias-bg-base) 84%, transparent);
-  -webkit-backdrop-filter: blur(10px) saturate(1.4); backdrop-filter: blur(10px) saturate(1.4);
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 80%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(1.5);
+  backdrop-filter: blur(12px) saturate(1.5);
+  border-bottom: 1px solid color-mix(in srgb, var(--dsw-alias-border-l1) 40%, transparent);
 }
 .tkb-lane__name { white-space: nowrap; }
 .tkb-lane__count {
-  margin-left: auto; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 600; color: var(--dsw-alias-label-tertiary); background: var(--dsw-alias-bg-layer-1);
+  margin-left: auto;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-tertiary);
+  background: var(--dsw-alias-bg-layer-1);
+  font-variant-numeric: tabular-nums;
+  transition: transform var(--tkb-d1) var(--tkb-ease-spring), color var(--tkb-d2);
 }
 .tkb-lane[data-empty] .tkb-lane__head { color: var(--dsw-alias-label-tertiary); }
 .tkb-lane[data-empty] .tkb-lane__count { opacity: .55; }
-.tkb-lane__body { display: flex; flex-direction: column; gap: 6px; padding: 2px 10px 14px; }
-.tkb-lane[data-empty] .tkb-lane__body { display: none; }
-.tkb-lane[data-lane="completed"] .tkb-lane__body { gap: 1px; }
-.tkb-empty { display: none; }
-.tkb-divider { display: flex; align-items: center; gap: 8px; height: 18px; margin: 2px 2px 0; color: var(--dsw-alias-label-tertiary); }
-.tkb-divider::before, .tkb-divider::after { content: ""; flex: 1; border-top: 1px dashed var(--dsw-alias-border-l2); }
+.tkb-lane__body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 4px 10px 14px;
+}
+.tkb-lane[data-lane="completed"] .tkb-lane__body { gap: 2px; }
+.tkb-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  border: 1px dashed var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+}
+.tkb-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 18px;
+  margin: 3px 2px 1px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.tkb-divider::before, .tkb-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--dsw-alias-border-l2);
+}
 .tkb-divider svg { width: 12px; height: 12px; opacity: .85; }
 
-/* ---- 卡片 ---- */
+/* =====================================================================
+   卡片体系：空间景深与高阶微物理（Spatial Card Physics）
+   ===================================================================== */
 .tkb-card {
-  position: relative; display: grid; align-items: center; column-gap: 8px;
+  position: relative;
+  display: grid;
+  align-items: center;
+  column-gap: 8px;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "id deps owner" "title title title" "preview preview preview" "detail detail detail";
-  padding: 9px 10px 10px 12px; border-radius: var(--dsw-radius-md);
-  border: 1px solid var(--dsw-alias-border-l1); background: var(--dsw-alias-card-fill);
-  cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent;
-  transition: background-color var(--tkb-d1) var(--tkb-ease), border-color var(--tkb-d2) var(--tkb-ease), opacity var(--tkb-d2) var(--tkb-ease), box-shadow var(--tkb-d2) var(--tkb-ease);
+  grid-template-areas:
+    "id deps owner"
+    "title title title"
+    "preview preview preview"
+    "detail detail detail";
+  padding: 9px 11px 10px 12px;
+  border-radius: var(--dsw-radius-md);
+  border: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-card-fill);
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.01);
+  transition: transform var(--tkb-d2) var(--tkb-ease),
+              box-shadow var(--tkb-d2) var(--tkb-ease),
+              background-color var(--tkb-d1) var(--tkb-ease),
+              border-color var(--tkb-d2) var(--tkb-ease),
+              opacity var(--tkb-d2) var(--tkb-ease);
+  will-change: transform, box-shadow;
 }
-.tkb-card:hover { background: var(--dsw-alias-card-fill-hover); border-color: var(--dsw-alias-border-l2); }
-.tkb-card:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--tkb-c-active) 60%, transparent); }
+.tkb-card:hover {
+  transform: translateY(-2px);
+  background: var(--dsw-alias-card-fill-hover);
+  border-color: color-mix(in srgb, var(--dsw-alias-border-l2) 80%, transparent);
+  box-shadow: 0 8px 20px -3px color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent),
+              0 2px 6px -1px color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
+}
+.tkb-card:active {
+  transform: translateY(-0.5px) scale(0.997);
+  transition-duration: 80ms;
+}
+.tkb-card__hit {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+}
+.tkb-card__hit:focus-visible { outline: none; }
+.tkb-card:focus-within {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tkb-c-active) 60%, transparent),
+              0 6px 18px -2px color-mix(in srgb, var(--tkb-c-active) 20%, transparent);
+}
+.tkb-card > :not(.tkb-card__hit):not(.tkb-card__rail):not(.tkb-card__detail) {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+.tkb-card button { pointer-events: auto; }
+
 .tkb-card__glyph { grid-area: glyph; display: none; }
-.tkb-card__id { grid-area: id; font-family: var(--tkb-mono); font-size: 11px; color: var(--dsw-alias-label-tertiary); letter-spacing: -.01em; }
-.tkb-card__deps { grid-area: deps; display: flex; align-items: center; gap: 3px; min-width: 0; overflow: hidden; }
-.tkb-card__deps-arrow { width: 11px; height: 11px; margin-right: 1px; color: var(--dsw-alias-label-tertiary); }
-.tkb-card__owner { grid-area: owner; display: flex; align-items: center; gap: 6px; min-height: 20px; }
-.tkb-card__owner-name { display: none; max-width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--dsw-alias-label-tertiary); }
-.tkb-card__owner .tkb-mate { width: 20px; height: 20px; font-size: 10.5px; box-shadow: none; cursor: pointer; }
+.tkb-card__id {
+  grid-area: id;
+  font-family: var(--tkb-mono);
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
+.tkb-card__deps {
+  grid-area: deps;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+.tkb-card__deps-arrow {
+  width: 11px;
+  height: 11px;
+  margin-right: 1px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.tkb-card__owner {
+  grid-area: owner;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 20px;
+  justify-self: end;
+}
+.tkb-card__owner-name {
+  display: none;
+  max-width: 11ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.tkb-card[data-status="in_progress"] .tkb-card__owner-name {
+  display: inline;
+  color: var(--dsw-alias-label-secondary);
+  font-weight: 500;
+}
+.tkb-card__owner .tkb-mate {
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+  box-shadow: none;
+}
 .tkb-card__owner .tkb-mate[data-lead] { border-radius: 6px; }
-.tkb-card__owner .tkb-mate[data-none] { cursor: default; }
+.tkb-card__owner .tkb-mate__dot { right: -2px; bottom: -2px; width: 6px; height: 6px; box-shadow: none; }
+
+/* 活跃运行脉冲指示器 */
+.tkb-card__live-dot {
+  position: relative;
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tkb-c-active);
+  box-shadow: 0 0 8px var(--tkb-c-active);
+}
+.tkb-card__live-dot::after {
+  content: "";
+  position: absolute;
+  inset: -3.5px;
+  border-radius: 50%;
+  border: 1.5px solid var(--tkb-c-active);
+  pointer-events: none;
+  animation: tkb-sonar-ping calc(1800ms * var(--tkb-speed, 1)) cubic-bezier(0, .2, .8, 1) infinite;
+}
+
 .tkb-card__title {
-  grid-area: title; margin-top: 4px; font-size: 13px; font-weight: 500; line-height: 1.42; color: var(--dsw-alias-label-primary);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
-  transition: color var(--tkb-d3) var(--tkb-ease);
+  grid-area: title;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.44;
+  color: var(--dsw-alias-label-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  transition: color var(--tkb-d2) var(--tkb-ease);
 }
-.tkb-card[aria-expanded="true"] .tkb-card__title { -webkit-line-clamp: unset; }
+.tkb-card[data-expanded] .tkb-card__title { -webkit-line-clamp: unset; }
 .tkb-card__preview { grid-area: preview; display: none; }
-.tkb-card__detail { grid-area: detail; display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--tkb-d2) var(--tkb-ease); }
-.tkb-card[aria-expanded="true"] .tkb-card__detail { grid-template-rows: 1fr; }
-.tkb-card__detail-inner { min-height: 0; overflow: hidden; }
+.tkb-card__detail { grid-area: detail; position: relative; z-index: 1; pointer-events: auto; cursor: auto; }
 
-/* 依赖小标签：未完成=警告色；已完成=删除线描绘 */
-.tkb-dep {
-  position: relative; flex: none; display: inline-flex; align-items: center; height: 18px; padding: 0 5px; border-radius: 5px;
-  font-family: var(--tkb-mono); font-size: 10.5px; cursor: pointer;
-  color: var(--dsw-alias-state-warn-label); background: var(--dsw-alias-state-warn-tertiary);
-  transition: color var(--tkb-d2) var(--tkb-ease) var(--tkb-dd, 0ms), background-color var(--tkb-d2) var(--tkb-ease) var(--tkb-dd, 0ms);
+/* ---------------------------------------------------------------------
+   状态 1：待处理（Pending）—— 阻塞暗哑 vs 就绪亮泽
+   --------------------------------------------------------------------- */
+.tkb-card[data-status="pending"][data-ready="false"] {
+  background: color-mix(in srgb, var(--dsw-alias-card-fill) 60%, transparent);
+  border-style: dashed;
+  border-color: var(--dsw-alias-border-l3);
+  box-shadow: none;
 }
-.tkb-dep::after {
-  content: ""; position: absolute; left: 4px; right: 4px; top: 50%; height: 1px; background: currentColor;
-  transform: scaleX(0); transform-origin: left center; transition: transform var(--tkb-d3) var(--tkb-ease) var(--tkb-dd, 0ms);
+.tkb-card[data-status="pending"][data-ready="false"]:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  border-color: var(--dsw-alias-border-l2);
 }
-.tkb-dep[data-done] { color: var(--dsw-alias-label-tertiary); background: transparent; }
-.tkb-dep[data-done]::after { transform: scaleX(1); }
-.tkb-dep:hover { background: color-mix(in srgb, var(--tkb-c-warn) 22%, transparent); }
-.tkb-dep[data-done]:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.tkb-card[data-status="pending"][data-ready="false"] .tkb-card__title {
+  color: var(--dsw-alias-label-secondary);
+}
 
-/* 待处理 · 阻塞：凹陷（虚线 + 透明 + 降一级） */
-.tkb-card[data-status="pending"][data-ready="false"] { background: transparent; border-style: dashed; border-color: var(--dsw-alias-border-l3); }
-.tkb-card[data-status="pending"][data-ready="false"]:hover { background: var(--dsw-alias-interactive-bg-hover); }
-.tkb-card[data-status="pending"][data-ready="false"] .tkb-card__title { color: var(--dsw-alias-label-secondary); }
+/* 就绪卡片：边框通透，带有微光浮起 */
+.tkb-card[data-status="pending"][data-ready="true"] {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary) 32%, var(--dsw-alias-border-l1));
+}
+.tkb-card[data-status="pending"][data-ready="true"]:hover {
+  box-shadow: 0 8px 22px -3px color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent),
+              0 2px 6px color-mix(in srgb, var(--dsw-alias-state-business-primary) 6%, transparent);
+}
 
-/* 进行中：微染底 + 左侧边条；负责人运行中时边条流光 */
+/* ---------------------------------------------------------------------
+   状态 2：进行中（In Progress）—— 量子流光边缘与算力呼吸
+   --------------------------------------------------------------------- */
 .tkb-card[data-status="in_progress"] {
-  background: color-mix(in srgb, var(--tkb-c-active) 5%, var(--dsw-alias-card-fill));
-  border-color: color-mix(in srgb, var(--tkb-c-active) 18%, var(--dsw-alias-border-l1));
+  background: radial-gradient(130% 90% at 0% 0%,
+    color-mix(in srgb, var(--tkb-c-active) 12%, var(--dsw-alias-card-fill)) 0%,
+    var(--dsw-alias-card-fill) 90%);
+  border-color: color-mix(in srgb, var(--tkb-c-active) 32%, var(--dsw-alias-border-l1));
+  box-shadow: 0 4px 18px -2px color-mix(in srgb, var(--tkb-c-active) 15%, transparent),
+              0 1px 3px rgba(0, 0, 0, 0.03);
 }
-.tkb-card[data-status="in_progress"]:hover { background: color-mix(in srgb, var(--tkb-c-active) 8%, var(--dsw-alias-card-fill-hover)); }
+.tkb-card[data-status="in_progress"]:hover {
+  background: radial-gradient(130% 90% at 0% 0%,
+    color-mix(in srgb, var(--tkb-c-active) 16%, var(--dsw-alias-card-fill-hover)) 0%,
+    var(--dsw-alias-card-fill-hover) 90%);
+  box-shadow: 0 10px 26px -3px color-mix(in srgb, var(--tkb-c-active) 22%, transparent),
+              0 3px 8px color-mix(in srgb, var(--tkb-c-active) 8%, transparent);
+}
+
+/* 运行中卡片四周量子极光光束 (Aurora Orbital Stream) */
+.tkb-card[data-status="in_progress"][data-live]::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: calc(var(--dsw-radius-md) + 1px);
+  padding: 1.5px;
+  background: conic-gradient(from var(--tkb-angle),
+    transparent 0deg,
+    color-mix(in srgb, var(--tkb-c-active) 40%, transparent) 80deg,
+    var(--tkb-c-active) 150deg,
+    color-mix(in srgb, var(--tkb-c-active) 85%, #fff) 180deg,
+    transparent 220deg,
+    transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: tkb-orbit calc(3200ms * var(--tkb-speed, 1)) linear infinite;
+  opacity: 0.9;
+  z-index: 2;
+}
+
+/* 左侧能量槽 */
 .tkb-card__rail {
-  position: absolute; left: -1px; top: 9px; bottom: 9px; width: 2px; border-radius: 0 2px 2px 0; overflow: hidden; opacity: 0;
-  background: color-mix(in srgb, var(--tkb-c-active) 30%, transparent);
+  position: absolute;
+  left: -1px;
+  top: 9px;
+  bottom: 9px;
+  width: 2.5px;
+  border-radius: 0 2px 2px 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--tkb-c-active) 35%, transparent);
   transition: opacity var(--tkb-d3) var(--tkb-ease), background-color var(--tkb-d3) var(--tkb-ease);
 }
 .tkb-card[data-status="in_progress"] .tkb-card__rail { opacity: 1; }
-.tkb-card[data-status="in_progress"][data-live] .tkb-card__rail { background: color-mix(in srgb, var(--tkb-c-active) 45%, transparent); }
+.tkb-card[data-status="in_progress"][data-live] .tkb-card__rail {
+  background: color-mix(in srgb, var(--tkb-c-active) 60%, transparent);
+  box-shadow: 0 0 6px var(--tkb-c-active);
+}
 .tkb-card__rail::after {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 55%; opacity: 0;
-  background: linear-gradient(to bottom, transparent, var(--tkb-c-active) 50%, transparent);
-  transform: translateY(-100%); transition: opacity var(--tkb-d3) var(--tkb-ease);
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0; height: 60%;
+  opacity: 0;
+  background: linear-gradient(to bottom, transparent, #fff 50%, transparent);
+  transform: translateY(-100%);
+  transition: opacity var(--tkb-d3) var(--tkb-ease);
 }
-.tkb-card[data-live] .tkb-card__rail::after { opacity: 1; }
-.tkb-card[data-live] .tkb-card__rail::after, .tkb-card[data-live-out] .tkb-card__rail::after {
-  animation: tkb-flow calc(1800ms * var(--tkb-speed, 1)) cubic-bezier(.45, 0, .55, 1) var(--tkb-phase, 0ms) infinite;
+.tkb-card[data-live] .tkb-card__rail::after {
+  opacity: 1;
+  animation: tkb-flow calc(1600ms * var(--tkb-speed, 1)) cubic-bezier(.45, 0, .55, 1) infinite;
 }
-@keyframes tkb-flow { from { transform: translateY(-100%); } to { transform: translateY(200%); } }
-.tkb-card[data-status="in_progress"]:not([data-live]) .tkb-card__owner .tkb-mate { opacity: .55; }
 
-/* 已完成：压成单行 */
+/* ---------------------------------------------------------------------
+   状态 3：已完成（Completed）—— 紧凑晶体与胜利定格
+   --------------------------------------------------------------------- */
 .tkb-card[data-status="completed"] {
   grid-template-columns: auto auto minmax(0, 1fr) auto;
-  grid-template-areas: "glyph id title owner" "detail detail detail detail";
-  padding: 6px 8px 6px 10px; background: transparent; border-color: transparent;
+  grid-template-areas:
+    "glyph id title owner"
+    "detail detail detail detail";
+  padding: 6px 9px 6px 11px;
+  background: color-mix(in srgb, var(--dsw-alias-card-fill) 60%, transparent);
+  border-color: color-mix(in srgb, var(--dsw-alias-border-l1) 50%, transparent);
+  box-shadow: none;
 }
-.tkb-card[data-status="completed"]:hover { background: var(--dsw-alias-interactive-bg-hover); border-color: transparent; }
-.tkb-card[data-status="completed"][aria-expanded="true"] { background: var(--dsw-alias-bg-layer-1); }
+.tkb-card[data-status="completed"]:hover {
+  background: var(--dsw-alias-card-fill-hover);
+  border-color: var(--dsw-alias-border-l2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
+}
+.tkb-card[data-status="completed"][data-expanded] {
+  background: var(--dsw-alias-bg-layer-1);
+  border-color: var(--dsw-alias-border-l2);
+}
 .tkb-card[data-status="completed"] .tkb-card__glyph { display: block; }
 .tkb-card[data-status="completed"] .tkb-card__deps,
 .tkb-card[data-status="completed"] .tkb-card__preview,
 .tkb-card[data-status="completed"] .tkb-card__owner-name { display: none !important; }
-.tkb-card[data-status="completed"] .tkb-card__title { margin-top: 0; font-size: 12.5px; font-weight: 400; color: var(--dsw-alias-label-tertiary); -webkit-line-clamp: 1; }
-.tkb-card[data-status="completed"][aria-expanded="true"] .tkb-card__title { -webkit-line-clamp: unset; color: var(--dsw-alias-label-secondary); }
-.tkb-card[data-status="completed"] .tkb-card__owner .tkb-mate { width: 18px; height: 18px; font-size: 9.5px; opacity: .7; }
-
-/* 展开详情 */
-.tkb-detail {
-  display: flex; flex-direction: column; gap: 9px; margin-top: 9px; padding-top: 9px; cursor: auto;
-  border-top: 1px solid var(--dsw-alias-border-l1); opacity: 0; transform: translateY(-3px);
-  transition: opacity var(--tkb-d2) var(--tkb-ease), transform var(--tkb-d2) var(--tkb-ease);
+.tkb-card[data-status="completed"] .tkb-card__title {
+  margin-top: 0;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--dsw-alias-label-tertiary);
+  -webkit-line-clamp: 1;
 }
-.tkb-card[aria-expanded="true"] .tkb-detail { opacity: 1; transform: none; transition-delay: calc(60ms * var(--tkb-speed, 1)); }
-.tkb-detail__desc { margin: 0; font-size: 12.5px; line-height: 1.62; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
-.tkb-detail__row { display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 4px; align-items: start; }
+.tkb-card[data-status="completed"][data-expanded] .tkb-card__title {
+  -webkit-line-clamp: unset;
+  color: var(--dsw-alias-label-secondary);
+}
+.tkb-card[data-status="completed"] .tkb-card__owner .tkb-mate {
+  width: 18px;
+  height: 18px;
+  font-size: 9.5px;
+  opacity: .7;
+}
+
+/* =====================================================================
+   依赖徽章与链接胶囊
+   ===================================================================== */
+.tkb-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform var(--tkb-d1), box-shadow var(--tkb-d2);
+}
+.tkb-badge[data-kind="ready"] {
+  color: var(--tkb-c-done);
+  background: color-mix(in srgb, var(--tkb-c-done) 14%, var(--dsw-alias-bg-layer-1));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-done) 25%, transparent);
+}
+.tkb-badge[data-kind="blocked"] {
+  color: var(--dsw-alias-state-warn-label);
+  background: var(--dsw-alias-state-warn-tertiary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-warn) 20%, transparent);
+}
+.tkb-dep {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  font-family: var(--tkb-mono);
+  font-size: 10.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--dsw-alias-state-warn-label);
+  background: var(--dsw-alias-state-warn-tertiary);
+  transition: transform var(--tkb-d1), background-color var(--tkb-d1);
+}
+.tkb-dep::after {
+  content: "";
+  position: absolute;
+  left: 4px; right: 4px; top: 50%; height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--tkb-d3) var(--tkb-ease);
+}
+.tkb-dep[data-done] {
+  color: var(--dsw-alias-label-tertiary);
+  background: transparent;
+}
+.tkb-dep[data-done]::after { transform: scaleX(1); }
+.tkb-dep:hover {
+  transform: scale(1.06);
+  background: color-mix(in srgb, var(--tkb-c-warn) 25%, transparent);
+}
+.tkb-dep[data-done]:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* =====================================================================
+   展开抽屉（Drawer Physics）
+   ===================================================================== */
+.tkb-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  animation: tkb-detail-in var(--tkb-d2) var(--tkb-ease) both;
+}
+.tkb-detail__desc {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.62;
+  color: var(--dsw-alias-label-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.tkb-detail__row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  column-gap: 4px;
+  align-items: start;
+}
 .tkb-detail__items { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
-.tkb-detail__icw { flex: none; width: 18px; height: 22px; display: grid; place-items: center; color: var(--dsw-alias-label-tertiary); }
+.tkb-detail__icw {
+  flex: none;
+  width: 18px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--dsw-alias-label-tertiary);
+}
 .tkb-detail__icw svg { width: 12px; height: 12px; }
 .tkb-ref {
-  display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; height: 22px; padding: 0 8px 0 6px;
-  border: 0; border-radius: 6px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-secondary);
-  font-size: 11.5px; cursor: pointer; transition: background-color var(--tkb-d1), color var(--tkb-d1);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 8px 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  font-family: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: transform var(--tkb-d1), background-color var(--tkb-d1), color var(--tkb-d1);
 }
-.tkb-ref:hover { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
-.tkb-ref:focus-visible { outline: 2px solid color-mix(in srgb, var(--tkb-c-active) 60%, transparent); outline-offset: 1px; }
+.tkb-ref:hover {
+  transform: translateY(-1px);
+  background: var(--dsw-alias-interactive-bg-active);
+  color: var(--dsw-alias-label-primary);
+}
+.tkb-ref:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tkb-c-active) 60%, transparent);
+  outline-offset: 1px;
+}
 .tkb-ref .tkb-glyph { width: 10px; height: 10px; }
 .tkb-ref__id { font-family: var(--tkb-mono); font-size: 10.5px; color: var(--dsw-alias-label-tertiary); }
-.tkb-ref__t { min-width: 0; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tkb-scope { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 5px; border: 1px solid var(--dsw-alias-border-l2); font-family: var(--tkb-mono); font-size: 10.5px; color: var(--dsw-alias-label-secondary); }
-.tkb-warnline { display: flex; align-items: flex-start; gap: 6px; padding: 6px 8px; border-radius: var(--dsw-radius-sm); background: var(--dsw-alias-state-warn-tertiary); color: var(--dsw-alias-state-warn-label); font-size: 11.5px; line-height: 1.5; }
+.tkb-ref__t {
+  min-width: 0;
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tkb-scope {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 5px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  font-family: var(--tkb-mono);
+  font-size: 10.5px;
+  color: var(--dsw-alias-label-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tkb-warnline {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-state-warn-tertiary);
+  color: var(--dsw-alias-state-warn-label);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
 .tkb-warnline svg { width: 13px; height: 13px; margin-top: 2px; }
 
-/* ---- 聚焦：按人 / 依赖链 / 进度段指向 ---- */
-.tkb-root[data-spot] .tkb-card:not(.is-spot) { opacity: .3; }
-.tkb-card.is-spot { border-color: color-mix(in srgb, var(--tkb-c-active) 45%, transparent); }
-.tkb-root[data-lineage] .tkb-card:not(.is-lin) { opacity: .45; }
-.tkb-root[data-lineage] .tkb-card.is-up-open { border-color: color-mix(in srgb, var(--tkb-c-warn) 65%, transparent); }
-.tkb-root[data-lineage] .tkb-card.is-up-done { border-color: color-mix(in srgb, var(--tkb-c-done) 60%, transparent); }
-.tkb-root[data-lineage] .tkb-card.is-down { border-color: color-mix(in srgb, var(--tkb-c-active) 55%, transparent); }
-.tkb-card.is-hint { border-color: color-mix(in srgb, var(--tkb-c-active) 55%, transparent); background: var(--dsw-alias-card-fill-hover); }
-.tkb-wires { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 6; overflow: visible; }
-.tkb-wire { fill: none; stroke-width: 1.5; stroke-linecap: round; opacity: .9; }
-.tkb-wire.is-off { stroke-dasharray: 3 4; opacity: .5; }
-.tkb-wire-dot { fill: var(--dsw-alias-bg-base); stroke-width: 1.5; }
-.tkb-wire--up-open { stroke: var(--tkb-c-warn); }
-.tkb-wire--up-done { stroke: var(--tkb-c-done); }
-.tkb-wire--down { stroke: var(--tkb-c-active); }
+/* =====================================================================
+   神经网络血缘与聚焦矩阵（Neural Lineage & Focal Matrix）
+   ===================================================================== */
+/* 队友聚光灯 */
+.tkb-root[data-spot] .tkb-card:not(.is-spot) {
+  opacity: .24;
+  filter: blur(0.4px);
+  transform: scale(0.985);
+}
+.tkb-card.is-spot {
+  z-index: 2;
+  transform: translateY(-2.5px) scale(1.01);
+  border-color: var(--tkb-c-active);
+  box-shadow: 0 10px 28px -4px color-mix(in srgb, var(--tkb-c-active) 32%, transparent),
+              0 0 0 1.5px var(--tkb-c-active);
+}
 
-/* ---- 飞行层 / 提示 ---- */
-.tkb-flights { position: absolute; inset: 0; pointer-events: none; z-index: 8; overflow: hidden; }
-.tkb-flight { position: absolute; border-radius: var(--dsw-radius-md); overflow: hidden; background: var(--dsw-alias-card-fill); will-change: transform; }
-.tkb-flight > .tkb-card { position: absolute; left: 0; top: 0; margin: 0; transition: none; }
-.tkb-flight[data-to="completed"] { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tkb-c-done) 60%, transparent); }
-.tkb-flight[data-to="in_progress"] { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tkb-c-active) 60%, transparent); }
-.tkb-flight[data-to="pending"] { box-shadow: 0 0 0 1.5px var(--dsw-alias-border-l3); }
-.tkb-flight--vanish { background: transparent; }
+/* 依赖血缘链路悬停 */
+.tkb-root[data-lineage] .tkb-card:not(.is-lin) {
+  opacity: .32;
+  filter: blur(0.3px);
+  transform: scale(0.99);
+}
+.tkb-root[data-lineage] .tkb-card.is-lin {
+  z-index: 2;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px -3px rgba(0, 0, 0, 0.12);
+}
+/* 上游卡片（前置供给者）：点亮金橙色/翡翠绿能量流动 */
+.tkb-root[data-lineage] .tkb-card.is-up-open {
+  border-color: var(--tkb-c-warn);
+  background: radial-gradient(120% 80% at 0% 0%,
+    color-mix(in srgb, var(--tkb-c-warn) 10%, var(--dsw-alias-card-fill)) 0%,
+    var(--dsw-alias-card-fill) 100%);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--tkb-c-warn) 25%, transparent);
+}
+.tkb-root[data-lineage] .tkb-card.is-up-done {
+  border-color: var(--tkb-c-done);
+  background: radial-gradient(120% 80% at 0% 0%,
+    color-mix(in srgb, var(--tkb-c-done) 10%, var(--dsw-alias-card-fill)) 0%,
+    var(--dsw-alias-card-fill) 100%);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--tkb-c-done) 25%, transparent);
+}
+/* 下游卡片（后置消费端）：点亮科技蓝能量流 */
+.tkb-root[data-lineage] .tkb-card.is-down {
+  border-color: var(--tkb-c-active);
+  background: radial-gradient(120% 80% at 0% 0%,
+    color-mix(in srgb, var(--tkb-c-active) 10%, var(--dsw-alias-card-fill)) 0%,
+    var(--dsw-alias-card-fill) 100%);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--tkb-c-active) 25%, transparent);
+}
+
+/* 卡片跳转高亮闪光 */
+.tkb-card.is-flash { animation: tkb-flash 1100ms var(--tkb-ease) 1; }
+
+/* 提示气泡 */
 .tkb-tip {
-  position: absolute; left: 0; top: 0; z-index: 20; max-width: 260px; padding: 5px 8px; pointer-events: none;
-  border-radius: var(--dsw-radius-sm); background: var(--dsw-alias-label-primary); color: var(--dsw-alias-bg-base);
-  font-size: 11.5px; line-height: 1.4; opacity: 0; transform: translateY(2px);
+  position: absolute;
+  left: 0; top: 0;
+  z-index: 20;
+  max-width: 240px;
+  padding: 6px 9px;
+  pointer-events: none;
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-bg-base);
+  font-size: 11.5px;
+  line-height: 1.4;
+  opacity: 0;
+  transform: translate(-50%, 2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
   transition: opacity var(--tkb-d1) var(--tkb-ease), transform var(--tkb-d1) var(--tkb-ease);
 }
-.tkb-tip[data-show] { opacity: 1; transform: none; }
+.tkb-tip[data-show] { opacity: 1; transform: translate(-50%, 0); }
 .tkb-tip b { display: block; font-weight: 600; }
-.tkb-tip span { display: block; margin-top: 1px; opacity: .65; }
+.tkb-tip span { display: block; margin-top: 1px; opacity: .75; }
 .tkb-tip span:empty { display: none; }
 
-/* ---- 事件动效（同一张卡片按优先级覆盖：后者胜） ---- */
-.tkb-card.is-new { animation: tkb-new var(--tkb-d4) var(--tkb-ease) 1; }
-.tkb-card.is-touched { animation: tkb-touch calc(900ms * var(--tkb-speed, 1)) var(--tkb-ease) 1; }
-.tkb-card.is-catchup { animation: tkb-catchup calc(1800ms * var(--tkb-speed, 1)) var(--tkb-ease) var(--tkb-cd, 0ms) both; }
-.tkb-card.is-unlocking { animation: tkb-unlock calc(900ms * var(--tkb-speed, 1)) var(--tkb-ease) 1; }
-.tkb-card.is-landed { animation: tkb-land calc(800ms * var(--tkb-speed, 1)) var(--tkb-ease) 1; }
-.tkb-card.is-flash { animation: tkb-flash calc(1100ms * var(--tkb-speed, 1)) var(--tkb-ease) 1; }
-.tkb-card.is-landed .tkb-card__glyph { animation: tkb-pop calc(460ms * var(--tkb-speed, 1)) var(--tkb-ease-spring) both; }
-.tkb-card.is-landed .tkb-glyph__check { stroke-dasharray: 8; animation: tkb-draw calc(320ms * var(--tkb-speed, 1)) var(--tkb-ease) calc(120ms * var(--tkb-speed, 1)) both; }
-.tkb-card { --tkb-land: var(--tkb-c-active); }
-.tkb-card[data-status="completed"] { --tkb-land: var(--tkb-c-done); }
-.tkb-card[data-status="pending"] { --tkb-land: var(--dsw-alias-border-l3); }
-@keyframes tkb-new { 0%, 30% { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tkb-c-active) 55%, transparent); } 100% { box-shadow: 0 0 0 1.5px transparent; } }
-@keyframes tkb-touch { 0% { background-color: color-mix(in srgb, var(--tkb-c-active) 14%, var(--dsw-alias-card-fill)); } }
-@keyframes tkb-catchup { 0% { box-shadow: 0 0 0 0 transparent; } 15% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--tkb-c-active) 30%, transparent); } 100% { box-shadow: 0 0 0 3px transparent; } }
-@keyframes tkb-unlock { 0% { box-shadow: 0 0 0 0 transparent; } 25% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--tkb-c-active) 30%, transparent); border-color: color-mix(in srgb, var(--tkb-c-active) 60%, transparent); } 100% { box-shadow: 0 0 0 3px transparent; } }
-@keyframes tkb-land { 0% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--tkb-land) 55%, transparent); } 100% { box-shadow: 0 0 0 2px transparent; } }
-@keyframes tkb-flash { 0%, 40% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--tkb-c-active) 65%, transparent); } 20%, 60% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--tkb-c-active) 18%, transparent); } 100% { box-shadow: 0 0 0 2px transparent; } }
-@keyframes tkb-draw { from { stroke-dashoffset: 8; } to { stroke-dashoffset: 0; } }
-@keyframes tkb-pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes tkb-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-@keyframes tkb-slot-in { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: none; } }
-@keyframes tkb-glint { 0% { filter: none; transform: none; } 35% { filter: brightness(1.5) saturate(1.2); transform: scaleY(2); } 100% { filter: none; transform: none; } }
+/* =====================================================================
+   动画关键帧清单
+   ===================================================================== */
+@keyframes tkb-orbit { to { --tkb-angle: 360deg; } }
+@keyframes tkb-flow {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(220%); }
+}
+@keyframes tkb-sonar-ping {
+  0% { transform: scale(0.85); opacity: 0.9; }
+  100% { transform: scale(1.85); opacity: 0; }
+}
+@keyframes tkb-blink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .3; transform: scale(0.85); }
+}
+@keyframes tkb-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes tkb-aurora-glow {
+  0% { opacity: 0.5; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1.02); }
+}
+@keyframes tkb-aurora-sweep {
+  0% { left: -60%; opacity: 0; }
+  25% { opacity: 0.8; }
+  60% { opacity: 0.8; }
+  100% { left: 140%; opacity: 0; }
+}
+@keyframes tkb-num-in {
+  from { opacity: 0; transform: translateY(40%); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tkb-detail-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tkb-flash {
+  0%, 40% {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tkb-c-active) 70%, transparent),
+                0 0 20px color-mix(in srgb, var(--tkb-c-active) 40%, transparent);
+  }
+  20%, 60% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--tkb-c-active) 25%, transparent),
+                0 0 30px color-mix(in srgb, var(--tkb-c-active) 20%, transparent);
+  }
+  100% { box-shadow: 0 0 0 2px transparent; }
+}
+@keyframes tkb-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
 
-/* 首次出现：进度段从左画入 → 各区依次上浮（每次出现仅一次） */
-.tkb-root.is-entering .tkb-score, .tkb-root.is-entering .tkb-mates,
-.tkb-root.is-entering .tkb-lane__head, .tkb-root.is-entering .tkb-lane__body > * {
-  animation: tkb-rise calc(460ms * var(--tkb-speed, 1)) var(--tkb-ease) both;
+.tkb-root[data-entering] .tkb-lane__head,
+.tkb-root[data-entering] .tkb-lane__body > * {
+  animation: tkb-rise calc(480ms * var(--tkb-speed, 1)) var(--tkb-ease) both;
   animation-delay: calc(var(--i, 0) * 45ms * var(--tkb-speed, 1));
 }
-.tkb-root.is-entering .tkb-slot {
-  transform-origin: left center; animation: tkb-slot-in calc(520ms * var(--tkb-speed, 1)) var(--tkb-ease) both;
-  animation-delay: calc((80ms + var(--i, 0) * 24ms) * var(--tkb-speed, 1));
-}
-/* 全部完成：一道光沿进度段扫过（一次） */
-.tkb-root[data-celebrate] .tkb-slot { animation: tkb-glint calc(800ms * var(--tkb-speed, 1)) var(--tkb-ease) both; animation-delay: calc(var(--i, 0) * 40ms * var(--tkb-speed, 1)); }
-.tkb-root[data-celebrate] .tkb-score__done { animation: tkb-pop calc(520ms * var(--tkb-speed, 1)) var(--tkb-ease-spring) both; }
 
-/* ---- 减少动效：保留颜色变化，去掉位移与循环 ---- */
-.tkb-root[data-motion="reduced"] .tkb-mate::before,
-.tkb-root[data-motion="reduced"] .tkb-card__rail::after,
-.tkb-root[data-motion="reduced"] .tkb-mc.is-new, .tkb-root[data-motion="reduced"] .tkb-mate.is-pop,
-.tkb-root[data-motion="reduced"] .tkb-card.is-landed .tkb-card__glyph,
-.tkb-root[data-motion="reduced"][data-celebrate] .tkb-slot,
-.tkb-root[data-motion="reduced"][data-celebrate] .tkb-score__done { animation: none !important; }
-.tkb-root[data-motion="reduced"] .tkb-card__rail::after { opacity: 0 !important; }
 @media (prefers-reduced-motion: reduce) {
-  .tkb-root .tkb-mate::before, .tkb-root .tkb-card__rail::after, .tkb-root .tkb-mc.is-new, .tkb-root .tkb-mate.is-pop,
-  .tkb-root .tkb-card.is-landed .tkb-card__glyph, .tkb-root[data-celebrate] .tkb-slot, .tkb-root[data-celebrate] .tkb-score__done { animation: none !important; }
-  .tkb-root .tkb-card__rail::after { opacity: 0 !important; }
+  .tkb-root *, .tkb-title * {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+  .tkb-card[data-status="in_progress"][data-live]::before,
+  .tkb-card__rail::after,
+  .tkb-mate[data-running]::after { opacity: 0 !important; }
 }
 
-/* ---- ≥540：三列并排（分屏 / 拉宽 / 浮窗） ---- */
+/* =====================================================================
+   宽屏适配：≥540px 三列并排
+   ===================================================================== */
 @container tkb (min-width: 540px) {
-  .tkb-lanes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; }
+  .tkb-lanes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: hidden;
+  }
   .tkb-lane { display: flex; flex-direction: column; min-height: 0; }
   .tkb-lane + .tkb-lane { border-left: 1px solid var(--dsw-alias-border-l1); }
-  .tkb-lane[data-lane="in_progress"] { background: color-mix(in srgb, var(--tkb-c-active) 2.5%, var(--dsw-alias-bg-base)); }
-  .tkb-lane__head { position: relative; height: 38px; padding: 0 12px; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .tkb-lane__body, .tkb-lane[data-empty] .tkb-lane__body {
-    display: flex; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 8px 20px;
-    scrollbar-width: thin; scrollbar-color: var(--dsw-alias-border-l3) transparent;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 18px), transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 18px), transparent 100%);
+  .tkb-lane[data-lane="in_progress"] {
+    background: color-mix(in srgb, var(--tkb-c-active) 2.5%, var(--dsw-alias-bg-base));
   }
-  .tkb-empty {
-    display: grid; place-items: center; flex: none; height: 52px; opacity: .55;
-    border: 1px dashed var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-md); color: var(--dsw-alias-label-tertiary);
+  .tkb-lane__head {
+    position: relative;
+    height: 38px;
+    padding: 0 12px;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
+  .tkb-lane__body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 6px 8px 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dsw-alias-border-l3) transparent;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 18px), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 18px), transparent 100%);
+  }
+  .tkb-empty { min-height: 52px; }
 }
-/* ---- ≥820：全屏 / 大浮窗，信息更舒展 ---- */
+
+/* =====================================================================
+   超宽屏适配：≥820px 全屏或大浮窗
+   ===================================================================== */
 @container tkb (min-width: 820px) {
   .tkb-head { gap: 16px; padding: 14px 18px 13px; }
   .tkb-score__done { font-size: 22px; }
@@ -586,37 +1331,58 @@ button { font: inherit; }
   .tkb-mc + .tkb-mc { margin-left: 6px; }
   .tkb-mc__name { display: inline; }
   .tkb-mc .tkb-mate { box-shadow: none; }
+  .tkb-mc .tkb-mate__dot { box-shadow: 0 0 0 2px var(--dsw-alias-bg-layer-1); }
   .tkb-lane__head { height: 42px; padding: 0 16px; }
-  .tkb-lane__body, .tkb-lane[data-empty] .tkb-lane__body { gap: 8px; padding: 6px 12px 22px; }
+  .tkb-lane__body { gap: 8px; padding: 6px 12px 22px; }
   .tkb-lane[data-lane="completed"] .tkb-lane__body { gap: 2px; }
   .tkb-card { padding: 11px 12px 12px 14px; }
-  .tkb-card__preview {
-    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
-    margin-top: 3px; font-size: 12px; color: var(--dsw-alias-label-tertiary);
-  }
-  .tkb-card[aria-expanded="true"] .tkb-card__preview { display: none; }
   .tkb-card__owner-name { display: inline; }
+  .tkb-card__preview {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--dsw-alias-label-tertiary);
+  }
+  .tkb-card[data-expanded] .tkb-card__preview { display: none; }
 }
 
-/* ---- 标签页胶囊标题（TeamKanbanTitle） ---- */
-.tkb-title { display: inline-flex; align-items: center; gap: 6px; }
+/* =====================================================================
+   标签页胶囊标题（TeamKanbanTitle）
+   ===================================================================== */
+.tkb-title { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .tkb-title__ring { width: 15px; height: 15px; overflow: visible; }
 .tkb-title__track { fill: none; stroke: var(--dsw-alias-border-l3); stroke-width: 1.8; }
 .tkb-title__arc {
-  fill: none; stroke: var(--dsw-alias-state-done-primary); stroke-width: 1.8; stroke-linecap: round;
-  transform: rotate(-90deg); transform-origin: 8px 8px;
-  transition: stroke-dashoffset calc(620ms * var(--tkb-speed, 1)) var(--tkb-ease);
+  fill: none;
+  stroke: var(--dsw-alias-state-done-primary);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 8px 8px;
+  transition: stroke-dashoffset 620ms var(--tkb-ease);
 }
 .tkb-title__check {
-  fill: none; stroke: var(--dsw-alias-state-done-primary); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
-  stroke-dasharray: 9; stroke-dashoffset: 9; transition: stroke-dashoffset calc(360ms * var(--tkb-speed, 1)) var(--tkb-ease) calc(500ms * var(--tkb-speed, 1));
+  fill: none;
+  stroke: var(--dsw-alias-state-done-primary);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 9;
+  stroke-dashoffset: 9;
+  transition: stroke-dashoffset 360ms var(--tkb-ease) 500ms;
 }
 .tkb-title[data-done] .tkb-title__check { stroke-dashoffset: 0; }
-.tkb-title__count { font-size: 11px; color: var(--dsw-alias-label-tertiary); }
-.tkb-title.is-pulse .tkb-title__ring { animation: tkb-ring-pulse calc(900ms * var(--tkb-speed, 1)) var(--tkb-ease) 1; }
-.tkb-title.is-pulse .tkb-title__count { animation: tkb-count-pulse calc(900ms * var(--tkb-speed, 1)) var(--tkb-ease) 1; }
-@keyframes tkb-ring-pulse { 30% { transform: scale(1.28); } }
-@keyframes tkb-count-pulse { 0%, 40% { color: var(--dsw-alias-state-done-primary); } }
+.tkb-title__label { white-space: nowrap; }
+.tkb-title__count {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+  animation: tkb-num-in 300ms var(--tkb-ease) both;
+}
+
 </style>
 </head>
 <body data-theme="light">
@@ -638,6 +1404,7 @@ button { font: inherit; }
     <button class="pt-btn" data-act="clear">清空</button>
     <button class="pt-btn" data-act="team" id="ptTeam" aria-pressed="true">团队模式</button>
     <button class="pt-btn" data-act="failure" id="ptFailure" aria-pressed="false">投影异常</button>
+    <button class="pt-btn" data-act="celebrate">✨ 极光庆典</button>
   </div>
   <span class="pt-sep"></span>
   <div class="pt-group">
@@ -1974,6 +2741,17 @@ const ACTIONS = {
   failure() {
     state.failure = state.failure ? undefined : 'agent-team.jsonl:42 · Unexpected token } in JSON at position 1187';
     logCall('projection', state.failure ? 'agentTeam · failure' : 'agentTeam · recovered');
+    return true;
+  },
+  celebrate() {
+    if (host.board && host.board.el) {
+      host.board.el.setAttribute('data-celebrate', '');
+      host.board.el.setAttribute('data-alldone', '');
+      setTimeout(() => {
+        if (!state.tasks.every(t => t.status === 'completed')) host.board.el.removeAttribute('data-alldone');
+        host.board.el.removeAttribute('data-celebrate');
+      }, 3600);
+    }
     return true;
   },
 };
