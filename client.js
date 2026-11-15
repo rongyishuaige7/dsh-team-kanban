@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.1.4-dbg';
+    const CLIENT_REV = '0.1.5-dbg';
     const TAB_ID = PKG;
     const KIND = 'team-board';
     const LANES = ['pending', 'in_progress', 'completed'];
@@ -30,7 +30,7 @@ window.__ModuleLoader__.load({
       try {
         if (typeof localStorage === 'undefined') return;
         diag.events.push([Date.now(), kind, data]);
-        if (diag.events.length > 40) diag.events.shift();
+        if (diag.events.length > 100) diag.events.shift();
         localStorage.setItem(DIAG_KEY, JSON.stringify(diag));
       } catch (error) {
         /* Diagnosis must never break the plugin. */
@@ -1243,10 +1243,44 @@ window.__ModuleLoader__.load({
       const hasTask = !absent && team.enabled === true && Array.isArray(team.tasks)
         && team.tasks.some((task) => task && task.status !== 'deleted');
 
+      /* Diagnostic: is the watcher mounted for the whole run, and does the
+         underlying store move even when React never re-renders this slot? */
       useEffect(() => {
-        if (addressedChild || listedChild) return undefined;
+        diagNote('watcher-mount', { sid: String(sessionId).slice(-12) });
+        return () => diagNote('watcher-unmount', { sid: String(sessionId).slice(-12) });
+      }, [sessionId]);
+
+      useEffect(() => {
+        let previous = null;
+        const read = () => {
+          try {
+            const values = ctx.sessions && typeof ctx.sessions.projectionValues === 'function'
+              ? ctx.sessions.projectionValues(sessionId)
+              : undefined;
+            const value = values && values.agentTeam;
+            return value
+              ? (value.enabled === true ? 'on' : 'off') + ':' + (value.tasks || []).map((task) => String(task.status)[0]).join('')
+              : 'none';
+          } catch (error) {
+            return 'error:' + String(error && error.message).slice(0, 40);
+          }
+        };
+        const timer = setInterval(() => {
+          const signature = read();
+          if (signature === previous) return;
+          previous = signature;
+          diagNote('store', { sid: String(sessionId).slice(-12), sig: signature });
+        }, 2000);
+        return () => clearInterval(timer);
+      }, [sessionId, ctx]);
+
+      useEffect(() => {
+        if (addressedChild || listedChild) {
+          diagNote('watch-child', { sid: String(sessionId).slice(-12) });
+          return undefined;
+        }
         if (absent) {
-          diagNote('watch', { sid: String(sessionId).slice(-8), absent: true, child: !!(addressedChild || listedChild) });
+          diagNote('watch', { sid: String(sessionId).slice(-12), absent: true });
           return undefined;
         }
 
@@ -1260,7 +1294,7 @@ window.__ModuleLoader__.load({
         const findBoardTab = () => listTabs().find((tab) => tab && tab.kind === KIND);
 
         diagNote('watch', {
-          sid: String(sessionId).slice(-8),
+          sid: String(sessionId).slice(-12),
           absent: false,
           hasTask,
           tabs: listTabs().length,
