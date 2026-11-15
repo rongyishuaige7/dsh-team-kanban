@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.5.0';
+    const CLIENT_REV = '0.5.1';
     const TAB_ID = PKG;
     /* Namespaced on purpose: the host turns a kind into the opaque page
        address `sidebar://<kind>`, and a bare `team-board` would be the first
@@ -831,7 +831,8 @@ window.__ModuleLoader__.load({
           setTeamMenu(false);
         }, (error) => {
           setTeamBusy(false);
-          setTeamError(t('team.failed', { message: error && error.message ? error.message : String(error) }));
+          const isUnavailable = error && error.code === 'NO_TEAM_CONTROL';
+          setTeamError(isUnavailable ? t('team.unavailable') : t('team.failed', { message: error && error.message ? error.message : String(error) }));
         });
       }, [sessionId, teamBusy, t]);
 
@@ -1564,9 +1565,50 @@ window.__ModuleLoader__.load({
        switch; `ctx.inject` in `apply` fills this in only where it exists. */
     let teamControl = null;
 
+    /* Settle listeners notified when a Session's team state changes
+       out-of-band (e.g. after a disable request), so watchers can pull the
+       fresh projection immediately without waiting for a turn. */
+    const settleListeners = new Set();
+
+    function requestSettle(sessionId) {
+      settleListeners.forEach((listener) => {
+        try {
+          listener(sessionId);
+        } catch (error) {
+          /* Listeners must never fail callers. */
+        }
+      });
+    }
+
     async function disableTeam(sessionId) {
-      if (typeof teamControl !== 'function') throw new Error('team control is unavailable on this Host');
-      await teamControl(sessionId, false);
+      if (typeof teamControl !== 'function') {
+        const err = new Error('team control is unavailable on this Host');
+        err.code = 'NO_TEAM_CONTROL';
+        diag({ phase: 'team-disable-failed', sessionId, error: err.message, code: err.code });
+        throw err;
+      }
+      let result;
+      try {
+        result = await teamControl(sessionId, false);
+      } catch (error) {
+        const message = error && error.message ? error.message : String(error);
+        const err = new Error(message);
+        if (error && error.code) err.code = error.code;
+        diag({ phase: 'team-disable-failed', sessionId, error: message, code: err.code });
+        throw err;
+      }
+      if (!result || result.ok !== true) {
+        const message = result && result.error && result.error.message
+          ? result.error.message
+          : (result && result.error ? String(result.error) : 'the Host rejected the change');
+        const err = new Error(message);
+        if (result && result.error && result.error.code) err.code = result.error.code;
+        diag({ phase: 'team-disable-failed', sessionId, error: message, code: err.code });
+        throw err;
+      }
+      diag({ phase: 'team-disabled', sessionId });
+      unsupportedSessions.delete(sessionId);
+      requestSettle(sessionId);
     }
     /* Sessions whose board this plugin is closing itself; the host runs the
        close handler inside `closeIn`, so an unflagged close would read as a
@@ -1651,10 +1693,12 @@ window.__ModuleLoader__.load({
         let failures = 0;
         let reported = false;
         let timer = 0;
+        const extraTimers = [];
         const stop = () => {
           live = false;
           clearTimeout(timer);
           clearInterval(timer);
+          extraTimers.forEach(clearTimeout);
         };
         const pull = async () => {
           if (busy || !live) return;
@@ -1691,20 +1735,38 @@ window.__ModuleLoader__.load({
           if (failures >= 3) stop();
         };
 
+        const runProbes = () => {
+          failures = 0;
+          live = true;
+          [0, 1200, 3600].forEach((delay) => {
+            if (!live) return;
+            const probeTimer = setTimeout(pull, delay);
+            extraTimers.push(probeTimer);
+          });
+        };
+
+        const onSettle = (id) => {
+          if (id === sessionId) runProbes();
+        };
+        settleListeners.add(onSettle);
+
         if (settle) {
           /* 0 s catches a projection that landed while the view was closed,
              1.2 s and 3.6 s catch a task record the Host flushed just after
              the turn ended. Then the board goes quiet again. */
-          const probes = [0, 1200, 3600].map((delay) => setTimeout(pull, delay));
+          runProbes();
           return () => {
-            live = false;
-            probes.forEach(clearTimeout);
+            settleListeners.delete(onSettle);
+            stop();
           };
         }
 
         pull();
         timer = setInterval(pull, plan === 'fast' ? PULL_FAST_MS : PULL_SLOW_MS);
-        return stop;
+        return () => {
+          settleListeners.delete(onSettle);
+          stop();
+        };
       }, [ctx, sessionId, child, plan, runningNow]);
 
       /* Three states, never two. An absent projection means the frame or the
@@ -2136,7 +2198,7 @@ window.__ModuleLoader__.load({
 .tkb-team__danger {
   border: 1px solid transparent;
   background: var(--dsw-alias-state-error-primary);
-  color: #fff;
+  color: var(--dsw-alias-label-primary-inverted, #fff);
 }
 .tkb-team__ghost:disabled,
 .tkb-team__danger:disabled { opacity: .55; cursor: default; }
@@ -3297,6 +3359,7 @@ window.__ModuleLoader__.load({
         buildModel,
         ownerDisplay,
         disableTeam,
+        requestSettle,
         FALLBACK_LIMIT,
       }),
     });

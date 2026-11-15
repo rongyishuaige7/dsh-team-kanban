@@ -2,6 +2,23 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.1] - 2026-11-15
+
+修复 0.5.0 停用团队协作在宿主上的假成功与未刷新缺陷。
+
+### Fixed
+
+- **停用失败严格校验返回值**：宿主远程方法 `setEnabled` 失败时返回 `{ ok: false, error }` 而不抛异常。现在检查 `result.ok === true`，非 true 时保留宿主错误码并抛出宿主错误信息，不再被误当成成功关闭弹层。
+- **停用成功后主动触发 settle 探测**：停用成功后触发 `requestSettle(sessionId)`，驱动 watcher 运行一轮 0 / 1.2 / 3.6 秒探测。解决任务全部完成的空闲看板在停用后因 `plan === 'off'` 不再拉取、导致看板无法自动关闭的问题；watcher 处于失败暂停态时收到通知也会重新激活。
+- **缺失服务精准匹配**：未提供服务时抛出附带 `NO_TEAM_CONTROL` 的专门错误，界面仅认此标记展示 `team.unavailable`（中文显示「当前宿主没有提供团队控制接口」），宿主其他带 `unavailable` 的业务错误不再被误伤隐藏。
+- **诊断日志补全**：停用成功或失败均记录至 `team-kanban:diag.v1`（`phase: 'team-disabled'` / `'team-disable-failed'`），实机验收时可直接排查。
+- **按钮样式规范**：危险按钮文字色改用 `var(--dsw-alias-label-primary-inverted, #fff)`，消除硬编码白色。
+- **清单测试解耦**：`test/manifest.test.mjs` 改为正则校验版本号格式，避免发版时硬编码版本导致单测失败。
+
+### Added
+
+- 测试增至 35 项：覆盖停用失败返回 `{ ok: false }` 的错误拦截、诊断记录沉淀，以及加固时序后能够真实守护 `requestSettle` 的空闲看板停用自动关闭测试。
+
 ## [0.5.0] - 2026-11-15
 
 看板从「只能看」变成「能收口」：新增停用团队协作的入口。

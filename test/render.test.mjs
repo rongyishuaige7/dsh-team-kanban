@@ -22,7 +22,7 @@ function fakeReact() {
   };
 }
 
-function boot(pulledValues, { tabs = [], teamControl = true } = {}) {
+function boot(pulledValues, { tabs = [], teamControl = true, teamControlResult = { ok: true } } = {}) {
   const { React, effects } = fakeReact();
   let definition;
   const storage = new Map();
@@ -67,13 +67,25 @@ function boot(pulledValues, { tabs = [], teamControl = true } = {}) {
         return () => {};
       },
     },
-    remote: { session: { projections: async () => ({ ok: true, value: { values: pulledValues } }) } },
+    remote: {
+      session: {
+        projections: async () => ({
+          ok: true,
+          value: { values: typeof pulledValues === 'function' ? pulledValues() : pulledValues },
+        }),
+      },
+    },
     inject: (deps, callback) => {
       if (!teamControl) return;
       callback({
         remote: {
           agentTeams: {
-            setEnabled: async (sessionId, enabled) => { teamCalls.push([sessionId, enabled]); },
+            setEnabled: async (sessionId, enabled) => {
+              teamCalls.push([sessionId, enabled]);
+              return typeof teamControlResult === 'function'
+                ? teamControlResult(sessionId, enabled)
+                : teamControlResult;
+            },
           },
         },
         effect: () => () => {},
@@ -249,14 +261,92 @@ test('the board renders one team switch in the header', () => {
 });
 
 test('disabling the team calls the only exposed remote method', async () => {
-  const { plugin, teamCalls } = boot({ agentTeam: rcTeam });
+  const { plugin, teamCalls, storage } = boot({ agentTeam: rcTeam });
   await plugin.__internals.disableTeam('S-lead');
   assert.deepEqual(teamCalls, [['S-lead', false]]);
+  const record = JSON.parse(storage.get('team-kanban:diag.v1'));
+  assert.equal(record.phase, 'team-disabled');
 });
 
 test('a host without the team service reports the missing control', async () => {
-  const { plugin } = boot({ agentTeam: rcTeam }, { teamControl: false });
-  await assert.rejects(() => plugin.__internals.disableTeam('S-lead'), /unavailable/);
+  const { plugin, storage } = boot({ agentTeam: rcTeam }, { teamControl: false });
+  await assert.rejects(
+    () => plugin.__internals.disableTeam('S-lead'),
+    (err) => err && err.code === 'NO_TEAM_CONTROL' && /unavailable/.test(err.message),
+  );
+  const record = JSON.parse(storage.get('team-kanban:diag.v1'));
+  assert.equal(record.phase, 'team-disable-failed');
+  assert.equal(record.code, 'NO_TEAM_CONTROL');
+});
+
+test('disabling rejects when the host reports a failure', async () => {
+  const { plugin, storage } = boot({ agentTeam: rcTeam }, {
+    teamControlResult: { ok: false, error: { code: 'agent-teams/denied', message: 'permission denied' } },
+  });
+  await assert.rejects(
+    () => plugin.__internals.disableTeam('S-lead'),
+    (err) => err && err.code === 'agent-teams/denied' && /permission denied/.test(err.message),
+  );
+  const record = JSON.parse(storage.get('team-kanban:diag.v1'));
+  assert.equal(record.phase, 'team-disable-failed');
+  assert.equal(record.code, 'agent-teams/denied');
+
+  const fallbackError = boot({ agentTeam: rcTeam }, {
+    teamControlResult: { ok: false },
+  });
+  await assert.rejects(
+    () => fallbackError.plugin.__internals.disableTeam('S-lead'),
+    /the Host rejected the change/,
+  );
+});
+
+test('disabling an idle and fully completed board automatically closes it', async () => {
+  const completedTeam = {
+    enabled: true,
+    tasks: [
+      { id: 'task-1', revision: 3, subject: 'Done', description: '', status: 'completed', blockedBy: [], writeScopes: [] },
+    ],
+  };
+  const disabledTeam = { ...completedTeam, enabled: false };
+  const tabs = [{ id: 'board-tab-1', kind: 'dsh-team-kanban.board', sessionId: 'S-lead' }];
+  let currentValues = { agentTeam: completedTeam };
+
+  const { plugin, slots, effects, closed } = boot(
+    () => currentValues,
+    {
+      tabs,
+      teamControlResult: async () => {
+        currentValues = { agentTeam: disabledTeam };
+        return { ok: true };
+      },
+    },
+  );
+  const props = sessionProps(completedTeam, { running: false });
+  slots['conversation.session.header.actions'](props);
+  const cleanups = effects.map((effect) => effect()).filter((cleanup) => typeof cleanup === 'function');
+
+  try {
+    /* Allow the initial mount probe (at 0ms) to run and confirm that the board
+       remains open while the session projection is enabled. */
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(closed.length, 0, 'the board remains open while enabled after initial mount probe');
+
+    /* Now disable the team. Without requestSettle, an idle board with all tasks
+       completed has plan === 'off' and would never probe again. */
+    await plugin.__internals.disableTeam('S-lead');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const before = effects.length;
+    slots['conversation.session.header.actions'](props);
+    const late = effects.slice(before).map((effect) => effect()).filter((cleanup) => typeof cleanup === 'function');
+    try {
+      assert.deepEqual(closed, ['board-tab-1'], 'the board closes once the disabled projection lands');
+    } finally {
+      late.forEach((cleanup) => cleanup());
+    }
+  } finally {
+    cleanups.forEach((cleanup) => cleanup());
+  }
 });
 
 test('a chip left under the 0.3.x kind is closed and replaced', async () => {

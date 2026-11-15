@@ -1,6 +1,6 @@
 {
   "name": "dsh-team-kanban",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "A living three-column kanban board in the right sidebar for DeepSeek Harness agent teams, driven by the native agentTeam projection DAG.",
   "keywords": [
     "dsh",
