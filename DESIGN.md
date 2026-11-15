@@ -344,3 +344,43 @@ const isRunning = (id) => (statuses.get(id)?.running ?? summaries[id]?.running) 
   1. 执行 `plugin_manager` `remove_bundle`（或终端执行 `dsh plugin --profile desktop remove @local/dsh-client-ui-team-kanban`）；
   2. 重启 DSH 桌面端；
   3. 宿主 `app.asar` 与现有会话日志零修改、零残留。
+
+---
+
+## 9. 联调期间核实的宿主限制与运行时兜底（0.2.0）
+
+### 9.1 事实：桌面端不送投影帧
+
+DSH 桌面端 `0.2.2-rc.3` 上，客户端**收不到 `Session` 投影的实时帧**。实测证据（同一会话、同一时间段）：
+
+| 通道 | 载体 | 表现 |
+|---|---|---|
+| 会话状态 | `ctx.remote.$on('api-session/status')` | 正常：`running` 在 4 分钟任务里 0→1→0 |
+| 会话投影 | 单条可重连 control stream（`createSessionControlStream`） | **静止**：`agentTeam` / `subagentCatalog` / `title` 全程无通知 |
+
+`ProjectionValueStore` 的 `faceOf('agentTeam').subscribe` 直接订阅（绕开 React）同样一次都没有触发，因此不是组件订阅问题，而是帧没有到达客户端。结果是：投影只在**打开会话时的基线**与**会话列表的 cached 块**时更新，表现为「切走再切回才刷新」。
+
+### 9.2 兜底：有界拉取
+
+`useTeamKanbanWatcher` 中新增 `pull` 效果：
+
+- 触发条件：本会话 `running` 为真，**或**看板仍有未完成任务；
+- 频率：2.5 s；空闲即停，连续失败 3 次即停（不无限重试）；
+- 取数：`ctx.remote.session.projections({ sessionId })` → `value.values.agentTeam`（宿主现算的整值，不是缓存）；
+- 合并：`freshestTeam(projected, listed, pulled)` 以「任务 `revision` 总和」比新旧，避免过期投影盖住新数据；
+- 声明：`inject` 必须显式列出 `remote.session`（Cordis 访问子服务的要求），只写 `remote` 会抛 `cannot get property "remote.session" without inject`。
+
+代价与取舍：PRD §「严禁轮询」在此**有意破例**，因为宿主推送通道不可用，且拉取被限制在「运行中/有未完成任务」这一窗口内，空闲与完成后自动停止。
+
+### 9.3 宿主修复后如何回退
+
+宿主 control stream 恢复推送投影帧后：
+
+1. 删除 `pull` 效果与 `fallbackTeams` / `useFallbackTeam` / `teamWeight` / `freshestTeam`；
+2. `team` 回到 `projectedTeam || listedTeam`；
+3. `inject` 移除 `remote` / `remote.session`；
+4. 用 T4 场景复核实时性。
+
+### 9.4 右侧栏打开的时序约束
+
+`dsh-client-ui-sidebar-right` 的 Seat 中有：`if (shown && !canShow) setExpanded(false)`，而 `canShow = rightbar 轨道宽度 > 0`。因此**从收起状态程序化打开时，必须先 `ctx.layout.openRightbar(true, false)` 再 `openTabIn`**，否则同一轮 commit 里 `expanded` 会被撤回，标签留在 store、列永远不滑出。布局恢复路径（标签已在持久化布局里、但列是收起）由 `ensureColumnOnce` 一次性补轨道。

@@ -11,72 +11,11 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.2.1-fb';
+    const CLIENT_REV = '0.2.0';
     const TAB_ID = PKG;
     const KIND = 'team-board';
     const LANES = ['pending', 'in_progress', 'completed'];
     const EMPTY = Object.freeze([]);
-
-    /* ------------------------------------------------------------------ *
-     * Temporary diagnosis (remove once the sidebar behaviour is explained).
-     * Records what the renderer actually sees into localStorage so it can be
-     * read from disk without a DevTools round trip.
-     * ------------------------------------------------------------------ */
-
-    const DIAG_KEY = 'dsh.teamkanban.diag';
-    const diag = { rev: CLIENT_REV, renders: 0, events: [] };
-
-    function diagNote(kind, data) {
-      try {
-        if (typeof localStorage === 'undefined') return;
-        diag.events.push([Date.now(), kind, data]);
-        if (diag.events.length > 100) diag.events.shift();
-        localStorage.setItem(DIAG_KEY, JSON.stringify(diag));
-      } catch (error) {
-        /* Diagnosis must never break the plugin. */
-      }
-    }
-
-    /* One geometry sample of the sidebar frame around the board. */
-    function diagFrame(tag) {
-      try {
-        if (typeof document === 'undefined') return;
-        const round = (value) => Math.round(value);
-        const root = document.querySelector('.tkb-root');
-        const columns = Array.prototype.slice.call(document.querySelectorAll('[data-rightbar-col]'));
-        const seats = Array.prototype.slice.call(document.querySelectorAll('[data-sidebar-right-session]'), 0, 6)
-          .map((el) => {
-            const rect = el.getBoundingClientRect();
-            const column = el.closest('[data-rightbar-col]');
-            return {
-              sid: String(el.getAttribute('data-sidebar-right-session') || '').slice(-8),
-              hidden: el.hasAttribute('hidden'),
-              w: round(rect.width),
-              x: round(rect.left),
-              inCol: !!column,
-              colW: column ? round(column.getBoundingClientRect().width) : null,
-            };
-          });
-        const rect = root ? root.getBoundingClientRect() : null;
-        diagNote('frame:' + tag, {
-          vw: typeof window === 'undefined' ? null : window.innerWidth,
-          cols: columns.map((col) => ({
-            w: round(col.getBoundingClientRect().width),
-            x: round(col.getBoundingClientRect().left),
-            collapsed: col.hasAttribute('data-rightbar-collapsed'),
-            full: col.hasAttribute('data-rightbar-fullscreen'),
-            display: typeof getComputedStyle === 'function' ? getComputedStyle(col).display : null,
-          })),
-          root: rect ? [round(rect.left), round(rect.width), round(rect.height)] : null,
-          visible: root && typeof root.checkVisibility === 'function'
-            ? root.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
-            : null,
-          seats,
-        });
-      } catch (error) {
-        diagNote('frame-error', String(error && error.message).slice(0, 120));
-      }
-    }
 
     /* ------------------------------------------------------------------ *
      * Dictionaries (client namespace `teamKanban`)
@@ -494,26 +433,6 @@ window.__ModuleLoader__.load({
         () => buildModel(team, catalog, statuses, summaries, sessionId),
         [team, teamSignature, catalog, catalogSignature, statuses, summaries, sessionId],
       );
-
-      /* Diagnostic: what this body renders with, and what the sidebar frame
-         actually measures around it — sampled again once the open animation
-         has settled, because the first samples catch it mid-flight. */
-      useEffect(() => {
-        diag.renders += 1;
-        diagNote('render', {
-          n: diag.renders,
-          sid: String(sessionId).slice(-8),
-          team: team
-            ? {
-              e: team.enabled === true,
-              n: Array.isArray(team.tasks) ? team.tasks.length : -1,
-              st: (team.tasks || []).map((task) => String(task && task.status)[0]).join(''),
-            }
-            : null,
-        });
-        const timers = [0, 300, 1000, 2000].map((delay) => setTimeout(() => diagFrame('t+' + delay), delay));
-        return () => timers.forEach(clearTimeout);
-      }, [team, sessionId]);
 
       useEffect(() => {
         if (!spot) return;
@@ -1277,10 +1196,9 @@ window.__ModuleLoader__.load({
         if (width >= 8) return;
         if (ctx.layout && typeof ctx.layout.openRightbar === 'function') {
           ctx.layout.openRightbar(true, false);
-          diagNote('ensure-column', { sid: String(sessionId).slice(-8), width: Math.round(width) });
         }
       } catch (error) {
-        diagNote('ensure-error', String(error && error.message).slice(0, 120));
+        /* The column is a convenience; a failed reservation changes nothing. */
       }
     }
 
@@ -1308,6 +1226,7 @@ window.__ModuleLoader__.load({
         if (!runningNow && !unfinished) return undefined;
         let live = true;
         let busy = false;
+        let failures = 0;
         const pull = async () => {
           if (busy) return;
           busy = true;
@@ -1316,32 +1235,27 @@ window.__ModuleLoader__.load({
             if (!live) return;
             const value = result && result.ok && result.value ? result.value : null;
             const next = value && value.values ? value.values.agentTeam : undefined;
-            if (next) {
-              setFallbackTeam(sessionId, next);
-              diagNote('pull', {
-                sid: String(sessionId).slice(-12),
-                n: Array.isArray(next.tasks) ? next.tasks.length : -1,
-                st: (next.tasks || []).map((task) => String(task.status)[0]).join(''),
-              });
-            }
+            if (next) setFallbackTeam(sessionId, next);
+            failures = 0;
           } catch (error) {
-            diagNote('pull-error', String(error && error.message).slice(0, 100));
+            /* A host that rejects the read stays rejected until the Session
+               changes state; stop hammering it after a few tries. */
+            failures += 1;
+            if (failures >= 3) {
+              live = false;
+              clearInterval(timer);
+            }
           } finally {
             busy = false;
           }
         };
-        pull();
         const timer = setInterval(pull, 2500);
+        pull();
         return () => {
           live = false;
           clearInterval(timer);
         };
       }, [sessionId, ctx, runningNow, team]);
-
-      /* Reference projections: these move on the same frame feed, so comparing
-         them with `agentTeam` tells a dead feed from a key-specific gap. */
-      const liveCatalog = useProjection('subagentCatalog');
-      const liveTitle = useProjection('title');
 
       /* Three states, never two. An absent projection means the frame or the
          Session baseline has not landed yet, which must not be read as "no
@@ -1351,65 +1265,9 @@ window.__ModuleLoader__.load({
       const hasTask = !absent && team.enabled === true && Array.isArray(team.tasks)
         && team.tasks.some((task) => task && task.status !== 'deleted');
 
-      /* Diagnostic: is the watcher mounted for the whole run, and does the
-         underlying store move even when React never re-renders this slot? */
       useEffect(() => {
-        diagNote('watcher-mount', { sid: String(sessionId).slice(-12) });
-        return () => diagNote('watcher-unmount', { sid: String(sessionId).slice(-12) });
-      }, [sessionId]);
-
-      /* Independent of React: subscribe to the session binding's own projection
-         face, and watch `running` as an oracle for "is this session live at all". */
-      useEffect(() => {
-        diagNote('running', { sid: String(sessionId).slice(-12), running: runningNow });
-      }, [runningNow, sessionId]);
-
-      useEffect(() => {
-        let off = () => {};
-        try {
-          const binding = ctx.sessions && typeof ctx.sessions.binding === 'function'
-            ? ctx.sessions.binding(sessionId)
-            : undefined;
-          const face = binding && binding.session && binding.session.projections
-            ? binding.session.projections.faceOf('agentTeam')
-            : undefined;
-          diagNote('face-bind', { sid: String(sessionId).slice(-12), binding: !!binding, face: !!face });
-          if (face && typeof face.subscribe === 'function') {
-            off = face.subscribe(() => {
-              const value = face.getSnapshot();
-              diagNote('face', {
-                sid: String(sessionId).slice(-12),
-                n: Array.isArray(value && value.tasks) ? value.tasks.length : -1,
-                st: ((value && value.tasks) || []).map((task) => String(task.status)[0]).join(''),
-              });
-            });
-          }
-        } catch (error) {
-          diagNote('face-error', String(error && error.message).slice(0, 120));
-        }
-        return () => { try { off(); } catch (error) {} };
-      }, [sessionId, ctx]);
-
-      /* Fires on any of the three projections or the team value changing, so a
-         frozen `agentTeam` next to a moving catalog/title is visible. */
-      useEffect(() => {
-        diagNote('live', {
-          sid: String(sessionId).slice(-12),
-          cat: Array.isArray(liveCatalog) ? liveCatalog.length : (liveCatalog === undefined ? -1 : -2),
-          title: typeof liveTitle === 'string' ? liveTitle.slice(0, 16) : null,
-          teamN: Array.isArray(team && team.tasks) ? team.tasks.length : -1,
-        });
-      }, [liveCatalog, liveTitle, team, sessionId]);
-
-      useEffect(() => {
-        if (addressedChild || listedChild) {
-          diagNote('watch-child', { sid: String(sessionId).slice(-12) });
-          return undefined;
-        }
-        if (absent) {
-          diagNote('watch', { sid: String(sessionId).slice(-12), absent: true });
-          return undefined;
-        }
+        if (addressedChild || listedChild) return undefined;
+        if (absent) return undefined;
 
         const listTabs = () => {
           try {
@@ -1419,23 +1277,6 @@ window.__ModuleLoader__.load({
           }
         };
         const findBoardTab = () => listTabs().find((tab) => tab && tab.kind === KIND);
-
-        diagNote('watch', {
-          sid: String(sessionId).slice(-12),
-          absent: false,
-          hasTask,
-          tabs: listTabs().length,
-          board: !!findBoardTab(),
-          dismissed: dismissedSessions.has(sessionId),
-          hasLayout: !!ctx.layout,
-          openApi: ctx.layout && typeof ctx.layout.openRightbar,
-          child: !!(addressedChild || listedChild),
-          teamN: Array.isArray(team && team.tasks) ? team.tasks.length : -1,
-          colW: (() => {
-            const col = typeof document === 'undefined' ? null : document.querySelector('[data-rightbar-col]');
-            return col ? Math.round(col.getBoundingClientRect().width) : null;
-          })(),
-        });
 
         if (!hasTask) {
           dismissedSessions.delete(sessionId);
@@ -1453,7 +1294,6 @@ window.__ModuleLoader__.load({
            back before the frame reserves its grid track. */
         if (findBoardTab()) {
           ensureColumnOnce(ctx, sessionId);
-          diagFrame('board-present');
           return undefined;
         }
 
@@ -1467,16 +1307,14 @@ window.__ModuleLoader__.load({
           try {
             if (layout && typeof layout.openRightbar === 'function') layout.openRightbar(true, false);
           } catch (error) {
-            diagNote('openRightbar-threw', String(error && error.message).slice(0, 120));
+            /* Presentation is best effort; the tab still lands in the store. */
           }
           try {
             ctx.sidebarRight.openTabIn(sessionId, KIND);
           } catch (error) {
-            diagNote('openTab-threw', String(error && error.message).slice(0, 120));
+            /* Type not registered yet, or this Session's surface is unadopted. */
           }
-          const ok = !!findBoardTab();
-          diagNote('attempt', { sid: String(sessionId).slice(-8), ok, hasLayout: !!layout });
-          if (ok) return true;
+          if (findBoardTab()) return true;
           try {
             if (layout && typeof layout.closeRightbar === 'function') layout.closeRightbar();
           } catch (error) {}
@@ -2045,15 +1883,6 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       const t = ctx.locale.bind(NS);
       if (typeof window !== 'undefined') window.__teamKanbanRev = CLIENT_REV;
-      diagNote('apply', {
-        rev: CLIENT_REV,
-        hasLayout: !!ctx.layout,
-        sessionsApi: typeof ctx.sessions,
-        pv: (() => {
-          try { return typeof (ctx.sessions && ctx.sessions.projectionValues); } catch (error) { return 'throw'; }
-        })(),
-      });
-
       /* Disabling or unloading the bundle must not leave a dead `team-board`
          chip in the saved right-sidebar layout: close what this plugin opened. */
       ctx.effect(() => () => {
