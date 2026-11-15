@@ -104,6 +104,6 @@ useEffect(() => { syncPresentation({ shown, track, fullscreen }) }, …)
 
 ## 10. 后续事项
 
-- [ ] 向 DSH 反馈：桌面端 control stream 不向客户端投递投影帧（证据：`running` 正常、face 零通知、重开即恢复、官方 TeamBoard 同样受影响）。
+- [x] 向 DSH 反馈：桌面端 control stream 不向客户端投递投影帧 → [discussion #13416](https://github.com/deepseek-ai/deepseek-harness/discussions/13416)（正文存于 `docs/issues/2026-11-15-dsh-projection-frames-not-delivered.md`）。
 - [ ] 宿主修复后按 `DESIGN.md §9.3` 移除兜底拉取，恢复纯投影驱动。
 - [ ] 视需要给「任务完成后清空」增加快照保留（当前按 PRD T3 自动关闭）。

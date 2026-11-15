@@ -352,6 +352,8 @@ const isRunning = (id) => (statuses.get(id)?.running ?? summaries[id]?.running) 
 ### 9.1 事实：桌面端不送投影帧
 
 > 完整排查过程、失败尝试与证据数据见 [`docs/records/2026-11-15-sidebar-open-and-live-refresh.md`](docs/records/2026-11-15-sidebar-open-and-live-refresh.md)。本节只保留结论与设计理由。
+>
+> 已上报宿主：[deepseek-ai/deepseek-harness discussion #13416](https://github.com/deepseek-ai/deepseek-harness/discussions/13416)。
 
 DSH 桌面端 `0.2.2-rc.3` 上，客户端**收不到 `Session` 投影的实时帧**。实测证据（同一会话、同一时间段）：
 

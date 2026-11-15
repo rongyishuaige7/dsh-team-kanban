@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/Users/rongyi/.local/share/yi-work/backend/releases/roles-20261115T044317Z/aioncore\" antigravity-hook"
+            "command": "\"/Users/rongyi/.local/share/yi-work/backend/releases/roles-20261115T095314Z/aioncore\" antigravity-hook"
           }
         ]
       }
