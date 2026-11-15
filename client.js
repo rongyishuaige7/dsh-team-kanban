@@ -17,6 +17,10 @@ window.__ModuleLoader__.load({
        address `sidebar://<kind>`, and a bare `team-board` would be the first
        name an official Inbox-style page would reach for. */
     const KIND = 'dsh-team-kanban.board';
+    /* 0.3.x wrote its chips under this bare kind. A saved layout can still
+       carry them after the upgrade and nothing else would ever close them. */
+    const LEGACY_KINDS = ['team-board'];
+    const isBoardKind = (kind) => kind === KIND || LEGACY_KINDS.includes(kind);
     const LANES = ['pending', 'in_progress', 'completed'];
     const EMPTY = Object.freeze([]);
 
@@ -1536,7 +1540,6 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         if (addressedChild || listedChild) return undefined;
-        if (absent) return undefined;
 
         const listTabs = () => {
           try {
@@ -1545,7 +1548,16 @@ window.__ModuleLoader__.load({
             return [];
           }
         };
-        const findBoardTab = () => listTabs().find((tab) => tab && tab.kind === KIND);
+        const findBoardTab = () => listTabs().find((tab) => tab && isBoardKind(tab.kind));
+
+        /* Close chips written under a previous kind before deciding anything
+           else: the current tab type cannot render them, so they would sit in
+           the layout as blank pages for as long as the session lives. */
+        listTabs().forEach((tab) => {
+          if (tab && tab.id && LEGACY_KINDS.includes(tab.kind)) closeBoardTab(ctx, sessionId, tab.id);
+        });
+
+        if (absent) return undefined;
 
         if (!hasTask) {
           dismissedSessions.delete(sessionId);
@@ -2827,7 +2839,7 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       const t = ctx.locale.bind(NS);
       if (typeof window !== 'undefined') window.__teamKanbanRev = CLIENT_REV;
-      /* Disabling or unloading the bundle must not leave a dead `KIND` chip in
+      /* Disabling or unloading the bundle must not leave a dead board chip in
          the saved right-sidebar layout: close what this plugin opened. */
       ctx.effect(() => () => {
         const sessions = new Set(openConfirmed.keys());
@@ -2839,14 +2851,14 @@ window.__ModuleLoader__.load({
             ? ctx.sidebarRight.openTabs.getSnapshot()
             : [];
           (openTabs || []).forEach((entry) => {
-            if (entry && entry.kind === KIND && entry.sessionId) sessions.add(entry.sessionId);
+            if (entry && isBoardKind(entry.kind) && entry.sessionId) sessions.add(entry.sessionId);
           });
         } catch (error) {
           /* Older controllers may not expose the open-tab inventory. */
         }
         sessions.forEach((sessionId) => {
           try {
-            const tab = (ctx.sidebarRight.tabsIn(sessionId) || []).find((entry) => entry && entry.kind === KIND);
+            const tab = (ctx.sidebarRight.tabsIn(sessionId) || []).find((entry) => entry && isBoardKind(entry.kind));
             if (tab) closeBoardTab(ctx, sessionId, tab.id);
           } catch (error) {
             /* The Session surface is already gone; nothing remains to close. */

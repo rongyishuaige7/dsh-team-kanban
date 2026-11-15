@@ -22,7 +22,7 @@ function fakeReact() {
   };
 }
 
-function boot(pulledValues) {
+function boot(pulledValues, { tabs = [] } = {}) {
   const { React, effects } = fakeReact();
   let definition;
   const window = { __ModuleLoader__: { load(value) { definition = value; } } };
@@ -34,6 +34,7 @@ function boot(pulledValues) {
 
   const slots = {};
   const opened = [];
+  const closed = [];
   const disposers = [];
   const ctx = {
     locale: { bind: () => (key) => key, register: () => () => {} },
@@ -41,9 +42,13 @@ function boot(pulledValues) {
     sidebarRightTabs: { register: () => () => {} },
     sidebarRight: {
       registerCloseHandler: () => () => {},
-      tabsIn: () => [],
+      tabsIn: () => tabs,
       openTabIn: (sessionId, kind) => opened.push([sessionId, kind]),
-      closeIn: () => {},
+      closeIn: (sessionId, tabId) => {
+        closed.push(tabId);
+        const index = tabs.findIndex((tab) => tab && tab.id === tabId);
+        if (index >= 0) tabs.splice(index, 1);
+      },
     },
     layout: { openRightbar: () => {}, closeRightbar: () => {} },
     slots: {
@@ -56,7 +61,7 @@ function boot(pulledValues) {
     remote: { session: { projections: async () => ({ ok: true, value: { values: pulledValues } }) } },
   };
   plugin.apply(ctx);
-  return { plugin, slots, effects, opened, disposers, window };
+  return { plugin, slots, effects, opened, closed, tabs, disposers, window };
 }
 
 function sessionProps(team, { running = false } = {}) {
@@ -164,6 +169,21 @@ test('watcher pulls, stores the value, and asks to open the board', async () => 
     const { readFallbackTeam, unsupportedSessions } = plugin.__internals;
     assert.equal(readFallbackTeam('S-lead').tasks.length, 3);
     assert.ok(!unsupportedSessions.has('S-lead'));
+    assert.deepEqual(opened[0], ['S-lead', 'dsh-team-kanban.board']);
+  } finally {
+    cleanups.forEach((cleanup) => cleanup());
+  }
+});
+
+test('a chip left under the 0.3.x kind is closed and replaced', async () => {
+  const tabs = [{ id: 'legacy-1', kind: 'team-board', sessionId: 'S-lead' }];
+  const { slots, effects, opened, closed } = boot({ agentTeam: rcTeam }, { tabs });
+  slots['conversation.session.header.actions'](sessionProps(rcTeam, { running: true }));
+
+  const cleanups = effects.map((effect) => effect()).filter((cleanup) => typeof cleanup === 'function');
+  await new Promise((resolve) => setImmediate(resolve));
+  try {
+    assert.deepEqual(closed, ['legacy-1']);
     assert.deepEqual(opened[0], ['S-lead', 'dsh-team-kanban.board']);
   } finally {
     cleanups.forEach((cleanup) => cleanup());

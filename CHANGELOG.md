@@ -11,6 +11,7 @@
 - 包名由本地占位 `@local/dsh-client-ui-team-kanban` 改为 `dsh-team-kanban`，去掉 `private`，补齐 `description` / `keywords` / `repository` / `homepage` / `bugs` / `license` / `engines`。
 - 右侧栏标签类型由 `team-board` 改为 `dsh-team-kanban.board`（宿主把 kind 拼成 `sidebar://<kind>`，命名空间化避免与官方未来页面撞名）。
 - `.agents/hooks.json` 不再纳入版本控制：它带着本机绝对路径，只属于开发者的本地环境。
+- 升级时自动关掉 0.3.x 留在已保存布局里的 `team-board` 旧标签，再按新 kind 重新打开，不会留下一块空白页。
 
 ### Added
 

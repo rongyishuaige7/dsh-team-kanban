@@ -100,7 +100,7 @@ Node ≥ 20，无第三方依赖，无构建步骤——`client.js` 是手写的
 
 ```bash
 npm run check   # node --check 两个入口
-npm test        # node:test，27 项：纯函数、双结构渲染冒烟、清单一致性
+npm test        # node:test，28 项：纯函数、双结构渲染冒烟、清单一致性、旧标签清理
 ```
 
 测试用假的 `__ModuleLoader__` 加载 `client.js`，用 hook 形状的 React 替身走完渲染路径，不需要浏览器或宿主。
