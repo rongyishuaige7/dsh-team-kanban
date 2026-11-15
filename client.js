@@ -11,11 +11,31 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.1.2';
+    const CLIENT_REV = '0.1.3-dbg';
     const TAB_ID = PKG;
     const KIND = 'team-board';
     const LANES = ['pending', 'in_progress', 'completed'];
     const EMPTY = Object.freeze([]);
+
+    /* ------------------------------------------------------------------ *
+     * Temporary diagnosis (remove once the sidebar behaviour is explained).
+     * Records what the renderer actually sees into localStorage so it can be
+     * read from disk without a DevTools round trip.
+     * ------------------------------------------------------------------ */
+
+    const DIAG_KEY = 'dsh.teamkanban.diag';
+    const diag = { rev: CLIENT_REV, renders: 0, events: [] };
+
+    function diagNote(kind, data) {
+      try {
+        if (typeof localStorage === 'undefined') return;
+        diag.events.push([Date.now(), kind, data]);
+        if (diag.events.length > 40) diag.events.shift();
+        localStorage.setItem(DIAG_KEY, JSON.stringify(diag));
+      } catch (error) {
+        /* Diagnosis must never break the plugin. */
+      }
+    }
 
     /* ------------------------------------------------------------------ *
      * Dictionaries (client namespace `teamKanban`)
@@ -432,6 +452,43 @@ window.__ModuleLoader__.load({
         () => buildModel(team, catalog, statuses, summaries, sessionId),
         [team, teamSignature, catalog, catalogSignature, statuses, summaries, sessionId],
       );
+
+      /* Diagnostic: what this body renders with, and what the sidebar frame
+         actually measures around it. */
+      useEffect(() => {
+        diag.renders += 1;
+        const root = typeof document === 'undefined' ? null : document.querySelector('.tkb-root');
+        const col = typeof document === 'undefined' ? null : document.querySelector('[data-rightbar-col]');
+        const seats = typeof document === 'undefined' ? [] : Array.prototype.slice
+          .call(document.querySelectorAll('[data-sidebar-right-session]'), 0, 4)
+          .map((el) => ({
+            sid: String(el.getAttribute('data-sidebar-right-session') || '').slice(-8),
+            hidden: el.hasAttribute('hidden'),
+            w: Math.round(el.getBoundingClientRect().width),
+          }));
+        diagNote('render', {
+          n: diag.renders,
+          sid: String(sessionId).slice(-8),
+          team: team
+            ? {
+              e: team.enabled === true,
+              n: Array.isArray(team.tasks) ? team.tasks.length : -1,
+              st: (team.tasks || []).map((task) => String(task && task.status)[0]).join(''),
+            }
+            : null,
+          root: root
+            ? [Math.round(root.getBoundingClientRect().width), Math.round(root.getBoundingClientRect().height)]
+            : null,
+          col: col
+            ? {
+              w: Math.round(col.getBoundingClientRect().width),
+              collapsed: col.hasAttribute('data-rightbar-collapsed'),
+              hidden: col.getAttribute('aria-hidden'),
+            }
+            : null,
+          seats,
+        });
+      }, [team, sessionId]);
 
       useEffect(() => {
         if (!spot) return;
@@ -1141,7 +1198,10 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         if (addressedChild || listedChild) return undefined;
-        if (absent) return undefined;
+        if (absent) {
+          diagNote('watch', { sid: String(sessionId).slice(-8), absent: true, child: !!(addressedChild || listedChild) });
+          return undefined;
+        }
 
         const listTabs = () => {
           try {
@@ -1151,6 +1211,19 @@ window.__ModuleLoader__.load({
           }
         };
         const findBoardTab = () => listTabs().find((tab) => tab && tab.kind === KIND);
+
+        diagNote('watch', {
+          sid: String(sessionId).slice(-8),
+          absent: false,
+          hasTask,
+          tabs: listTabs().length,
+          board: !!findBoardTab(),
+          dismissed: dismissedSessions.has(sessionId),
+          hasLayout: !!ctx.layout,
+          openApi: ctx.layout && typeof ctx.layout.openRightbar,
+          child: !!(addressedChild || listedChild),
+          teamN: Array.isArray(team && team.tasks) ? team.tasks.length : -1,
+        });
 
         if (!hasTask) {
           dismissedSessions.delete(sessionId);
@@ -1174,14 +1247,16 @@ window.__ModuleLoader__.load({
           try {
             if (layout && typeof layout.openRightbar === 'function') layout.openRightbar(true, false);
           } catch (error) {
-            /* Presentation is best effort; the tab still lands in the store. */
+            diagNote('openRightbar-threw', String(error && error.message).slice(0, 120));
           }
           try {
             ctx.sidebarRight.openTabIn(sessionId, KIND);
           } catch (error) {
-            /* Type not registered yet, or this Session's surface is unadopted. */
+            diagNote('openTab-threw', String(error && error.message).slice(0, 120));
           }
-          if (findBoardTab()) return true;
+          const ok = !!findBoardTab();
+          diagNote('attempt', { sid: String(sessionId).slice(-8), ok, hasLayout: !!layout });
+          if (ok) return true;
           try {
             if (layout && typeof layout.closeRightbar === 'function') layout.closeRightbar();
           } catch (error) {}
@@ -1750,6 +1825,7 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       const t = ctx.locale.bind(NS);
       if (typeof window !== 'undefined') window.__teamKanbanRev = CLIENT_REV;
+      diagNote('apply', { rev: CLIENT_REV, hasLayout: !!ctx.layout });
 
       /* Disabling or unloading the bundle must not leave a dead `team-board`
          chip in the saved right-sidebar layout: close what this plugin opened. */
