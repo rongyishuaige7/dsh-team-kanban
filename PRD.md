@@ -1,6 +1,6 @@
 # 产品需求文档（PRD）：DSH 桌面端「智能体任务板」右侧栏插件
 
-- **项目名称**：`@local/dsh-client-ui-team-kanban`（智能体任务板 / Agent Team Kanban）
+- **项目名称**：`dsh-team-kanban`（智能体任务板 / Agent Team Kanban）
 - **目标宿主**：DeepSeek Harness（DSH）`0.2.2-rc.3` 桌面端（`desktop` profile）
 - **文档版本**：v1.0（Phase 1：需求与架构基线，v1 只读看板）
 - **关联文档**：技术设计与实施文档见同目录 [`DESIGN.md`](./DESIGN.md)
@@ -34,7 +34,7 @@ DSH 已内置多智能体团队协作能力（`@deepseek-ai/dsh-agent-team` 提�
 ## 3. 功能范围（Scope）
 
 ### 3.1 In Scope（本期实现）
-- 右侧栏独立标签页（`kind: 'team-board'`），支持停靠、拖拽分栏、浮动窗口与全屏切换。
+- 右侧栏独立标签页（`kind: 'dsh-team-kanban.board'`），支持停靠、拖拽分栏、浮动窗口与全屏切换。
 - 会话级自动显隐同步：根会话开启团队模式且存在有效任务时自动注册打开标签页；关闭或清空时自动关闭移除。
 - 标签页标题（Chip）：图标 + 标题 + 实时进度计数（如 `任务板 2/5`）。
 - 看板顶部概览区：总体完成进度（数量与进度条）+ 队友运行态列表（运行中 / 空闲）。
@@ -57,7 +57,7 @@ DSH 已内置多智能体团队协作能力（`@deepseek-ai/dsh-agent-team` 提�
 |---|---|---|
 | `enabled !== true` | 不存在该标签页 | 若先前打开过，立即自动关闭；若为唯一停靠标签，右侧栏随宿主规则自动收起 |
 | `enabled === true` 且可见任务数 `=== 0` | 不存在该标签页 | 同上，完全不占位（仅当存在 `failure` 且开启时可保留告警视图，或按无任务规则隐藏） |
-| `enabled === true` 且可见任务数 `0 -> >0` | 自动在右侧栏打开 `team-board` 标签页 | 首次触发时展开右侧栏并聚焦该标签页（同一会话仅首次自动展开，见 4.5 手动关闭规则） |
+| `enabled === true` 且可见任务数 `0 -> >0` | 自动在右侧栏打开 `dsh-team-kanban.board` 标签页 | 首次触发时展开右侧栏并聚焦该标签页（同一会话仅首次自动展开，见 4.5 手动关闭规则） |
 | 任务状态/负责人/依赖发生流转 | 标签页保留，内容实时更新 | 保持当前焦点与展开状态不变，不强行抢夺用户正在查看的其它标签页 |
 
 ### 4.2 标签页胶囊标题（Tab Chip）
@@ -101,7 +101,7 @@ DSH 已内置多智能体团队协作能力（`@deepseek-ai/dsh-agent-team` 提�
 后续负责前端界面设计的 Agent 需基于本 PRD 与 [`DESIGN.md`](./DESIGN.md) 完成视觉布局、CSS 样式与 `client.js` 视图层实现，并严格遵守以下界面规范：
 1. **只能使用宿主主题变量**：所有颜色、边框、圆角、背景必须使用 DSH 注入在 `body` 上的 `--dsw-alias-*` 与 `--dsw-radius-*` CSS 变量（详见 `DESIGN.md` 第 6 节变量清单），禁止硬编码浅色/深色 hex 颜色（内联 SVG 图标使用 `currentColor` 或语义 token）。
 2. **禁止外部 UI 库与跨插件导入**：不得 `require('@deepseek-ai/dsh-client-ui-primitives')` 或 `require('@deepseek-ai/dsh-client-ui-agent-team')`；所有按钮、徽章、卡片、滚动区与图标均以纯 React (`React.createElement`) + 原生 HTML/SVG + 独立前缀 `.tkb-*` CSS 类实现。
-3. **样式挂载与卸载**：通过 `ctx.effect` 向 `document.head` 注入 `<style data-plugin="@local/dsh-client-ui-team-kanban">`，卸载插件时必须完整移除 DOM 样式节点。
+3. **样式挂载与卸载**：通过 `ctx.effect` 向 `document.head` 注入 `<style data-plugin="dsh-team-kanban">`，卸载插件时必须完整移除 DOM 样式节点。
 4. **双主题与窄宽必测**：设计必须同时满足 Light / Dark 模式对比度，以及右侧栏 360px 窄栏、全屏（fullscreen）、浮动窗口（float）三种几何形态下的可读性。
 
 ---
@@ -111,4 +111,4 @@ DSH 已内置多智能体团队协作能力（`@deepseek-ai/dsh-agent-team` 提�
 1. **团队模式关闭**：不出现「任务板」标签，右侧栏无占位，控制台无报错。
 2. **团队模式开启但无任务（含全部删除）**：不出现「任务板」标签，不弹出空白面板，控制台无报错。
 3. **任务创建与状态流转**：任务创建后实时出现；`pending`（就绪/阻塞）→ `in_progress`（负责人与运行态）→ `completed`（进度递增）全程跟随投影实时更新，无需刷新页面；依赖任务完成后阻塞标记自动解除。
-4. **可回滚性**：通过插件管理停用或卸载 `@local/dsh-client-ui-team-kanban` 后，桌面端完全恢复原状，不影响 `dsh-client-ui-agent-team` 与现有会话日志。
+4. **可回滚性**：通过插件管理停用或卸载 `dsh-team-kanban` 后，桌面端完全恢复原状，不影响 `dsh-client-ui-agent-team` 与现有会话日志。

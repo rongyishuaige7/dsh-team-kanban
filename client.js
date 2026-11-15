@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-  id: '@local/dsh-client-ui-team-kanban',
+  id: 'dsh-team-kanban',
   factory(require) {
     'use strict';
 
@@ -7,13 +7,16 @@ window.__ModuleLoader__.load({
     const h = React.createElement;
     const { useCallback, useEffect, useMemo, useRef, useState } = React;
 
-    const PKG = '@local/dsh-client-ui-team-kanban';
+    const PKG = 'dsh-team-kanban';
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.3.1';
+    const CLIENT_REV = '0.4.0';
     const TAB_ID = PKG;
-    const KIND = 'team-board';
+    /* Namespaced on purpose: the host turns a kind into the opaque page
+       address `sidebar://<kind>`, and a bare `team-board` would be the first
+       name an official Inbox-style page would reach for. */
+    const KIND = 'dsh-team-kanban.board';
     const LANES = ['pending', 'in_progress', 'completed'];
     const EMPTY = Object.freeze([]);
 
@@ -2824,8 +2827,8 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       const t = ctx.locale.bind(NS);
       if (typeof window !== 'undefined') window.__teamKanbanRev = CLIENT_REV;
-      /* Disabling or unloading the bundle must not leave a dead `team-board`
-         chip in the saved right-sidebar layout: close what this plugin opened. */
+      /* Disabling or unloading the bundle must not leave a dead `KIND` chip in
+         the saved right-sidebar layout: close what this plugin opened. */
       ctx.effect(() => () => {
         const sessions = new Set(openConfirmed.keys());
         openConfirmed.clear();

@@ -1,6 +1,6 @@
 # 技术设计方案与实施文档（DESIGN）：智能体任务板插件
 
-- **包名**：`@local/dsh-client-ui-team-kanban`
+- **包名**：`dsh-team-kanban`（0.4.0 起；此前为本地占位名 `@local/dsh-client-ui-team-kanban`，标签 kind 同时由 `team-board` 改为 `dsh-team-kanban.board`）
 - **目标运行时**：DeepSeek Harness `0.2.2-rc.3`（`DSH_PROFILE=desktop`，安装目录只读位于 `/Applications/DeepSeek Harness.app/Contents/Resources/app.asar/dsh/`）
 - **关联文档**：产品需求见 [`PRD.md`](./PRD.md)
 - **当前阶段**：Phase 1（工程规范与架构已定稿；UI 视觉设计与 `client.js` 界面层交由后续前端界面设计 Agent 实施）
@@ -28,7 +28,7 @@
 | 对比项 | 方案 A：资源型 Tab（Resource Tab） | 方案 B：页面型常驻 Tab + 自动开闭同步器（推荐） |
 |---|---|---|
 | **代表参照** | `dsh-client-ui-plan`、`dsh-client-ui-deliverables` | `dsh-client-ui-sidebar-files`（页面注册）+ `dsh-client-ui-sidebar-terminal`（`AgentTerminalOpener` 自动开闭） |
-| **注册机制** | 需声明 `patterns: ['dsh-resource://team-board/**']` + `canOpen`；**还必须注册** `ctx.resources.register(provider)` 处理地址解析与 pin | 不声明 `patterns`，由宿主 `contract/seed.ts` 的 `pageAddress('team-board')`（`sidebar://team-board`）唯一标识；同分栏内自动去重 |
+| **注册机制** | 需声明 `patterns: ['dsh-resource://team-board/**']` + `canOpen`；**还必须注册** `ctx.resources.register(provider)` 处理地址解析与 pin | 不声明 `patterns`，由宿主 `contract/seed.ts` 的 `pageAddress('dsh-team-kanban.board')`（`sidebar://dsh-team-kanban.board`）唯一标识；同分栏内自动去重 |
 | **数据获取** | 逻辑上绕行 `useResource`，实际仍需投影补全 | 直接读取 slot 注入的 `useProjection` / `useSessions` / `useSessionStatus` |
 | **触发与显隐** | 必须改造外部触发源调用 `openResource`；仅靠 body `return null` 会留空标签占位 | 通过挂载在 `conversation.session.header.actions` 的无 UI 观察组件监听 `agentTeam` 投影，按需调用 `ctx.sidebarRight.openTabIn` / `closeIn` |
 | **改动范围** | 独立 bundle + 虚拟 resource provider | **仅需一个独立 bundle**，零修改 `app.asar` |
@@ -51,7 +51,7 @@
 项目独立部署为一个本地 bundle 目录（安装前不进入 `desktop` profile）：
 
 ```text
-@local/dsh-client-ui-team-kanban/
+dsh-team-kanban/
 ├── package.json         # Bundle 清单（dsh.bundle + dsh.client）
 ├── cordis.patch.yml     # 向 profile 注入插件行
 ├── index.js             # Host 侧入口（export function apply() {}）
@@ -65,9 +65,14 @@
 ### 3.1 `package.json`（含 `dsh` 字段）
 ```json
 {
-  "name": "@local/dsh-client-ui-team-kanban",
-  "version": "0.1.0",
-  "private": true,
+  "name": "dsh-team-kanban",
+  "version": "0.4.0",
+  "description": "A living three-column kanban board in the right sidebar for DeepSeek Harness agent teams, driven by the native agentTeam projection DAG.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.2-rc.1 <0.3.0"
+  },
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -80,7 +85,9 @@
     "client.js",
     "cordis.patch.yml",
     "locale/*.json",
-    "icon.svg"
+    "icon.svg",
+    "README.md",
+    "LICENSE"
   ],
   "dsh": {
     "bundle": {
@@ -105,7 +112,7 @@
 ```yaml
 - insert:
     - id: team-kanban
-      name: '@local/dsh-client-ui-team-kanban'
+      name: 'dsh-team-kanban'
 ```
 - 通过 `plugin_manager` `install_bundle` 安装后，该 bundle 被写入 `~/.dsh/profiles/desktop/package.json` 的 `dsh.profile.bundles`，其 `cordis.patch.yml` 在宿主基础配置之上、用户 `~/.dsh/profiles/desktop/cordis.patch.yml` 之前生效。
 - Host 侧 `index.js` 仅导出 `export function apply() {}`；Client 侧由 `dsh-client-modules` 依据 `dsh.client` 自动下发并执行 `client.js`。
@@ -162,7 +169,7 @@
 - `client.js` 必须采用 DSH 浏览器模块加载器协议（参照 `templates/decoration/client.js`）：
   ```js
   window.__ModuleLoader__.load({
-    id: '@local/dsh-client-ui-team-kanban',
+    id: 'dsh-team-kanban',
     factory(require) {
       const React = require('react');
       // 严禁 require('@deepseek-ai/dsh-client-ui-primitives') 或 require('@deepseek-ai/dsh-client-ui-agent-team')
@@ -173,7 +180,7 @@
     },
   });
   ```
-- 样式通过 `ctx.effect` 创建并挂载 `<style data-plugin="@local/dsh-client-ui-team-kanban">`，卸载时清理 DOM 节点；所有选择器使用独立前缀 `.tkb-*`。
+- 样式通过 `ctx.effect` 创建并挂载 `<style data-plugin="dsh-team-kanban">`，卸载时清理 DOM 节点；所有选择器使用独立前缀 `.tkb-*`。
 
 ### 4.2 组件树与 Slot 注册
 ```text
@@ -181,16 +188,16 @@ apply(ctx)
 ├─ ctx.locale.register('teamKanban', { zh, en })
 ├─ ctx.effect(mountStyles)
 ├─ ctx.effect(() => ctx.sidebarRightTabs.register({
-│    id: '@local/dsh-client-ui-team-kanban',
-│    kind: 'team-board',
+│    id: 'dsh-team-kanban',
+│    kind: 'dsh-team-kanban.board',
 │    priority: 'extension',
 │    title: () => t('tab.title'),
 │  }))
 ├─ ctx.slots.inject('conversation.session.header.actions', ...)
 │  └─ TeamKanbanWatcher          // 无渲染组件 (return null)，按投影自动开/关 tab
-├─ ctx.slots.inject('sidebar.right.pane.tab.title', { key: '@local/dsh-client-ui-team-kanban' }, ...)
+├─ ctx.slots.inject('sidebar.right.pane.tab.title', { key: 'dsh-team-kanban' }, ...)
 │  └─ TeamKanbanTitle            // 图标 + 标题 + 完成度计数
-└─ ctx.slots.inject('sidebar.right.pane.tab', { key: '@local/dsh-client-ui-team-kanban' }, ...)
+└─ ctx.slots.inject('sidebar.right.pane.tab', { key: 'dsh-team-kanban' }, ...)
    └─ TeamKanbanBoard            // 主看板视图
       ├─ KanbanHeader            // 总进度条 + 统计 + 队友运行态条
       ├─ FailureBanner           // 条件展示 team.failure
@@ -266,10 +273,10 @@ const isRunning = (id) => (statuses.get(id)?.running ?? summaries[id]?.running) 
    - 订阅 `team = useProjection('agentTeam')`，计算 `visibleTasks = (team?.tasks ?? []).filter(t => t.status !== 'deleted')`。
    - `shouldShow = team?.enabled === true && visibleTasks.length > 0`。
    - 维护模块级 `dismissedSessions: Set<SessionId>` 与 `wasOpenBySession: Map<SessionId, boolean>`：
-     - 当 `shouldShow === false`：清除该 `sessionId` 的 `dismissed` 标记；遍历 `ctx.sidebarRight.tabsIn(sessionId)`，若存在 `kind === 'team-board'` 则调用 `ctx.sidebarRight.closeIn(sessionId, tab.id)`。
-     - 当 `shouldShow === true`：检查 `tabsIn(sessionId)` 是否已存在 `kind === 'team-board'`：
+     - 当 `shouldShow === false`：清除该 `sessionId` 的 `dismissed` 标记；遍历 `ctx.sidebarRight.tabsIn(sessionId)`，若存在 `kind === 'dsh-team-kanban.board'` 则调用 `ctx.sidebarRight.closeIn(sessionId, tab.id)`。
+     - 当 `shouldShow === true`：检查 `tabsIn(sessionId)` 是否已存在 `kind === 'dsh-team-kanban.board'`：
        - 若先前已打开而本次消失（说明用户手动关闭），记录进 `dismissedSessions`，不再自动重开；
-       - 若未在 `dismissedSessions` 中且当前不存在该 tab，调用 `ctx.sidebarRight.openTabIn(sessionId, 'team-board')`（注意确认此时右侧栏 store 已实例化；若当前会话未挂载右侧栏 store，`openTabIn` 内部安全 noop，可在首次挂载/展开后同步）。
+       - 若未在 `dismissedSessions` 中且当前不存在该 tab，调用 `ctx.sidebarRight.openTabIn(sessionId, 'dsh-team-kanban.board')`（注意确认此时右侧栏 store 已实例化；若当前会话未挂载右侧栏 store，`openTabIn` 内部安全 noop，可在首次挂载/展开后同步）。
 2. **`TeamKanbanBoard`**：
    - 首行防御性守卫：`if (!team?.enabled || visibleTasks.length === 0) return null`。
    - 单次 `useMemo` 将 `visibleTasks` 归类为 `pending`、`in_progress`、`completed` 三组，并构建 `taskMap: Map<id, Task>`（用于查出 `blockedBy` 对应的任务标题与完成态）与 `teammates` 映射（`ownerId -> running`）。
@@ -339,7 +346,7 @@ const isRunning = (id) => (statuses.get(id)?.running ?? summaries[id]?.running) 
 
 ### Phase 3：桌面端安装与联调验收
 1. 安装进 `desktop` profile：
-   - 使用 DSH `plugin_manager`（`action: install_bundle`, `target: "/Users/rongyi/Desktop/dsh-team-kanban"`）或 CLI `dsh plugin --profile desktop add /Users/rongyi/Desktop/dsh-team-kanban`。
+   - 使用 DSH `plugin_manager`（`action: install_bundle`, `target: "<仓库目录>"`）或 CLI `dsh plugin --profile desktop add <仓库目录>`。
 2. 重启或刷新桌面端，执行第 8 节三场景验收与 UI/UX 审查。
 
 ---
@@ -359,7 +366,7 @@ const isRunning = (id) => (statuses.get(id)?.running ?? summaries[id]?.running) 
 ### 8.2 回滚方案
 - **临时停用**：在 DSH「设置 → 插件」关闭「智能体任务板」，或通过 `plugin_manager` 执行 `set_bundle` 禁用。
 - **彻底移除**：
-  1. 执行 `plugin_manager` `remove_bundle`（或终端执行 `dsh plugin --profile desktop remove @local/dsh-client-ui-team-kanban`）；
+  1. 执行 `plugin_manager` `remove_bundle`（或终端执行 `dsh plugin --profile desktop remove dsh-team-kanban`）；
   2. 重启 DSH 桌面端；
   3. 宿主 `app.asar` 与现有会话日志零修改、零残留。
 

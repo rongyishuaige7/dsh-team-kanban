@@ -6,3 +6,6 @@
 |---|---|---|---|
 | 2026-11-15 | [全新高阶动效与活体 UI 升级（0.3.0）](2026-11-15-hyper-refined-motion-and-living-ui.md) | 已实装 | 空间景深微物理 + 量子极光流光 + 算力心跳呼吸 + 双层声呐雷达 + 北极光庆典 |
 | 2026-11-15 | [右侧栏不自动弹出、看板不实时刷新](2026-11-15-sidebar-open-and-live-refresh.md) | 已解决（兜底） | 侧栏打开时序竞态 + 桌面端不投递投影帧，前者修、后者用有界拉取兜底 |
+
+> 0.4.0 更名：包名由本地占位 `@local/dsh-client-ui-team-kanban` 改为 `dsh-team-kanban`，右侧栏标签 kind 由 `team-board` 改为 `dsh-team-kanban.board`。上面的记录保留当时的原始观测值（含旧包名与旧 kind），作为历史证据，不回填。
+

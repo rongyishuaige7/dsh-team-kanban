@@ -164,7 +164,7 @@ test('watcher pulls, stores the value, and asks to open the board', async () => 
     const { readFallbackTeam, unsupportedSessions } = plugin.__internals;
     assert.equal(readFallbackTeam('S-lead').tasks.length, 3);
     assert.ok(!unsupportedSessions.has('S-lead'));
-    assert.deepEqual(opened[0], ['S-lead', 'team-board']);
+    assert.deepEqual(opened[0], ['S-lead', 'dsh-team-kanban.board']);
   } finally {
     cleanups.forEach((cleanup) => cleanup());
   }

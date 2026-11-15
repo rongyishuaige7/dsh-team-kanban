@@ -1,7 +1,28 @@
 {
-  "name": "@local/dsh-client-ui-team-kanban",
-  "version": "0.3.1",
-  "private": true,
+  "name": "dsh-team-kanban",
+  "version": "0.4.0",
+  "description": "A living three-column kanban board in the right sidebar for DeepSeek Harness agent teams, driven by the native agentTeam projection DAG.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "kanban",
+    "agent-team",
+    "multi-agent"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rongyishuaige7/dsh-team-kanban.git"
+  },
+  "homepage": "https://github.com/rongyishuaige7/dsh-team-kanban#readme",
+  "bugs": {
+    "url": "https://github.com/rongyishuaige7/dsh-team-kanban/issues"
+  },
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.2-rc.1 <0.3.0"
+  },
   "type": "module",
   "scripts": {
     "check": "node --check client.js && node --check index.js",
@@ -18,7 +39,9 @@
     "client.js",
     "cordis.patch.yml",
     "locale/*.json",
-    "icon.svg"
+    "icon.svg",
+    "README.md",
+    "LICENSE"
   ],
   "dsh": {
     "bundle": {
