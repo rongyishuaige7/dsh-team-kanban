@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.1.6-dbg';
+    const CLIENT_REV = '0.1.7-dbg';
     const TAB_ID = PKG;
     const KIND = 'team-board';
     const LANES = ['pending', 'in_progress', 'completed'];
@@ -1253,6 +1253,40 @@ window.__ModuleLoader__.load({
         diagNote('watcher-mount', { sid: String(sessionId).slice(-12) });
         return () => diagNote('watcher-unmount', { sid: String(sessionId).slice(-12) });
       }, [sessionId]);
+
+      /* Independent of React: subscribe to the session binding's own projection
+         face, and watch `running` as an oracle for "is this session live at all". */
+      const runningNow = useSession((state) => (state && state.running ? 1 : 0));
+
+      useEffect(() => {
+        diagNote('running', { sid: String(sessionId).slice(-12), running: runningNow });
+      }, [runningNow, sessionId]);
+
+      useEffect(() => {
+        let off = () => {};
+        try {
+          const binding = ctx.sessions && typeof ctx.sessions.binding === 'function'
+            ? ctx.sessions.binding(sessionId)
+            : undefined;
+          const face = binding && binding.session && binding.session.projections
+            ? binding.session.projections.faceOf('agentTeam')
+            : undefined;
+          diagNote('face-bind', { sid: String(sessionId).slice(-12), binding: !!binding, face: !!face });
+          if (face && typeof face.subscribe === 'function') {
+            off = face.subscribe(() => {
+              const value = face.getSnapshot();
+              diagNote('face', {
+                sid: String(sessionId).slice(-12),
+                n: Array.isArray(value && value.tasks) ? value.tasks.length : -1,
+                st: ((value && value.tasks) || []).map((task) => String(task.status)[0]).join(''),
+              });
+            });
+          }
+        } catch (error) {
+          diagNote('face-error', String(error && error.message).slice(0, 120));
+        }
+        return () => { try { off(); } catch (error) {} };
+      }, [sessionId, ctx]);
 
       /* Fires on any of the three projections or the team value changing, so a
          frozen `agentTeam` next to a moving catalog/title is visible. */
