@@ -257,6 +257,12 @@ button { font: inherit; }
   stroke-dashoffset: 0;
 }
 
+/* 原型专属数字逐位滚动定位约束 */
+.tkb-roll { display: inline-flex; font-variant-numeric: tabular-nums; }
+.tkb-roll__c { position: relative; display: inline-block; overflow: hidden; line-height: 1.15; vertical-align: top; }
+.tkb-roll__in { display: inline-block; }
+.tkb-roll__out { position: absolute; left: 0; top: 0; }
+
 /* =====================================================================
    顶部全局状态条（Omni Header & Quantum Fuel Strip）
    ===================================================================== */
