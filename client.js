@@ -363,6 +363,7 @@ window.__ModuleLoader__.load({
 
     function TeamKanbanBoard(props) {
       const { sessionId, runtime, useProjection, useSessions, useSessionStatus, useTabInfo, t } = props;
+      const [, setTick] = useState(0);
 
       /* Two live roads to the same finished projection value:
          - `useProjection` binds the per-key session face (same-tick),
@@ -376,8 +377,8 @@ window.__ModuleLoader__.load({
       const projectedCatalog = useProjection('subagentCatalog');
       const listedTeam = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
       const listedCatalog = useSessions((state) => state.projectionsBySession[sessionId]?.values.subagentCatalog);
-      const team = listedTeam !== undefined ? listedTeam : projectedTeam;
-      const catalog = listedCatalog !== undefined ? listedCatalog : projectedCatalog;
+      const team = projectedTeam || listedTeam;
+      const catalog = projectedCatalog || listedCatalog;
       /* The host may publish a new wrapper around the same task objects, or
          reuse an array while replacing members. The memo below must follow the
          task data itself, not only the container identity, or the board keeps
@@ -499,7 +500,8 @@ window.__ModuleLoader__.load({
             const p = runtime.sessions.refreshProjections(sessionId);
             if (p && typeof p.catch === 'function') p.catch(() => {});
           } catch (e) {}
-        }, 600);
+          setTick((n) => n + 1);
+        }, 500);
         return () => clearInterval(timer);
       }, [model.counts.pending, model.counts.in_progress, runtime, sessionId]);
 
@@ -1061,11 +1063,14 @@ window.__ModuleLoader__.load({
      * ------------------------------------------------------------------ */
 
     function TeamKanbanTitle({ sessionId, useProjection, useSessions, t }) {
-      /* Same live source as the board: the session-list projection snapshot is
-         republished by the manager on every push frame. */
+      const [, setTick] = useState(0);
       const projected = useProjection('agentTeam');
       const listed = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
-      const team = listed !== undefined ? listed : projected;
+      const team = projected || listed;
+      useEffect(() => {
+        const timer = setInterval(() => setTick((n) => n + 1), 500);
+        return () => clearInterval(timer);
+      }, []);
       const tasks = team && team.enabled === true && Array.isArray(team.tasks)
         ? team.tasks.filter((task) => task && task.status !== 'deleted')
         : EMPTY;
@@ -1124,55 +1129,14 @@ window.__ModuleLoader__.load({
       const listedChild = useSessions(selectListedChild);
       const projectedTeam = useProjection('agentTeam');
       const listedTeam = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
-      const team = listedTeam !== undefined ? listedTeam : projectedTeam;
-
-      /* The right-sidebar controller may adopt this Session's store only after
-         its own seat mounts. Its on-screen Session source is the public signal
-         for that handshake; watch it so a first open attempt that ran too early
-         is retried without waiting for a Session switch. */
-      const mounted = React.useSyncExternalStore(
-        useCallback((notify) => {
-          try {
-            const store = ctx.sidebarRight.mounted;
-            return store && typeof store.subscribe === 'function'
-              ? store.subscribe(notify)
-              : () => {};
-          } catch (error) {
-            return () => {};
-          }
-        }, [ctx]),
-        useCallback(() => {
-          try {
-            const store = ctx.sidebarRight.mounted;
-            return store && typeof store.getSnapshot === 'function'
-              ? store.getSnapshot()
-              : undefined;
-          } catch (error) {
-            return undefined;
-          }
-        }, [ctx]),
-      );
+      const team = projectedTeam || listedTeam;
 
       let shouldShow = false;
-      let signature = 'pending';
-      if (team != null) {
-        if (team.enabled === true && Array.isArray(team.tasks)) {
-          const visible = team.tasks.filter((task) => task && task.status !== 'deleted');
-          shouldShow = visible.length > 0;
-          signature = visible.map((task) => [
-            task.id,
-            task.status,
-            task.revision,
-            task.ready ? 1 : 0,
-            task.ownerId || '',
-          ].join(':')).join('|') || 'empty';
-        } else {
-          signature = 'disabled';
-        }
+      if (team != null && team.enabled === true && Array.isArray(team.tasks)) {
+        shouldShow = team.tasks.some((task) => task && task.status !== 'deleted');
       }
 
       useEffect(() => {
-        if (team == null) return undefined;
         if (addressedChild || listedChild) return undefined;
 
         const listTabs = () => {
@@ -1183,91 +1147,39 @@ window.__ModuleLoader__.load({
           }
         };
         const findBoardTab = () => listTabs().find((tab) => tab && tab.kind === KIND);
-        const closeBoard = () => {
-          const tab = findBoardTab();
-          if (!tab) return;
-          try {
-            ctx.sidebarRight.closeIn(sessionId, tab.id);
-          } catch (error) {
-            /* The store may not be adopted yet; nothing is left open to close. */
-          }
-        };
 
         if (!shouldShow) {
           dismissedSessions.delete(sessionId);
-          openConfirmed.delete(sessionId);
-          closeBoard();
-          return undefined;
-        }
-
-        if (findBoardTab()) {
-          openConfirmed.set(sessionId, true);
-          return undefined;
-        }
-
-        if (openConfirmed.get(sessionId) === true) {
-          /* The tab existed and is gone: the user closed it on purpose. */
-          openConfirmed.delete(sessionId);
-          dismissedSessions.add(sessionId);
+          const tab = findBoardTab();
+          if (tab) {
+            try { ctx.sidebarRight.closeIn(sessionId, tab.id); } catch (e) {}
+          }
           return undefined;
         }
 
         if (dismissedSessions.has(sessionId)) return undefined;
 
-        const attempt = () => {
-          if (findBoardTab()) {
-            openConfirmed.set(sessionId, true);
-            return true;
-          }
-          try {
-            if (typeof ctx.sidebarRight.show === 'function') ctx.sidebarRight.show();
-            if (typeof ctx.sidebarRight.open === 'function') ctx.sidebarRight.open();
-            if (typeof ctx.sidebarRight.expand === 'function') ctx.sidebarRight.expand();
-          } catch (e) {}
+        const openBoard = () => {
+          if (findBoardTab()) return true;
           try {
             ctx.sidebarRight.openTabIn(sessionId, KIND);
           } catch (error) {
             return false;
           }
-          if (findBoardTab()) {
-            openConfirmed.set(sessionId, true);
-            return true;
-          }
-          return false;
+          return !!findBoardTab();
         };
 
-        if (attempt()) return undefined;
+        if (openBoard()) return undefined;
 
-        /* Bounded mount handshake: the right-sidebar store may adopt this
-           Session a few frames after the task projection arrives. Retry a
-           handful of times, then leave further attempts to the next projection
-           or mounted-session change. This is not a polling loop: there is no
-           repeating interval and the tab's own projection is the data source. */
-        const timers = [];
-        let frame = 0;
-        const stop = () => {
-          if (frame) {
-            cancelAnimationFrame(frame);
-            frame = 0;
-          }
-          timers.forEach((id) => clearTimeout(id));
-          timers.length = 0;
-        };
-        const retry = () => {
-          if (openConfirmed.get(sessionId) === true) return;
-          if (dismissedSessions.has(sessionId)) return;
-          if (findBoardTab()) {
-            openConfirmed.set(sessionId, true);
-            return;
-          }
-          attempt();
-        };
-        if (typeof requestAnimationFrame === 'function') frame = requestAnimationFrame(retry);
-        [60, 180, 400, 900, 1800].forEach((delay) => {
-          timers.push(setTimeout(retry, delay));
-        });
-        return stop;
-      }, [sessionId, addressedChild, listedChild, shouldShow, signature, team, ctx, mounted]);
+        const timers = [60, 150, 300, 600, 1200, 2400].map((delay) =>
+          setTimeout(() => {
+            if (dismissedSessions.has(sessionId)) return;
+            openBoard();
+          }, delay)
+        );
+
+        return () => timers.forEach(clearTimeout);
+      }, [sessionId, addressedChild, listedChild, shouldShow, team, ctx]);
 
       return null;
     }
@@ -1861,6 +1773,16 @@ window.__ModuleLoader__.load({
         priority: 'extension',
         title: () => t('tab.title'),
       }), 'team-kanban: tab type');
+
+      ctx.effect(() => {
+        try {
+          return ctx.sidebarRight.registerCloseHandler(KIND, (sessionId) => {
+            dismissedSessions.add(sessionId);
+          });
+        } catch (e) {
+          return () => {};
+        }
+      }, 'team-kanban: close handler');
 
       function BoardSlot(props) {
         return h(TeamKanbanBoard, Object.assign({}, props, { runtime: ctx }));
