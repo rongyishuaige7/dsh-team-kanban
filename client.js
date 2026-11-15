@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.3.0';
+    const CLIENT_REV = '0.3.1';
     const TAB_ID = PKG;
     const KIND = 'team-board';
     const LANES = ['pending', 'in_progress', 'completed'];
@@ -105,6 +105,16 @@ window.__ModuleLoader__.load({
     const selectAddressedChild = (snapshot) => snapshot.subagent != null;
     const selectStatusMap = (state) => state;
     const selectSummaries = (state) => state.byId;
+
+    function sessionRunning(statuses, summaries, id) {
+      if (!id) return false;
+      const status = statuses && typeof statuses.get === 'function' ? statuses.get(id) : undefined;
+      const summary = summaries ? summaries[id] : undefined;
+      const value = status && status.running !== undefined && status.running !== null
+        ? status.running
+        : (summary ? summary.running : undefined);
+      return value === true;
+    }
 
     function initialOf(value) {
       const text = String(value == null ? '' : value).trim();
@@ -258,24 +268,320 @@ window.__ModuleLoader__.load({
     }
 
     /* ------------------------------------------------------------------ *
+     * Projection compatibility
+     *
+     * The experimental `agentTeam` wire view has already shipped in two shapes:
+     *   - `{ enabled, tasks[ownerId, ownerName, ...], failure? }`
+     *     (desktop 0.2.2-rc.3);
+     *   - `{ members[id, name, role, phase, error?], tasks[ownerName, ...],
+     *     failure? }` (dsh 0.2.1-alpha.4: implicit-root Teams, no `enabled`,
+     *     no `ownerId`, and the Lead's `ownerName` is the literal "lead").
+     * Every reader goes through `normalizeTeam`, so the board, the tab chip and
+     * the watcher agree on one shape whichever host serves them.
+     * ------------------------------------------------------------------ */
+
+    const LEAD_NAME = 'lead';
+    const normalizedCache = new WeakMap();
+    let shapeWarned = false;
+
+    const listOf = (value) => (Array.isArray(value)
+      ? value.filter((item) => typeof item === 'string')
+      : []);
+
+    /* Content fingerprint of a raw value. Every task mutation bumps its
+       `revision`, so the id/status/revision triple carries most changes; the
+       rest covers fields that move without a revision. */
+    function teamSignature(raw) {
+      if (!raw || typeof raw !== 'object') return 'absent';
+      const tasks = Array.isArray(raw.tasks) ? raw.tasks : EMPTY;
+      const members = Array.isArray(raw.members) ? raw.members : EMPTY;
+      return [
+        typeof raw.enabled === 'boolean' ? (raw.enabled ? '1' : '0') : '-',
+        raw.failure == null ? '' : String(raw.failure),
+        members.map((member) => (member
+          ? [member.id, member.name, member.role, member.phase, member.error || ''].join(':')
+          : '')).join(','),
+        tasks.map((task) => (task
+          ? [
+            task.id,
+            task.status,
+            task.revision,
+            task.ready ? 1 : 0,
+            task.ownerId || '',
+            task.ownerName || '',
+            task.subject || '',
+            Array.isArray(task.blockedBy) ? task.blockedBy.join('+') : '',
+          ].join(':')
+          : '')).join(','),
+      ].join('|');
+    }
+
+    function warnShape(raw) {
+      if (shapeWarned) return;
+      shapeWarned = true;
+      try {
+        console.warn(
+          '[team-kanban] unrecognized agentTeam projection; the board stays hidden.',
+          raw && typeof raw === 'object' ? Object.keys(raw) : typeof raw,
+        );
+      } catch (error) {
+        /* A diagnostic only. */
+      }
+    }
+
+    /* `undefined` means "unknown": the value is absent or unreadable, and the
+       watcher must not read that as "no tasks". */
+    function normalizeTeam(raw, sessionId) {
+      if (raw === undefined || raw === null) return undefined;
+      if (typeof raw !== 'object' || !Array.isArray(raw.tasks)) {
+        warnShape(raw);
+        return undefined;
+      }
+      const signature = teamSignature(raw);
+      const cached = normalizedCache.get(raw);
+      if (cached && cached.signature === signature && cached.sessionId === sessionId) return cached.value;
+
+      const members = Array.isArray(raw.members)
+        ? raw.members
+          .filter((member) => member && typeof member.id === 'string' && member.id)
+          .map((member) => ({
+            id: member.id,
+            name: typeof member.name === 'string' ? member.name : '',
+            role: member.role === 'lead' ? 'lead' : 'teammate',
+            phase: typeof member.phase === 'string' ? member.phase : 'active',
+            error: typeof member.error === 'string' && member.error ? member.error : undefined,
+          }))
+        : null;
+      const leadMember = members ? members.find((member) => member.role === 'lead') : undefined;
+      const leadId = leadMember ? leadMember.id : sessionId;
+      const idByName = new Map();
+      (members || EMPTY).forEach((member) => {
+        if (member.role !== 'lead' && member.name && !idByName.has(member.name)) {
+          idByName.set(member.name, member.id);
+        }
+      });
+
+      const tasks = [];
+      raw.tasks.forEach((task) => {
+        if (!task || typeof task.id !== 'string' || !LANES.includes(task.status)) return;
+        const ownerName = typeof task.ownerName === 'string' && task.ownerName ? task.ownerName : undefined;
+        let ownerId = typeof task.ownerId === 'string' && task.ownerId ? task.ownerId : undefined;
+        if (!ownerId && ownerName) {
+          ownerId = idByName.get(ownerName) || (ownerName === LEAD_NAME ? leadId : undefined);
+        }
+        const revision = Number(task.revision);
+        tasks.push({
+          id: task.id,
+          revision: Number.isFinite(revision) ? revision : 0,
+          subject: task.subject == null ? '' : String(task.subject),
+          description: task.description == null ? '' : String(task.description),
+          status: task.status,
+          blockedBy: listOf(task.blockedBy),
+          writeScopes: listOf(task.writeScopes),
+          writeScopeWarnings: listOf(task.writeScopeWarnings),
+          ready: task.ready === true,
+          ownerId,
+          ownerName,
+        });
+      });
+
+      const value = {
+        /* Implicit-root hosts have no switch: a Team exists once it has tasks
+           or teammates. */
+        enabled: typeof raw.enabled === 'boolean'
+          ? raw.enabled
+          : tasks.length > 0 || (members || EMPTY).some((member) => member.role !== 'lead'),
+        tasks,
+        members,
+        leadId,
+        failure: raw.failure == null || raw.failure === '' ? undefined : String(raw.failure),
+      };
+      normalizedCache.set(raw, { signature, sessionId, value });
+      return value;
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Source selection
+     *
+     * One Session's Team can reach the client by three roads: the per-key face
+     * (`useProjection`), the session-list snapshot, and the bounded pull below.
+     * Revision sums cannot pick the newest one: deleting a task drops its
+     * revisions from the view, and toggling `enabled` or recording a `failure`
+     * moves no revision at all. Instead:
+     *   1. tasks present in both values decide, since a task's revision only
+     *      grows;
+     *   2. otherwise the value this plugin first saw latest wins. Host values
+     *      are replaced, never mutated, so first sight tracks production time,
+     *      and a confirmed pull is re-stamped as the host's value of "now".
+     * ------------------------------------------------------------------ */
+
+    let observeClock = 0;
+    const observedAt = new WeakMap();
+
+    function observe(value) {
+      if (!value || typeof value !== 'object') return -1;
+      let stamp = observedAt.get(value);
+      if (stamp === undefined) {
+        observeClock += 1;
+        stamp = observeClock;
+        observedAt.set(value, stamp);
+      }
+      return stamp;
+    }
+
+    function restamp(value) {
+      if (!value || typeof value !== 'object') return;
+      observeClock += 1;
+      observedAt.set(value, observeClock);
+    }
+
+    /* 1 when `left` is provably newer, -1 when provably older, 0 when the
+       shared tasks cannot tell. */
+    function compareTeams(left, right) {
+      const revisions = new Map();
+      (right && Array.isArray(right.tasks) ? right.tasks : EMPTY).forEach((task) => {
+        if (task && task.id !== undefined) revisions.set(task.id, Number(task.revision) || 0);
+      });
+      let newer = false;
+      let older = false;
+      (left && Array.isArray(left.tasks) ? left.tasks : EMPTY).forEach((task) => {
+        if (!task || !revisions.has(task.id)) return;
+        const mine = Number(task.revision) || 0;
+        const theirs = revisions.get(task.id);
+        if (mine > theirs) newer = true;
+        else if (mine < theirs) older = true;
+      });
+      if (newer === older) return 0;
+      return newer ? 1 : -1;
+    }
+
+    /* Candidates seen for the first time in the same call are stamped in
+       argument order, so later arguments win that tie. */
+    function newestTeam() {
+      let best;
+      for (let index = 0; index < arguments.length; index += 1) {
+        const candidate = arguments[index];
+        if (!candidate || typeof candidate !== 'object') continue;
+        const stamp = observe(candidate);
+        if (best === undefined) {
+          best = candidate;
+          continue;
+        }
+        const order = compareTeams(candidate, best);
+        if (order > 0 || (order === 0 && stamp > observe(best))) best = candidate;
+      }
+      return best;
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Projection fallback store
+     *
+     * The Session control stream is the only carrier of projection frames, and
+     * on desktop 0.2.2-rc.3 it stops delivering them for a live Session: the
+     * board keeps the baseline it was opened with while `running` still moves,
+     * because that rides the remote event channel. The watcher pulls the Host's
+     * current whole values on a bounded timer (see `pullPlan`) and parks them
+     * here, one entry per Session, most recent last.
+     * ------------------------------------------------------------------ */
+
+    const FALLBACK_LIMIT = 32;
+    const fallbackTeams = new Map();
+    const fallbackListeners = new Set();
+    /* Sessions whose host answered a pull without any `agentTeam` value: the
+       Team feature is not installed there, so discovery stops. */
+    const unsupportedSessions = new Set();
+
+    function notifyFallback(sessionId, changed) {
+      fallbackListeners.forEach((listener) => listener(sessionId, changed));
+    }
+
+    function readFallbackTeam(sessionId) {
+      const entry = fallbackTeams.get(sessionId);
+      return entry ? entry.value : undefined;
+    }
+
+    function storeFallbackTeam(sessionId, value) {
+      const signature = teamSignature(value);
+      const current = fallbackTeams.get(sessionId);
+      const changed = !current || current.signature !== signature;
+      /* An equal pull keeps the stored object so memoized views stay put. */
+      const kept = changed ? value : current.value;
+      restamp(kept);
+      fallbackTeams.delete(sessionId);
+      fallbackTeams.set(sessionId, { value: kept, signature });
+      while (fallbackTeams.size > FALLBACK_LIMIT) {
+        fallbackTeams.delete(fallbackTeams.keys().next().value);
+      }
+      unsupportedSessions.delete(sessionId);
+      notifyFallback(sessionId, changed);
+    }
+
+    function markUnsupported(sessionId) {
+      if (unsupportedSessions.has(sessionId)) return;
+      unsupportedSessions.add(sessionId);
+      notifyFallback(sessionId, true);
+    }
+
+    const PULL_FAST_MS = 2500;
+    const PULL_SLOW_MS = 10000;
+
+    /* Pull cadence for one Session:
+       - 'fast' while the Team has tasks and the Lead or a teammate runs;
+       - 'slow' while tasks are unfinished but nobody is known to run (status
+         for a child Session may be missing), or while the Session runs with
+         no visible task, so a turn's first `team_task_create` is still seen
+         on a host that delivers no projection frames;
+       - 'off' when idle, or once a pull showed that this host serves no
+         `agentTeam` projection at all. */
+    function pullPlan(team, state) {
+      const hasTask = !!team && team.enabled === true && team.tasks.length > 0;
+      if (hasTask) {
+        if (state.running || state.teamRunning) return 'fast';
+        return team.tasks.some((task) => task.status !== 'completed') ? 'slow' : 'off';
+      }
+      if (state.unsupported) return 'off';
+      return state.running ? 'slow' : 'off';
+    }
+
+    /* The one road every reader takes to the Team value: newest raw value
+       among face, list snapshot and pull, then normalized. */
+    function useTeamSource(props) {
+      const { sessionId, useProjection, useSessions } = props;
+      const projected = useProjection('agentTeam');
+      const listed = useSessions((state) => {
+        const entry = state.projectionsBySession && state.projectionsBySession[sessionId];
+        return entry && entry.values ? entry.values.agentTeam : undefined;
+      });
+      const selected = useRef(undefined);
+      const [, bump] = useState(0);
+      useEffect(() => {
+        const listener = (id, changed) => {
+          if (id !== sessionId) return;
+          /* A re-confirmed pull only matters when another road is shadowing it. */
+          if (changed || selected.current !== readFallbackTeam(id)) bump((count) => count + 1);
+        };
+        fallbackListeners.add(listener);
+        return () => {
+          fallbackListeners.delete(listener);
+        };
+      }, [sessionId]);
+      const raw = newestTeam(projected, listed, readFallbackTeam(sessionId));
+      selected.current = raw;
+      return normalizeTeam(raw, sessionId);
+    }
+
+    /* ------------------------------------------------------------------ *
      * Projection -> view model
      * ------------------------------------------------------------------ */
 
+    /* `team` is a `normalizeTeam` value. */
     function buildModel(team, catalog, statuses, summaries, sessionId) {
-      const tasks = (team && Array.isArray(team.tasks) ? team.tasks : [])
-        .filter((task) => task && task.status !== 'deleted');
+      const tasks = team ? team.tasks : EMPTY;
+      const leadId = team && team.leadId ? team.leadId : sessionId;
       const map = new Map();
       tasks.forEach((task) => map.set(task.id, task));
 
-      const isRunning = (id) => {
-        if (!id) return false;
-        const status = statuses && typeof statuses.get === 'function' ? statuses.get(id) : undefined;
-        const summary = summaries ? summaries[id] : undefined;
-        const value = status && status.running !== undefined && status.running !== null
-          ? status.running
-          : (summary ? summary.running : undefined);
-        return value === true;
-      };
+      const isRunning = (id) => sessionRunning(statuses, summaries, id);
 
       const ready = [];
       const blocked = [];
@@ -293,29 +599,58 @@ window.__ModuleLoader__.load({
 
       const dependents = new Map();
       tasks.forEach((task) => {
-        const blockers = Array.isArray(task.blockedBy) ? task.blockedBy : EMPTY;
-        blockers.forEach((id) => {
+        task.blockedBy.forEach((id) => {
           if (!dependents.has(id)) dependents.set(id, []);
           dependents.get(id).push(task.id);
         });
       });
 
       const catalogById = new Map();
-      const mates = [];
-      const entries = Array.isArray(catalog) ? catalog : EMPTY;
-      entries.forEach((entry) => {
-        if (!entry || !entry.id || catalogById.has(entry.id)) return;
-        catalogById.set(entry.id, entry);
-        mates.push({
-          id: entry.id,
-          label: entry.label || entry.name || entry.id,
-          running: isRunning(entry.id),
-          lead: false,
-        });
+      (Array.isArray(catalog) ? catalog : EMPTY).forEach((entry) => {
+        if (entry && entry.id && !catalogById.has(entry.id)) catalogById.set(entry.id, entry);
       });
-      const leadOwned = tasks.some((task) => task.ownerId === sessionId);
-      if (leadOwned && !catalogById.has(sessionId)) {
-        mates.unshift({ id: sessionId, label: '', running: isRunning(sessionId), lead: true });
+
+      /* A Team roster, when the host publishes one, lists exactly the
+         teammates; the subagent catalog also carries ordinary subagents and
+         is only the fallback for hosts without a roster. */
+      const mates = [];
+      const seen = new Set();
+      if (team && team.members) {
+        team.members.forEach((member) => {
+          if (member.role === 'lead' || seen.has(member.id)) return;
+          seen.add(member.id);
+          mates.push({
+            id: member.id,
+            label: member.name || member.id,
+            running: isRunning(member.id),
+            lead: false,
+            phase: member.phase,
+            error: member.error,
+          });
+        });
+      } else {
+        catalogById.forEach((entry) => {
+          seen.add(entry.id);
+          mates.push({
+            id: entry.id,
+            label: entry.label || entry.name || entry.id,
+            running: isRunning(entry.id),
+            lead: false,
+            phase: 'active',
+            error: undefined,
+          });
+        });
+      }
+      const leadOwned = tasks.some((task) => task.ownerId === leadId);
+      if (leadOwned && !seen.has(leadId)) {
+        mates.unshift({
+          id: leadId,
+          label: '',
+          running: isRunning(leadId),
+          lead: true,
+          phase: 'active',
+          error: undefined,
+        });
       }
 
       const counts = {
@@ -326,6 +661,7 @@ window.__ModuleLoader__.load({
 
       return {
         sessionId,
+        leadId,
         tasks,
         map,
         ready,
@@ -345,8 +681,9 @@ window.__ModuleLoader__.load({
 
     function ownerDisplay(task, model, t) {
       if (!task.ownerId) return null;
+      /* Before `ownerName`: hosts name the Lead with the untranslated "lead". */
+      if (task.ownerId === model.leadId) return t('card.lead');
       if (task.ownerName) return task.ownerName;
-      if (task.ownerId === model.sessionId) return t('card.lead');
       const entry = model.catalogById.get(task.ownerId);
       if (entry) return entry.label || entry.name || entry.id;
       return task.ownerId;
@@ -367,42 +704,15 @@ window.__ModuleLoader__.load({
     function TeamKanbanBoard(props) {
       const { sessionId, runtime, useProjection, useSessions, useSessionStatus, useTabInfo, t } = props;
 
-      /* Two live roads to the same finished projection value:
-         - `useProjection` binds the per-key session face (same-tick),
-         - the session-list projection snapshot is rebuilt by the manager on
-           every push frame and therefore guarantees a React notification in
-           the sidebar/header slots where the per-key face has been observed
-           not to repaint.
-         The list snapshot wins whenever it carries the key; the per-key face
-         only covers the brief window before the first list rebuild. */
-      const projectedTeam = useProjection('agentTeam');
+      /* `normalizeTeam` keeps one object per raw value and content, so the
+         memo below follows the task data, not only container identity. */
+      const team = useTeamSource(props);
       const projectedCatalog = useProjection('subagentCatalog');
-      const listedTeam = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
-      const listedCatalog = useSessions((state) => state.projectionsBySession[sessionId]?.values.subagentCatalog);
-      const pulledTeam = useFallbackTeam(sessionId);
-      const team = freshestTeam(projectedTeam, listedTeam, pulledTeam);
+      const listedCatalog = useSessions((state) => {
+        const entry = state.projectionsBySession && state.projectionsBySession[sessionId];
+        return entry && entry.values ? entry.values.subagentCatalog : undefined;
+      });
       const catalog = projectedCatalog || listedCatalog;
-      /* The host may publish a new wrapper around the same task objects, or
-         reuse an array while replacing members. The memo below must follow the
-         task data itself, not only the container identity, or the board keeps
-         its first model after a status transition. */
-      const teamSignature = team && Array.isArray(team.tasks)
-        ? [
-          team.enabled === true ? '1' : '0',
-          team.failure === undefined ? '' : String(team.failure),
-          ...team.tasks.map((task) => (task && task.status !== 'deleted'
-            ? [
-              task.id,
-              task.status,
-              task.revision,
-              task.ready ? 1 : 0,
-              task.ownerId || '',
-              task.subject || '',
-              Array.isArray(task.blockedBy) ? task.blockedBy.join(',') : '',
-            ].join(':')
-            : '')),
-        ].join('|')
-        : 'absent';
       const catalogSignature = Array.isArray(catalog)
         ? catalog.map((entry) => (entry
           ? [entry.id, entry.label || '', entry.name || '', entry.mode || ''].join(':')
@@ -431,7 +741,7 @@ window.__ModuleLoader__.load({
 
       const model = useMemo(
         () => buildModel(team, catalog, statuses, summaries, sessionId),
-        [team, teamSignature, catalog, catalogSignature, statuses, summaries, sessionId],
+        [team, catalog, catalogSignature, statuses, summaries, sessionId],
       );
 
       useEffect(() => {
@@ -674,9 +984,7 @@ window.__ModuleLoader__.load({
 
       const counts = model.counts;
       const total = model.total;
-      const failure = team.failure === undefined || team.failure === null || team.failure === ''
-        ? null
-        : String(team.failure);
+      const failure = team.failure === undefined ? null : team.failure;
       const summary = t('header.summary', {
         completed: counts.completed,
         active: counts.in_progress,
@@ -807,7 +1115,7 @@ window.__ModuleLoader__.load({
             h('button', {
               type: 'button',
               className: 'tkb-mate',
-              'data-lead': task.ownerId === sessionId ? '' : undefined,
+              'data-lead': task.ownerId === model.leadId ? '' : undefined,
               'data-running': running ? '' : undefined,
               'aria-pressed': pinned && spot === task.ownerId,
               'aria-label': owner + ' · ' + (running ? t('card.running') : t('card.idle')),
@@ -1053,13 +1361,11 @@ window.__ModuleLoader__.load({
      * Tab chip title
      * ------------------------------------------------------------------ */
 
-    function TeamKanbanTitle({ sessionId, useProjection, useSessions, t }) {
-      const projected = useProjection('agentTeam');
-      const listed = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
-      const team = projected || listed;
-      const tasks = team && team.enabled === true && Array.isArray(team.tasks)
-        ? team.tasks.filter((task) => task && task.status !== 'deleted')
-        : EMPTY;
+    function TeamKanbanTitle(props) {
+      const { t } = props;
+      /* Same road as the board, so the chip count never lags the board. */
+      const team = useTeamSource(props);
+      const tasks = team && team.enabled === true ? team.tasks : EMPTY;
       const total = tasks.length;
       const completed = tasks.filter((task) => task.status === 'completed').length;
       const ratio = total > 0 ? completed / total : 0;
@@ -1102,66 +1408,6 @@ window.__ModuleLoader__.load({
      * Visibility watcher (no rendering)
      * ------------------------------------------------------------------ */
 
-    /* ------------------------------------------------------------------ *
-     * Projection fallback
-     *
-     * The Session control stream is the only carrier of projection frames, and
-     * on desktop 0.2.2-rc.3 it stops delivering them for a live Session: the
-     * board keeps the baseline it was opened with while `running` still moves,
-     * because that rides the remote event channel. This pulls the Host's
-     * current whole values on a bounded timer instead — only while the Session
-     * is running or the board still has unfinished work.
-     * ------------------------------------------------------------------ */
-
-    const fallbackTeams = new Map();
-    const fallbackListeners = new Set();
-
-    function setFallbackTeam(sessionId, value) {
-      const current = fallbackTeams.get(sessionId);
-      /* Every pull returns a fresh object, so compare by task weight: publishing
-         an equal view would re-run the poll effect and pull again, forever. */
-      if (current !== undefined && teamWeight(value) <= teamWeight(current)) return;
-      fallbackTeams.set(sessionId, value);
-      fallbackListeners.forEach((listener) => listener(sessionId));
-    }
-
-    function useFallbackTeam(sessionId) {
-      const [, bump] = useState(0);
-      useEffect(() => {
-        const listener = (id) => {
-          if (id === sessionId) bump((count) => count + 1);
-        };
-        fallbackListeners.add(listener);
-        return () => fallbackListeners.delete(listener);
-      }, [sessionId]);
-      return fallbackTeams.get(sessionId);
-    }
-
-    /* A Team's task revisions only grow, so the highest sum is the newest view.
-       Comparing weights keeps a stale projection from shadowing a fresh pull. */
-    function teamWeight(team) {
-      if (!team || !Array.isArray(team.tasks)) return -1;
-      return team.tasks.reduce((sum, task) => {
-        const revision = task && Number(task.revision);
-        return sum + (Number.isFinite(revision) && revision > 0 ? revision : 0);
-      }, 0);
-    }
-
-    function freshestTeam() {
-      let best;
-      let weight = -1;
-      for (let index = 0; index < arguments.length; index += 1) {
-        const candidate = arguments[index];
-        if (!candidate) continue;
-        const next = teamWeight(candidate);
-        if (next > weight) {
-          best = candidate;
-          weight = next;
-        }
-      }
-      return best;
-    }
-
     const dismissedSessions = new Set();
     const openConfirmed = new Map();
     /* Sessions whose board this plugin is closing itself; the host runs the
@@ -1203,67 +1449,87 @@ window.__ModuleLoader__.load({
     }
 
     function useTeamKanbanWatcher(ctx, props) {
-      const { sessionId, useSession, useSessions, useProjection } = props;
+      const { sessionId, useSession, useSessions, useSessionStatus } = props;
       const addressedChild = useSession(selectAddressedChild);
       const selectListedChild = useCallback(
         (state) => state.byId[sessionId] && state.byId[sessionId].origin === 'subagent',
         [sessionId],
       );
       const listedChild = useSessions(selectListedChild);
-      const projectedTeam = useProjection('agentTeam');
-      const listedTeam = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
-      const pulledTeam = useFallbackTeam(sessionId);
-      const team = freshestTeam(projectedTeam, listedTeam, pulledTeam);
+      const child = !!(addressedChild || listedChild);
+      const team = useTeamSource(props);
       const runningNow = useSession((state) => (state && state.running ? 1 : 0));
+      const statuses = useSessionStatus(selectStatusMap);
+      const summaries = useSessions(selectSummaries);
+      const teamRunning = !!team && (
+        (team.members || EMPTY).some((member) => member.role !== 'lead'
+          && sessionRunning(statuses, summaries, member.id))
+        || team.tasks.some((task) => task.status === 'in_progress' && task.ownerId
+          && task.ownerId !== team.leadId && sessionRunning(statuses, summaries, task.ownerId)));
+      const plan = child ? 'off' : pullPlan(team, {
+        running: runningNow === 1,
+        teamRunning,
+        unsupported: unsupportedSessions.has(sessionId),
+      });
+      const wasRunning = useRef(false);
 
-      /* Bounded pull of the Host's current values: only while this Session is
-         running or the board still has unfinished work, so an idle board costs
-         nothing. This is the fallback for the control stream that never lands a
-         projection frame on desktop 0.2.2-rc.3. */
+      /* Bounded pull of the Host's current values on the cadence `pullPlan`
+         picks; an idle board costs nothing. This is the fallback for the
+         control stream that never lands a projection frame on desktop
+         0.2.2-rc.3. */
       useEffect(() => {
-        const unfinished = !!(team && team.enabled === true && Array.isArray(team.tasks)
-          && team.tasks.some((task) => task && task.status !== 'completed' && task.status !== 'deleted'));
-        if (!runningNow && !unfinished) return undefined;
+        const settled = wasRunning.current && runningNow !== 1;
+        wasRunning.current = runningNow === 1;
+        /* A turn that just ended may have created its first task inside the
+           last slow interval: one closing pull settles it. */
+        const once = plan === 'off' && settled && !child && !unsupportedSessions.has(sessionId);
+        if (plan === 'off' && !once) return undefined;
         let live = true;
         let busy = false;
         let failures = 0;
-        const pull = async () => {
-          if (busy) return;
-          busy = true;
-          try {
-            const result = await ctx.remote.session.projections({ sessionId });
-            if (!live) return;
-            const value = result && result.ok && result.value ? result.value : null;
-            const next = value && value.values ? value.values.agentTeam : undefined;
-            if (next) setFallbackTeam(sessionId, next);
-            failures = 0;
-          } catch (error) {
-            /* A host that rejects the read stays rejected until the Session
-               changes state; stop hammering it after a few tries. */
-            failures += 1;
-            if (failures >= 3) {
-              live = false;
-              clearInterval(timer);
-            }
-          } finally {
-            busy = false;
-          }
-        };
-        const timer = setInterval(pull, 2500);
-        pull();
-        return () => {
+        let timer = 0;
+        const stop = () => {
           live = false;
           clearInterval(timer);
         };
-      }, [sessionId, ctx, runningNow, team]);
+        const pull = async () => {
+          if (busy || !live) return;
+          busy = true;
+          let values;
+          try {
+            const result = await ctx.remote.session.projections({ sessionId });
+            values = result && result.ok && result.value ? result.value.values : undefined;
+          } catch (error) {
+            values = undefined;
+          }
+          busy = false;
+          if (!live) return;
+          if (values && typeof values === 'object') {
+            failures = 0;
+            if (values.agentTeam && typeof values.agentTeam === 'object') {
+              storeFallbackTeam(sessionId, values.agentTeam);
+            } else if (!('agentTeam' in values)) {
+              markUnsupported(sessionId);
+            }
+            return;
+          }
+          /* A host that rejects the read stays rejected until the Session
+             changes state; stop hammering it after a few tries. */
+          failures += 1;
+          if (failures >= 3) stop();
+        };
+        pull();
+        if (once) return stop;
+        timer = setInterval(pull, plan === 'fast' ? PULL_FAST_MS : PULL_SLOW_MS);
+        return stop;
+      }, [ctx, sessionId, child, plan, runningNow]);
 
       /* Three states, never two. An absent projection means the frame or the
          Session baseline has not landed yet, which must not be read as "no
          tasks": doing so closed the board on reconnect and cold start, and the
          close handler then kept it closed. Only an explicit empty board closes. */
       const absent = team === undefined;
-      const hasTask = !absent && team.enabled === true && Array.isArray(team.tasks)
-        && team.tasks.some((task) => task && task.status !== 'deleted');
+      const hasTask = !absent && team.enabled === true && team.tasks.length > 0;
 
       useEffect(() => {
         if (addressedChild || listedChild) return undefined;
@@ -2657,9 +2923,27 @@ window.__ModuleLoader__.load({
 
     }
 
-    return {
+    const plugin = {
       inject: ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'layout', 'remote', 'remote.session'],
       apply,
     };
+    /* Pure helpers for `test/`; non-enumerable, so Cordis never sees them. */
+    Object.defineProperty(plugin, '__internals', {
+      value: Object.freeze({
+        normalizeTeam,
+        teamSignature,
+        compareTeams,
+        newestTeam,
+        storeFallbackTeam,
+        readFallbackTeam,
+        markUnsupported,
+        unsupportedSessions,
+        pullPlan,
+        buildModel,
+        ownerDisplay,
+        FALLBACK_LIMIT,
+      }),
+    });
+    return plugin;
   },
 });

@@ -223,6 +223,24 @@ interface TeamProjection {
 }
 ```
 
+**另一种已发布的结构（dsh `0.2.1-alpha.4`，`dsh-experimental-agent-team`）**：隐式根团队，没有 `enabled`，任务上没有 `ownerId`，主智能体的 `ownerName` 是字面量 `"lead"`，另带名册：
+
+```ts
+interface TeamProjection {
+  members: Array<{ id: string; name: string; role: 'lead' | 'teammate'; phase: 'provisioning' | 'active' | 'failed'; error?: string }>
+  tasks: Array<{ /* 同上，但无 ownerId */ }>
+  failure?: string
+}
+```
+
+客户端一律经 `normalizeTeam(raw, sessionId)`（0.3.1 起）读取，统一为 `{ enabled, tasks, members | null, leadId, failure }`：
+
+- `enabled` 缺失时，按「有任务或有队友」推断；
+- `ownerId` 缺失时，按名字从名册解析，`"lead"` 解析为主智能体；
+- 负责人显示先判主智能体（本地化为「主智能体」），再用 `ownerName`；
+- 有名册时队友列表取名册（含 `phase`/`error`），否则回退 `subagentCatalog`；
+- 结构无法识别（不是对象或没有 `tasks` 数组）时视为「未知」，看板不显示，控制台只警告一次。
+
 #### (2) `subagentCatalog` 投影与运行态判定（`SubagentHeaderLineage.tsx:507-526`）
 在 `session`-scoped slot（`conversation.session.header.actions`、`sidebar.right.pane.tab`、`sidebar.right.pane.tab.title`）中，标准 props 自动提供：
 - `sessionId`
@@ -347,7 +365,7 @@ const isRunning = (id) => (statuses.get(id)?.running ?? summaries[id]?.running) 
 
 ---
 
-## 9. 联调期间核实的宿主限制与运行时兜底（0.2.0）
+## 9. 联调期间核实的宿主限制与运行时兜底（0.2.0，0.3.1 修订）
 
 ### 9.1 事实：桌面端不送投影帧
 
@@ -364,24 +382,34 @@ DSH 桌面端 `0.2.2-rc.3` 上，客户端**收不到 `Session` 投影的实时�
 
 `ProjectionValueStore` 的 `faceOf('agentTeam').subscribe` 直接订阅（绕开 React）同样一次都没有触发，因此不是组件订阅问题，而是帧没有到达客户端。结果是：投影只在**打开会话时的基线**与**会话列表的 cached 块**时更新，表现为「切走再切回才刷新」。
 
-### 9.2 兜底：有界拉取
+### 9.2 兜底：有界拉取（0.3.1 修订）
 
-`useTeamKanbanWatcher` 中新增 `pull` 效果：
+`useTeamKanbanWatcher` 按 `pullPlan(team, { running, teamRunning, unsupported })` 选择拉取节奏：
 
-- 触发条件：本会话 `running` 为真，**或**看板仍有未完成任务；
-- 频率：2.5 s；空闲即停，连续失败 3 次即停（不无限重试）；
-- 取数：`ctx.remote.session.projections({ sessionId })` → `value.values.agentTeam`（宿主现算的整值，不是缓存）；
-- 合并：`freshestTeam(projected, listed, pulled)` 以「任务 `revision` 总和」比新旧，避免过期投影盖住新数据；
+| 节奏 | 条件 |
+|---|---|
+| `fast`（2.5 s） | 有可见任务，且主智能体或任一队友（名册成员 / 进行中任务的负责人）在运行 |
+| `slow`（10 s） | 有未完成任务但没人被确认在运行（子会话状态可能缺失）；或会话在运行但还没有任务，用于发现本轮第一次 `team_task_create` |
+| `off` | 空闲；或某次拉取显示宿主根本没有 `agentTeam` 投影（未装团队功能，`unsupportedSessions`）；或当前是子会话 |
+
+另外：节奏变化或 `running` 跳变时立即拉一次；一轮结束（`running` 1→0）且转为 `off` 时补拉一次收尾；连续失败 3 次即停，`result.ok === false` 也算失败。
+
+- 取数：`ctx.remote.session.projections({ sessionId })` → `value.values.agentTeam`（宿主现算的整值，不是缓存）。
+- 存放：`storeFallbackTeam` 按会话存最近一次拉取，内容不变时保留原对象（视图 memo 不失效），最多 32 个会话（LRU）。
+- 选值：三条来源（`useProjection` face、会话列表快照、拉取）统一走 `useTeamSource` → `newestTeam` → `normalizeTeam`。看板、标签角标、watcher 读的是同一个值，所以角标不会落后于看板。
+  1. 两个值共有的任务里，`revision` 更大的一方更新（单个任务的 revision 只增不减）；
+  2. 判断不出时，取本插件**最晚第一次见到**的值。宿主的投影值只替换不修改，所以「第一次见到」近似于产出时间；每次拉取成功都会重新盖戳，代表宿主「此刻」的值。
+  - 0.3.0 用「revision 总和」比新旧，有三种情况会卡在旧值上：删除任务（被删任务的 revision 从视图里消失，总和变小）、切换 `enabled`、记录 `failure`（后两者不改 revision）。而且缓存在模块级、从不清理，切换会话也纠正不了。
 - 声明：`inject` 必须显式列出 `remote.session`（Cordis 访问子服务的要求），只写 `remote` 会抛 `cannot get property "remote.session" without inject`。
 
-代价与取舍：PRD §「严禁轮询」在此**有意破例**，因为宿主推送通道不可用，且拉取被限制在「运行中/有未完成任务」这一窗口内，空闲与完成后自动停止。
+代价与取舍：PRD §「严禁轮询」在此**有意破例**，因为宿主推送通道不可用。没有团队任务的会话只在运行时以 10 s 低频探测；探测到宿主未提供 `agentTeam` 后就不再探测。
 
 ### 9.3 宿主修复后如何回退
 
 宿主 control stream 恢复推送投影帧后：
 
-1. 删除 `pull` 效果与 `fallbackTeams` / `useFallbackTeam` / `teamWeight` / `freshestTeam`；
-2. `team` 回到 `projectedTeam || listedTeam`；
+1. 删除 watcher 中的拉取效果，以及 `pullPlan` / `storeFallbackTeam` / `fallbackTeams` / `unsupportedSessions`；
+2. `useTeamSource` 只保留 face 与会话列表两条来源（`newestTeam` 仍可用于在两者之间选值）；
 3. `inject` 移除 `remote` / `remote.session`；
 4. 用 T4 场景复核实时性。
 
