@@ -2,6 +2,21 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.1] - 2026-11-15
+
+修复「任务已经建好、看板却一直不出现」的一类静默失败。
+
+### Fixed
+
+- **空闲探测**：`plan === 'off'` 且会话不运行时，挂载或回合结束都会在 0 / 1.2 / 3.6 秒各拉一次宿主投影，再完全静默。原先只靠 `running` 1→0 的那一次收尾拉取，组件一旦重挂载（切换会话、header 重渲染）`wasRunning` ref 归零，收尾拉取就不会发生，而在投影帧不送达的宿主上没有任何其他途径能看见新任务。
+- **打开重试**：`openTabIn` 失败后的重试从 3 次（1.2 秒）扩到 6 次（约 9 秒，覆盖一个 `slow` 周期）；中间的重试不再收起刚展开的右栏，避免闪动；最后一次失败在控制台留下 `gave up opening the board`。
+- **注册撞车不再拖垮整个 bundle**：`sidebarRightTabs.register` 现在被 `try/catch` 包住。同一份 `client.js` 被两个 bundle 条目注册时，宿主会抛 `tab type id ... already registered`，原先这一行会中断 `apply()`，导致 title / body / watcher 的 slot 全都没注入。
+- **失败不再静默**：拉取失败、宿主没有 `agentTeam` 投影、标签类型注册失败，都会打一条 `[team-kanban]` 开头的 `console.warn`。
+
+### Added
+
+- 测试增至 29 项：空闲挂载的探测与随后自动打开、警告只报一次。
+
 ## [0.4.0] - 2026-11-15
 
 更名与开源工程化。功能与 0.3.1 一致。

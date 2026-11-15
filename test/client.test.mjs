@@ -197,7 +197,16 @@ test('the fallback store keeps identity for equal pulls and stays bounded', () =
 
 test('a stored pull clears the unsupported mark', () => {
   const { markUnsupported, unsupportedSessions, storeFallbackTeam } = loadClient();
-  markUnsupported('S');
+  const warn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => { warnings.push(args.join(' ')); };
+  try {
+    markUnsupported('S');
+    markUnsupported('S');
+  } finally {
+    console.warn = warn;
+  }
+  assert.equal(warnings.length, 1, 'the missing projection is reported once per Session');
   assert.ok(unsupportedSessions.has('S'));
   storeFallbackTeam('S', rcTeam());
   assert.ok(!unsupportedSessions.has('S'));

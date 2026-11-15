@@ -389,7 +389,7 @@ DSH 桌面端 `0.2.2-rc.3` 上，客户端**收不到 `Session` 投影的实时�
 
 `ProjectionValueStore` 的 `faceOf('agentTeam').subscribe` 直接订阅（绕开 React）同样一次都没有触发，因此不是组件订阅问题，而是帧没有到达客户端。结果是：投影只在**打开会话时的基线**与**会话列表的 cached 块**时更新，表现为「切走再切回才刷新」。
 
-### 9.2 兜底：有界拉取（0.3.1 修订）
+### 9.2 兜底：有界拉取（0.3.1 修订，0.4.1 补空闲探测）
 
 `useTeamKanbanWatcher` 按 `pullPlan(team, { running, teamRunning, unsupported })` 选择拉取节奏：
 
@@ -399,7 +399,11 @@ DSH 桌面端 `0.2.2-rc.3` 上，客户端**收不到 `Session` 投影的实时�
 | `slow`（10 s） | 有未完成任务但没人被确认在运行（子会话状态可能缺失）；或会话在运行但还没有任务，用于发现本轮第一次 `team_task_create` |
 | `off` | 空闲；或某次拉取显示宿主根本没有 `agentTeam` 投影（未装团队功能，`unsupportedSessions`）；或当前是子会话 |
 
-另外：节奏变化或 `running` 跳变时立即拉一次；一轮结束（`running` 1→0）且转为 `off` 时补拉一次收尾；连续失败 3 次即停，`result.ok === false` 也算失败。
+另外：节奏变化或 `running` 跳变时立即拉一次；连续失败 3 次即停，`result.ok === false` 也算失败。
+
+**空闲探测（0.4.1）**：`plan === 'off'` 且会话不在运行时，不再只依赖「`running` 1→0 的那次收尾拉取」。只要 watcher 处于空闲（挂载即算，含组件重挂载），就在 0 / 1.2 / 3.6 秒各拉一次，然后完全静默。原因是投影帧不送达时，一轮的最后几秒建出的任务没有任何其他途径被看见；而原先的收尾拉取依赖 `wasRunning` ref 经历 1→0，组件一旦重挂载这个 ref 就归零，收尾拉取不会发生。三次探测覆盖宿主 flush 的延迟，同时避免把空闲会话变成轮询器。
+
+**打开重试**：`openTabIn` 首次失败后按 120 / 400 / 1200 / 2500 / 5000 / 9000 ms 重试（共约 9 秒，覆盖一个 `slow` 周期），最后一次失败在控制台留下 `[team-kanban] gave up opening the board`。中间的重试不收起刚刚展开的右栏，避免 6 次开关闪动。
 
 - 取数：`ctx.remote.session.projections({ sessionId })` → `value.values.agentTeam`（宿主现算的整值，不是缓存）。
 - 存放：`storeFallbackTeam` 按会话存最近一次拉取，内容不变时保留原对象（视图 memo 不失效），最多 32 个会话（LRU）。

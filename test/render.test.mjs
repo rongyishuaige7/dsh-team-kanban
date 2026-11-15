@@ -175,6 +175,32 @@ test('watcher pulls, stores the value, and asks to open the board', async () => 
   }
 });
 
+test('an idle session probes once and opens a board created in its last turn', async () => {
+  /* No frame ever reaches the client on rc.3, so a turn that creates its first
+     task just before it ends leaves the watcher with a stale empty value. The
+     idle probe is what makes that case visible at all. */
+  const { plugin, slots, effects, opened } = boot({ agentTeam: rcTeam });
+  const props = sessionProps(undefined, { running: false });
+  slots['conversation.session.header.actions'](props);
+
+  const cleanups = effects.map((effect) => effect()).filter((cleanup) => typeof cleanup === 'function');
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  try {
+    assert.equal(plugin.__internals.readFallbackTeam('S-lead').tasks.length, 3);
+
+    const before = effects.length;
+    slots['conversation.session.header.actions'](props);
+    const late = effects.slice(before).map((effect) => effect()).filter((cleanup) => typeof cleanup === 'function');
+    try {
+      assert.deepEqual(opened[0], ['S-lead', 'dsh-team-kanban.board']);
+    } finally {
+      late.forEach((cleanup) => cleanup());
+    }
+  } finally {
+    cleanups.forEach((cleanup) => cleanup());
+  }
+});
+
 test('a chip left under the 0.3.x kind is closed and replaced', async () => {
   const tabs = [{ id: 'legacy-1', kind: 'team-board', sessionId: 'S-lead' }];
   const { slots, effects, opened, closed } = boot({ agentTeam: rcTeam }, { tabs });
@@ -191,14 +217,22 @@ test('a chip left under the 0.3.x kind is closed and replaced', async () => {
 });
 
 test('watcher marks a host without the Team projection and stops discovering', async () => {
-  const { plugin, slots, effects } = boot({ title: 'no team here' });
-  const props = sessionProps(undefined, { running: true });
-  slots['conversation.session.header.actions'](props);
-  const cleanups = effects.map((effect) => effect()).filter((cleanup) => typeof cleanup === 'function');
-  await new Promise((resolve) => setImmediate(resolve));
+  const warnings = [];
+  const warn = console.warn;
+  console.warn = (...args) => { warnings.push(args.join(' ')); };
   try {
-    assert.ok(plugin.__internals.unsupportedSessions.has('S-lead'));
+    const { plugin, slots, effects } = boot({ title: 'no team here' });
+    const props = sessionProps(undefined, { running: true });
+    slots['conversation.session.header.actions'](props);
+    const cleanups = effects.map((effect) => effect()).filter((cleanup) => typeof cleanup === 'function');
+    await new Promise((resolve) => setImmediate(resolve));
+    try {
+      assert.ok(plugin.__internals.unsupportedSessions.has('S-lead'));
+      assert.ok(warnings.some((line) => line.includes('agentTeam')), 'the missing projection is reported once');
+    } finally {
+      cleanups.forEach((cleanup) => cleanup());
+    }
   } finally {
-    cleanups.forEach((cleanup) => cleanup());
+    console.warn = warn;
   }
 });

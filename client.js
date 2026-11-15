@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.4.0';
+    const CLIENT_REV = '0.4.1';
     const TAB_ID = PKG;
     /* Namespaced on purpose: the host turns a kind into the opaque page
        address `sidebar://<kind>`, and a bare `team-board` would be the first
@@ -526,6 +526,7 @@ window.__ModuleLoader__.load({
     function markUnsupported(sessionId) {
       if (unsupportedSessions.has(sessionId)) return;
       unsupportedSessions.add(sessionId);
+      console.warn('[team-kanban] this Host serves no agentTeam projection for', sessionId, '- stopping discovery for it');
       notifyFallback(sessionId, true);
     }
 
@@ -1478,36 +1479,44 @@ window.__ModuleLoader__.load({
         teamRunning,
         unsupported: unsupportedSessions.has(sessionId),
       });
-      const wasRunning = useRef(false);
 
       /* Bounded pull of the Host's current values on the cadence `pullPlan`
-         picks; an idle board costs nothing. This is the fallback for the
-         control stream that never lands a projection frame on desktop
+         picks; an idle board normally costs nothing. This is the fallback for
+         the control stream that never lands a projection frame on desktop
          0.2.2-rc.3. */
       useEffect(() => {
-        const settled = wasRunning.current && runningNow !== 1;
-        wasRunning.current = runningNow === 1;
-        /* A turn that just ended may have created its first task inside the
-           last slow interval: one closing pull settles it. */
-        const once = plan === 'off' && settled && !child && !unsupportedSessions.has(sessionId);
-        if (plan === 'off' && !once) return undefined;
+        if (child) return undefined;
+        if (unsupportedSessions.has(sessionId)) return undefined;
+        /* Idle is not the same as "nothing happened". A turn can create its
+           first task in the last second before `running` flips to 0, and the
+           frame that would announce it never reaches this client. Mounting an
+           idle Session, or ending a turn, therefore asks the Host a bounded
+           number of times instead of trusting the last value it happened to
+           hold. Bounded on purpose: an idle board must not become a poller. */
+        const settle = plan === 'off' && runningNow !== 1;
+        if (plan === 'off' && !settle) return undefined;
+
         let live = true;
         let busy = false;
         let failures = 0;
+        let reported = false;
         let timer = 0;
         const stop = () => {
           live = false;
+          clearTimeout(timer);
           clearInterval(timer);
         };
         const pull = async () => {
           if (busy || !live) return;
           busy = true;
           let values;
+          let failure;
           try {
             const result = await ctx.remote.session.projections({ sessionId });
             values = result && result.ok && result.value ? result.value.values : undefined;
+            if (!result || result.ok !== true) failure = result && result.error ? result.error.message : 'the Host rejected the read';
           } catch (error) {
-            values = undefined;
+            failure = error && error.message ? error.message : String(error);
           }
           busy = false;
           if (!live) return;
@@ -1523,10 +1532,25 @@ window.__ModuleLoader__.load({
           /* A host that rejects the read stays rejected until the Session
              changes state; stop hammering it after a few tries. */
           failures += 1;
+          if (!reported) {
+            reported = true;
+            console.warn('[team-kanban] could not pull projections for', sessionId, '-', failure || 'no values returned');
+          }
           if (failures >= 3) stop();
         };
+
+        if (settle) {
+          /* 0 s catches a projection that landed while the view was closed,
+             1.2 s and 3.6 s catch a task record the Host flushed just after
+             the turn ended. Then the board goes quiet again. */
+          const probes = [0, 1200, 3600].map((delay) => setTimeout(pull, delay));
+          return () => {
+            live = false;
+            probes.forEach(clearTimeout);
+          };
+        }
+
         pull();
-        if (once) return stop;
         timer = setInterval(pull, plan === 'fast' ? PULL_FAST_MS : PULL_SLOW_MS);
         return stop;
       }, [ctx, sessionId, child, plan, runningNow]);
@@ -1582,7 +1606,8 @@ window.__ModuleLoader__.load({
            to expand. `shell/SidebarRight.tsx` folds `expanded` straight back
            while `canShow` (rightbar track width > 0) is still false, so opening
            the tab alone can never slide a closed column out. */
-        const attemptOpen = () => {
+        let lastOpenError = null;
+        const attemptOpen = (keepColumn) => {
           if (findBoardTab()) return true;
           const layout = ctx.layout;
           try {
@@ -1593,24 +1618,41 @@ window.__ModuleLoader__.load({
           try {
             ctx.sidebarRight.openTabIn(sessionId, KIND);
           } catch (error) {
-            /* Type not registered yet, or this Session's surface is unadopted. */
+            lastOpenError = error;
           }
           if (findBoardTab()) return true;
+          if (keepColumn) return false;
           try {
             if (layout && typeof layout.closeRightbar === 'function') layout.closeRightbar();
           } catch (error) {}
           return false;
         };
 
-        if (attemptOpen()) {
+        if (attemptOpen(false)) {
           openConfirmed.set(sessionId, true);
           return undefined;
         }
 
-        const timers = [120, 400, 1200].map((delay) =>
+        /* A freshly adopted Session mounts its right-sidebar controller a
+           moment after the watcher, and a session opened straight from the
+           launcher may take a beat longer still. Keep asking for the length of
+           one slow pull instead of giving up after 1.2 s: the tab is the only
+           surface this plugin has, so a silent miss is a dead feature. */
+        const delays = [120, 400, 1200, 2500, 5000, 9000];
+        const timers = delays.map((delay, index) =>
           setTimeout(() => {
             if (dismissedSessions.has(sessionId)) return;
-            if (attemptOpen()) openConfirmed.set(sessionId, true);
+            const last = index === delays.length - 1;
+            if (attemptOpen(!last)) {
+              openConfirmed.set(sessionId, true);
+              return;
+            }
+            if (last) {
+              console.warn('[team-kanban] gave up opening the board for', sessionId, '-',
+                lastOpenError && lastOpenError.message
+                  ? lastOpenError.message
+                  : 'the tab type is registered but this Session never adopted it');
+            }
           }, delay)
         );
 
@@ -2879,12 +2921,23 @@ window.__ModuleLoader__.load({
         };
       }, 'team-kanban: styles');
 
-      ctx.effect(() => ctx.sidebarRightTabs.register({
-        id: TAB_ID,
-        kind: KIND,
-        priority: 'extension',
-        title: () => t('tab.title'),
-      }), 'team-kanban: tab type');
+      /* A duplicate registration (two bundle rows pointing at the same
+         package, or another plugin holding this id) throws from the registry.
+         Catching it keeps the title, body and watcher slots alive and makes
+         the failure visible instead of folding the whole bundle. */
+      ctx.effect(() => {
+        try {
+          return ctx.sidebarRightTabs.register({
+            id: TAB_ID,
+            kind: KIND,
+            priority: 'extension',
+            title: () => t('tab.title'),
+          });
+        } catch (error) {
+          console.warn('[team-kanban] could not register the sidebar tab type -', error && error.message ? error.message : error);
+          return () => {};
+        }
+      }, 'team-kanban: tab type');
 
       ctx.effect(() => {
         try {

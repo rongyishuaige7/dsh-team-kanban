@@ -62,6 +62,15 @@ dsh plugin --profile desktop remove @local/dsh-client-ui-team-kanban
 dsh plugin --profile desktop add /path/to/dsh-team-kanban
 ```
 
+`dsh plugin` 只转发给 pnpm，**不会**清理 profile 自己的配置。装完请核对两处，否则同一份 `client.js` 会被注册两次，第二次注册会撞上宿主「tab type id already registered」并中断该实例的 watcher：
+
+- `~/.dsh/profiles/desktop/package.json`
+  - `dependencies` 与 `dsh.profile.bundles` 里都不应再有 `@local/dsh-client-ui-team-kanban`
+- `~/.dsh/profiles/desktop/cordis.patch.yml`
+  - 删掉 `# >>> 智能体任务板 (@local/dsh-client-ui-team-kanban) >>>` 到 `# <<< 智能体任务板 <<<` 那几行
+
+然后 ⌘Q 完全退出 DSH（不是关窗口）再打开，确认 `window.__teamKanbanRev`。0.4.1 起，注册撞车会在控制台留下 `[team-kanban] could not register the sidebar tab type` 的警告，不再静默。
+
 ## 兼容性
 
 | 宿主版本 | 状态 |
@@ -84,7 +93,7 @@ client.js               Client 侧 bundle：注册标签类型 team kind、标�
 
 - **数据**：`useProjection('agentTeam')` 是唯一事实源；队友名册与运行态来自 `agentTeam.members` / `subagentCatalog` / `useSessionStatus`。
 - **统一入口**：三条来源（投影 face、会话列表快照、兜底拉取）都经 `newestTeam` → `normalizeTeam` 汇聚成一个值，看板与角标读同一份，不会互相落后。
-- **兜底拉取**：因为上面那个宿主缺陷，watcher 按 `pullPlan` 有节奏地补拉——有人干活时 2.5s，有未完成任务但没人在跑时 10s，空闲 / 子会话 / 宿主没装团队功能时完全不拉。
+- **兜底拉取**：因为上面那个宿主缺陷，watcher 按 `pullPlan` 有节奏地补拉——有人干活时 2.5s，有未完成任务但没人在跑时 10s。空闲或子会话不做周期轮询，但挂载和每轮结束时各做三次有界探测（0 / 1.2 / 3.6 秒），兜住「回合最后一秒才建出第一个任务、而投影帧根本没送到」的情况；宿主没装团队功能时探测一次就停。
 - **样式**：`ctx.effect` 注入 `<style data-plugin="dsh-team-kanban">`，卸载时移除；所有类名走 `.tkb-*` 前缀，语言包走独立命名空间 `teamKanban`。
 
 ## 隐私与边界
@@ -100,7 +109,7 @@ Node ≥ 20，无第三方依赖，无构建步骤——`client.js` 是手写的
 
 ```bash
 npm run check   # node --check 两个入口
-npm test        # node:test，28 项：纯函数、双结构渲染冒烟、清单一致性、旧标签清理
+npm test        # node:test，29 项：纯函数、双结构渲染冒烟、清单一致性、旧标签清理、空闲探测
 ```
 
 测试用假的 `__ModuleLoader__` 加载 `client.js`，用 hook 形状的 React 替身走完渲染路径，不需要浏览器或宿主。
@@ -119,7 +128,7 @@ dsh-team-kanban/
 
 ## 已知限制
 
-- 桌面端投影帧不推送（宿主缺陷），实时性靠有界拉取兜底；首个任务出现最坏会晚约 10 秒才弹出看板。
+- 桌面端投影帧不推送（宿主缺陷），实时性靠有界拉取兜底：回合中新建的任务最坏要等一个 10 秒慢周期，回合结束后建立的约 1–4 秒内出现。
 - 只读：不能在界面里建任务、认领、改状态——这些仍走 `team_task_*` 与对话。
 - 只在根会话显示，与官方顶部 `TeamBoard` 的范围一致。
 
