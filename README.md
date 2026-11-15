@@ -34,6 +34,10 @@ A living three-column kanban board for [DeepSeek Harness](https://github.com/dee
 
 ## 视觉预览
 
+![任务板：右侧栏三列看板](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/board.png)
+
+*真实截图：DSH `0.2.2-rc.3` 桌面端，右侧栏拉宽后的三列布局。这一轮四个任务已全部完成，所以前两列为空。*
+
 仓库里的 [`prototype/team-kanban-prototype.html`](prototype/team-kanban-prototype.html) 是一个零依赖的离线原型（假数据 + 真实动效），直接用浏览器打开即可看到看板形态与动效，不需要安装插件。
 
 ## 安装
@@ -44,7 +48,7 @@ A living three-column kanban board for [DeepSeek Harness](https://github.com/dee
 # 本地目录（开发中）
 dsh plugin --profile desktop add /path/to/dsh-team-kanban
 
-# npm（0.4.0 尚未发布，发布后可用）
+# npm（尚未发布，发布后可用）
 dsh plugin --profile desktop add dsh-team-kanban
 
 # git

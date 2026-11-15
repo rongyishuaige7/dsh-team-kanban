@@ -14,6 +14,7 @@
 ### Changed
 
 - README 兼容表从「开发基线」改为「已验证：T3/T4」，路线图改为补齐 T1/T2/T5/T6。
+- README 增加 `docs/assets/board.png`：DSH 0.2.2-rc.3 桌面端的真实截图。
 
 ## [0.4.2] - 2026-11-15
 
