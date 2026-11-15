@@ -364,8 +364,46 @@ window.__ModuleLoader__.load({
     function TeamKanbanBoard(props) {
       const { sessionId, runtime, useProjection, useSessions, useSessionStatus, useTabInfo, t } = props;
 
-      const team = useProjection('agentTeam');
-      const catalog = useProjection('subagentCatalog');
+      /* Two live roads to the same finished projection value:
+         - `useProjection` binds the per-key session face (same-tick),
+         - the session-list projection snapshot is rebuilt by the manager on
+           every push frame and therefore guarantees a React notification in
+           the sidebar/header slots where the per-key face has been observed
+           not to repaint.
+         The list snapshot wins whenever it carries the key; the per-key face
+         only covers the brief window before the first list rebuild. */
+      const projectedTeam = useProjection('agentTeam');
+      const projectedCatalog = useProjection('subagentCatalog');
+      const listedTeam = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
+      const listedCatalog = useSessions((state) => state.projectionsBySession[sessionId]?.values.subagentCatalog);
+      const team = listedTeam !== undefined ? listedTeam : projectedTeam;
+      const catalog = listedCatalog !== undefined ? listedCatalog : projectedCatalog;
+      /* The host may publish a new wrapper around the same task objects, or
+         reuse an array while replacing members. The memo below must follow the
+         task data itself, not only the container identity, or the board keeps
+         its first model after a status transition. */
+      const teamSignature = team && Array.isArray(team.tasks)
+        ? [
+          team.enabled === true ? '1' : '0',
+          team.failure === undefined ? '' : String(team.failure),
+          ...team.tasks.map((task) => (task && task.status !== 'deleted'
+            ? [
+              task.id,
+              task.status,
+              task.revision,
+              task.ready ? 1 : 0,
+              task.ownerId || '',
+              task.subject || '',
+              Array.isArray(task.blockedBy) ? task.blockedBy.join(',') : '',
+            ].join(':')
+            : '')),
+        ].join('|')
+        : 'absent';
+      const catalogSignature = Array.isArray(catalog)
+        ? catalog.map((entry) => (entry
+          ? [entry.id, entry.label || '', entry.name || '', entry.mode || ''].join(':')
+          : '')).join('|')
+        : 'absent';
       const statuses = useSessionStatus(selectStatusMap);
       const summaries = useSessions(selectSummaries);
       const tabInfo = useTabInfo();
@@ -389,7 +427,7 @@ window.__ModuleLoader__.load({
 
       const model = useMemo(
         () => buildModel(team, catalog, statuses, summaries, sessionId),
-        [team, catalog, statuses, summaries, sessionId],
+        [team, teamSignature, catalog, catalogSignature, statuses, summaries, sessionId],
       );
 
       useEffect(() => {
@@ -1010,8 +1048,12 @@ window.__ModuleLoader__.load({
      * Tab chip title
      * ------------------------------------------------------------------ */
 
-    function TeamKanbanTitle({ useProjection, t }) {
-      const team = useProjection('agentTeam');
+    function TeamKanbanTitle({ sessionId, useProjection, useSessions, t }) {
+      /* Same live source as the board: the session-list projection snapshot is
+         republished by the manager on every push frame. */
+      const projected = useProjection('agentTeam');
+      const listed = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
+      const team = listed !== undefined ? listed : projected;
       const tasks = team && team.enabled === true && Array.isArray(team.tasks)
         ? team.tasks.filter((task) => task && task.status !== 'deleted')
         : EMPTY;
@@ -1068,7 +1110,36 @@ window.__ModuleLoader__.load({
         [sessionId],
       );
       const listedChild = useSessions(selectListedChild);
-      const team = useProjection('agentTeam');
+      const projectedTeam = useProjection('agentTeam');
+      const listedTeam = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
+      const team = listedTeam !== undefined ? listedTeam : projectedTeam;
+
+      /* The right-sidebar controller may adopt this Session's store only after
+         its own seat mounts. Its on-screen Session source is the public signal
+         for that handshake; watch it so a first open attempt that ran too early
+         is retried without waiting for a Session switch. */
+      const mounted = React.useSyncExternalStore(
+        useCallback((notify) => {
+          try {
+            const store = ctx.sidebarRight.mounted;
+            return store && typeof store.subscribe === 'function'
+              ? store.subscribe(notify)
+              : () => {};
+          } catch (error) {
+            return () => {};
+          }
+        }, [ctx]),
+        useCallback(() => {
+          try {
+            const store = ctx.sidebarRight.mounted;
+            return store && typeof store.getSnapshot === 'function'
+              ? store.getSnapshot()
+              : undefined;
+          } catch (error) {
+            return undefined;
+          }
+        }, [ctx]),
+      );
 
       let shouldShow = false;
       let signature = 'pending';
@@ -1150,15 +1221,36 @@ window.__ModuleLoader__.load({
 
         if (attempt()) return undefined;
 
-        /* One bounded retry while the right-sidebar store adopts this Session.
-           This is a mount handshake, not a polling loop. */
-        if (typeof requestAnimationFrame !== 'function') return undefined;
-        const frame = requestAnimationFrame(() => {
+        /* Bounded mount handshake: the right-sidebar store may adopt this
+           Session a few frames after the task projection arrives. Retry a
+           handful of times, then leave further attempts to the next projection
+           or mounted-session change. This is not a polling loop: there is no
+           repeating interval and the tab's own projection is the data source. */
+        const timers = [];
+        let frame = 0;
+        const stop = () => {
+          if (frame) {
+            cancelAnimationFrame(frame);
+            frame = 0;
+          }
+          timers.forEach((id) => clearTimeout(id));
+          timers.length = 0;
+        };
+        const retry = () => {
+          if (openConfirmed.get(sessionId) === true) return;
           if (dismissedSessions.has(sessionId)) return;
+          if (findBoardTab()) {
+            openConfirmed.set(sessionId, true);
+            return;
+          }
           attempt();
+        };
+        if (typeof requestAnimationFrame === 'function') frame = requestAnimationFrame(retry);
+        [120, 400, 900].forEach((delay) => {
+          timers.push(setTimeout(retry, delay));
         });
-        return () => cancelAnimationFrame(frame);
-      }, [sessionId, addressedChild, listedChild, shouldShow, signature, team, ctx]);
+        return stop;
+      }, [sessionId, addressedChild, listedChild, shouldShow, signature, team, ctx, mounted]);
 
       return null;
     }
