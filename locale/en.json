@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Agent team kanban",
+    "description": "Displays a read-only three-column kanban board in the right sidebar for the current session's shared team tasks and teammate activity."
+  }
+}
