@@ -1344,22 +1344,13 @@ window.__ModuleLoader__.load({
      * ------------------------------------------------------------------ */
 
     const CSS = String.raw`
-/* =====================================================================
-   2. 看板插件样式 —— 与正式 client.js 注入的 <style> 一致
-      全新高阶动态视觉语言（Hyper-Refined Modern Motion & Living UI）
-      规则：只引用 --dsw-alias-* / --dsw-radius-*，派生色一律 color-mix
-   ===================================================================== */
-@property --tkb-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
-@property --tkb-sweep { syntax: "<percentage>"; inherits: false; initial-value: -100%; }
-
 .tkb-root, .tkb-title {
-  --tkb-d1: calc(140ms );
-  --tkb-d2: calc(240ms );
-  --tkb-d3: calc(480ms );
-  --tkb-d4: calc(1400ms );
+  --tkb-d1: calc(140ms);
+  --tkb-d2: calc(240ms);
+  --tkb-d3: calc(480ms);
+  --tkb-d4: calc(1400ms);
   --tkb-ease: cubic-bezier(.2, .8, .2, 1);
   --tkb-ease-spring: cubic-bezier(.34, 1.42, .64, 1);
-  --tkb-ease-out-back: cubic-bezier(.175, .885, .32, 1.275);
   --tkb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   --tkb-c-pending: var(--dsw-alias-state-idle-primary);
   --tkb-c-active: var(--dsw-alias-state-business-primary);
@@ -1410,14 +1401,6 @@ window.__ModuleLoader__.load({
 }
 
 /* =====================================================================
-   数字与指标微动效
-   ===================================================================== */
-.tkb-roll { display: inline-flex; font-variant-numeric: tabular-nums; }
-.tkb-roll__c { position: relative; display: inline-block; overflow: hidden; line-height: 1.15; vertical-align: top; }
-.tkb-roll__in { display: inline-block; animation: tkb-num-in 340ms var(--tkb-ease) both; }
-.tkb-roll__out { position: absolute; left: 0; top: 0; }
-
-/* =====================================================================
    顶部全局状态条（Omni Header & Quantum Fuel Strip）
    ===================================================================== */
 .tkb-head {
@@ -1444,6 +1427,7 @@ window.__ModuleLoader__.load({
   font-weight: 700;
   letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
+  animation: tkb-num-in 300ms var(--tkb-ease-spring) both;
   transition: color var(--tkb-d3) var(--tkb-ease);
 }
 .tkb-score__total {
@@ -1471,7 +1455,7 @@ window.__ModuleLoader__.load({
   border-radius: 6px;
   background: var(--dsw-alias-bg-layer-1);
   border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l1) 60%, transparent);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
 }
 .tkb-slot {
   position: relative;
@@ -1521,10 +1505,10 @@ window.__ModuleLoader__.load({
 .tkb-slot[data-s="active"] .tkb-slot__bar {
   background: linear-gradient(90deg,
     var(--tkb-c-active) 0%,
-    color-mix(in srgb, var(--tkb-c-active) 65%, #fff) 50%,
+    color-mix(in srgb, var(--tkb-c-active) 65%, var(--dsw-alias-label-primary)) 50%,
     var(--tkb-c-active) 100%);
   background-size: 200% 100%;
-  animation: tkb-shimmer calc(2200ms ) linear infinite;
+  animation: tkb-shimmer calc(2200ms) linear infinite;
   box-shadow: 0 0 10px color-mix(in srgb, var(--tkb-c-active) 55%, transparent);
 }
 .tkb-slot[data-s="done"] .tkb-slot__bar {
@@ -1532,16 +1516,15 @@ window.__ModuleLoader__.load({
   box-shadow: 0 0 6px color-mix(in srgb, var(--tkb-c-done) 35%, transparent);
 }
 
-/* 全达成极光庆典 (Aurora Sweep) */
+/* 全达成极光庆典 (单次扫光，平息后留存微光，不无限死循环) */
 .tkb-root[data-alldone] .tkb-head::before {
   content: "";
   position: absolute;
   inset: 0;
   background: radial-gradient(ellipse 90% 100% at 20% 0%,
-    color-mix(in srgb, var(--tkb-c-done) 18%, transparent) 0%,
+    color-mix(in srgb, var(--tkb-c-done) 16%, transparent) 0%,
     transparent 70%);
   pointer-events: none;
-  animation: tkb-aurora-glow 4000ms ease-in-out infinite alternate;
 }
 .tkb-root[data-alldone] .tkb-head::after {
   content: "";
@@ -1549,10 +1532,10 @@ window.__ModuleLoader__.load({
   top: 0; left: -100%; width: 50%; height: 100%;
   background: linear-gradient(90deg,
     transparent 0%,
-    color-mix(in srgb, var(--tkb-c-done) 22%, transparent) 50%,
+    color-mix(in srgb, var(--tkb-c-done) 24%, transparent) 50%,
     transparent 100%);
   transform: skewX(-20deg);
-  animation: tkb-aurora-sweep calc(3600ms ) ease-in-out infinite;
+  animation: tkb-aurora-sweep calc(2600ms) ease-out 1 forwards;
   pointer-events: none;
 }
 
@@ -1567,7 +1550,7 @@ window.__ModuleLoader__.load({
   min-width: 0;
   max-width: calc(100% - 140px);
   overflow: clip;
-  overflow-clip-margin: 6px;
+  overflow-clip-margin: 8px;
 }
 .tkb-mates__empty {
   font-size: 11px;
@@ -1605,7 +1588,7 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-secondary);
   white-space: nowrap;
 }
-.tkb-root[data-spot] .tkb-mc:not(.is-spot) { opacity: .35; filter: grayscale(30%); }
+.tkb-root[data-spot] .tkb-mc:not(.is-spot) { opacity: .35; filter: saturate(0.6); }
 .tkb-mc.is-pinned .tkb-mate {
   background: color-mix(in srgb, var(--tkb-c-active) 25%, var(--dsw-alias-bg-layer-2));
   color: var(--tkb-c-active);
@@ -1639,18 +1622,19 @@ window.__ModuleLoader__.load({
   border-radius: 7px;
   background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, var(--dsw-alias-bg-layer-2));
 }
+/* 纯 GPU 合成层旋转极光环 (transform: rotate，零 Repaint) */
 .tkb-mate::before {
   content: "";
   position: absolute;
-  inset: -3.5px;
-  border-radius: 50%;
+  inset: -3px;
+  border-radius: inherit;
   padding: 1.5px;
   pointer-events: none;
-  background: conic-gradient(from var(--tkb-angle),
-    transparent 0% 30%,
-    color-mix(in srgb, var(--tkb-c-active) 35%, transparent) 55%,
-    var(--tkb-c-active) 92%,
-    transparent 100%);
+  background: conic-gradient(
+    transparent 0deg 110deg,
+    color-mix(in srgb, var(--tkb-c-active) 35%, transparent) 200deg,
+    var(--tkb-c-active) 330deg,
+    transparent 360deg);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -1660,7 +1644,7 @@ window.__ModuleLoader__.load({
 .tkb-mate[data-lead]::before { border-radius: 10px; }
 .tkb-mate[data-running]::before {
   opacity: 1;
-  animation: tkb-orbit calc(2200ms ) linear infinite;
+  animation: tkb-spin calc(2200ms) linear infinite;
 }
 .tkb-mate[data-none] {
   background: transparent;
@@ -1683,9 +1667,9 @@ window.__ModuleLoader__.load({
 .tkb-mate[data-running] .tkb-mate__dot {
   background: var(--tkb-c-active);
   box-shadow: 0 0 8px var(--tkb-c-active), 0 0 0 2px var(--dsw-alias-bg-base);
-  animation: tkb-blink calc(1400ms ) ease-in-out infinite;
+  animation: tkb-blink calc(1400ms) ease-in-out infinite;
 }
-/* 智能体运行态：声呐外扩雷达波纹 */
+/* 智能体运行态：声呐外扩雷达波纹（收敛尺度 + 提前淡出，杜绝边缘切平） */
 .tkb-mate[data-running]::after {
   content: "";
   position: absolute;
@@ -1693,7 +1677,7 @@ window.__ModuleLoader__.load({
   border-radius: inherit;
   border: 1.5px solid var(--tkb-c-active);
   pointer-events: none;
-  animation: tkb-sonar-ping calc(2200ms ) cubic-bezier(0, .2, .8, 1) infinite;
+  animation: tkb-sonar-ping calc(2200ms) cubic-bezier(0, .2, .8, 1) infinite;
 }
 
 /* =====================================================================
@@ -1776,7 +1760,7 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-tertiary);
   background: var(--dsw-alias-bg-layer-1);
   font-variant-numeric: tabular-nums;
-  transition: transform var(--tkb-d1) var(--tkb-ease-spring), color var(--tkb-d2);
+  transition: color var(--tkb-d2);
 }
 .tkb-lane[data-empty] .tkb-lane__head { color: var(--dsw-alias-label-tertiary); }
 .tkb-lane[data-empty] .tkb-lane__count { opacity: .55; }
@@ -1834,20 +1818,19 @@ window.__ModuleLoader__.load({
   cursor: pointer;
   outline: none;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.01);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
   transition: transform var(--tkb-d2) var(--tkb-ease),
               box-shadow var(--tkb-d2) var(--tkb-ease),
               background-color var(--tkb-d1) var(--tkb-ease),
               border-color var(--tkb-d2) var(--tkb-ease),
               opacity var(--tkb-d2) var(--tkb-ease);
-  will-change: transform, box-shadow;
 }
 .tkb-card:hover {
   transform: translateY(-2px);
   background: var(--dsw-alias-card-fill-hover);
   border-color: color-mix(in srgb, var(--dsw-alias-border-l2) 80%, transparent);
-  box-shadow: 0 8px 20px -3px color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent),
-              0 2px 6px -1px color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
+  box-shadow: 0 8px 20px -3px color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent),
+              0 2px 6px -1px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
 }
 .tkb-card:active {
   transform: translateY(-0.5px) scale(0.997);
@@ -1947,11 +1930,11 @@ window.__ModuleLoader__.load({
 .tkb-card__live-dot::after {
   content: "";
   position: absolute;
-  inset: -3.5px;
+  inset: -3px;
   border-radius: 50%;
   border: 1.5px solid var(--tkb-c-active);
   pointer-events: none;
-  animation: tkb-sonar-ping calc(1800ms ) cubic-bezier(0, .2, .8, 1) infinite;
+  animation: tkb-sonar-ping calc(1800ms) cubic-bezier(0, .2, .8, 1) infinite;
 }
 
 .tkb-card__title {
@@ -1999,48 +1982,28 @@ window.__ModuleLoader__.load({
 }
 
 /* ---------------------------------------------------------------------
-   状态 2：进行中（In Progress）—— 量子流光边缘与算力呼吸
+   状态 2：进行中（In Progress）—— 算力呼吸与能量流槽
    --------------------------------------------------------------------- */
 .tkb-card[data-status="in_progress"] {
   background: radial-gradient(130% 90% at 0% 0%,
     color-mix(in srgb, var(--tkb-c-active) 12%, var(--dsw-alias-card-fill)) 0%,
     var(--dsw-alias-card-fill) 90%);
   border-color: color-mix(in srgb, var(--tkb-c-active) 32%, var(--dsw-alias-border-l1));
-  box-shadow: 0 4px 18px -2px color-mix(in srgb, var(--tkb-c-active) 15%, transparent),
-              0 1px 3px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 16px -2px color-mix(in srgb, var(--tkb-c-active) 15%, transparent);
 }
 .tkb-card[data-status="in_progress"]:hover {
   background: radial-gradient(130% 90% at 0% 0%,
     color-mix(in srgb, var(--tkb-c-active) 16%, var(--dsw-alias-card-fill-hover)) 0%,
     var(--dsw-alias-card-fill-hover) 90%);
-  box-shadow: 0 10px 26px -3px color-mix(in srgb, var(--tkb-c-active) 22%, transparent),
-              0 3px 8px color-mix(in srgb, var(--tkb-c-active) 8%, transparent);
+  box-shadow: 0 10px 24px -3px color-mix(in srgb, var(--tkb-c-active) 22%, transparent);
 }
 
-/* 运行中卡片四周量子极光光束 (Aurora Orbital Stream) */
-.tkb-card[data-status="in_progress"][data-live]::before {
-  content: "";
-  position: absolute;
-  inset: -1.5px;
-  border-radius: calc(var(--dsw-radius-md) + 1px);
-  padding: 1.5px;
-  background: conic-gradient(from var(--tkb-angle),
-    transparent 0deg,
-    color-mix(in srgb, var(--tkb-c-active) 40%, transparent) 80deg,
-    var(--tkb-c-active) 150deg,
-    color-mix(in srgb, var(--tkb-c-active) 85%, #fff) 180deg,
-    transparent 220deg,
-    transparent 360deg);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  animation: tkb-orbit calc(3200ms ) linear infinite;
-  opacity: 0.9;
-  z-index: 2;
+/* 运行中卡片算力心跳呼吸动效 */
+.tkb-card[data-status="in_progress"][data-live] {
+  animation: tkb-hearth-breathe calc(3600ms) ease-in-out infinite alternate;
 }
 
-/* 左侧能量槽 */
+/* 左侧能量槽与粒子流光 */
 .tkb-card__rail {
   position: absolute;
   left: -1px;
@@ -2064,17 +2027,17 @@ window.__ModuleLoader__.load({
   position: absolute;
   left: 0; right: 0; top: 0; height: 60%;
   opacity: 0;
-  background: linear-gradient(to bottom, transparent, #fff 50%, transparent);
+  background: linear-gradient(to bottom, transparent, var(--dsw-alias-label-primary) 50%, transparent);
   transform: translateY(-100%);
   transition: opacity var(--tkb-d3) var(--tkb-ease);
 }
 .tkb-card[data-live] .tkb-card__rail::after {
   opacity: 1;
-  animation: tkb-flow calc(1600ms ) cubic-bezier(.45, 0, .55, 1) infinite;
+  animation: tkb-flow calc(1600ms) cubic-bezier(.45, 0, .55, 1) infinite;
 }
 
 /* ---------------------------------------------------------------------
-   状态 3：已完成（Completed）—— 紧凑晶体与胜利定格
+   状态 3：已完成（Completed）—— 紧凑晶体、弹性勾选与晶体扫光
    --------------------------------------------------------------------- */
 .tkb-card[data-status="completed"] {
   grid-template-columns: auto auto minmax(0, 1fr) auto;
@@ -2085,18 +2048,50 @@ window.__ModuleLoader__.load({
   background: color-mix(in srgb, var(--dsw-alias-card-fill) 60%, transparent);
   border-color: color-mix(in srgb, var(--dsw-alias-border-l1) 50%, transparent);
   box-shadow: none;
+  position: relative;
+  overflow: hidden;
 }
 .tkb-card[data-status="completed"]:hover {
   background: var(--dsw-alias-card-fill-hover);
   border-color: var(--dsw-alias-border-l2);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
+  box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
 }
 .tkb-card[data-status="completed"][data-expanded] {
   background: var(--dsw-alias-bg-layer-1);
   border-color: var(--dsw-alias-border-l2);
 }
 .tkb-card[data-status="completed"] .tkb-card__glyph { display: block; }
+.tkb-card[data-status="completed"] .tkb-glyph--completed {
+  animation: tkb-spring-pop 420ms var(--tkb-ease-spring) both;
+}
+.tkb-card[data-status="completed"] .tkb-glyph__check {
+  stroke-dasharray: 10;
+  stroke-dashoffset: 10;
+  animation: tkb-draw-check 360ms var(--tkb-ease) 80ms both;
+}
+
+/* 完成态 45° 晶体抛光横扫 (Phosphor Sweep) 真实生效 */
+.tkb-card[data-status="completed"]::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 35%;
+  height: 200%;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--tkb-c-done) 30%, transparent) 50%,
+    transparent 100%);
+  transform: rotate(25deg) translateX(-150%);
+  pointer-events: none;
+  opacity: 0;
+}
+.tkb-card[data-status="completed"]:hover::after,
+.tkb-card[data-status="completed"].is-flash::after {
+  animation: tkb-glint-pass 700ms var(--tkb-ease) 1;
+}
+
 .tkb-card[data-status="completed"] .tkb-card__deps,
 .tkb-card[data-status="completed"] .tkb-card__preview,
 .tkb-card[data-status="completed"] .tkb-card__owner-name { display: none !important; }
@@ -2283,13 +2278,13 @@ window.__ModuleLoader__.load({
 .tkb-warnline svg { width: 13px; height: 13px; margin-top: 2px; }
 
 /* =====================================================================
-   神经网络血缘与聚焦矩阵（Neural Lineage & Focal Matrix）
+   神经网络血缘与聚焦矩阵（免除 blur 离屏卷积开销，保持字体锐利）
    ===================================================================== */
 /* 队友聚光灯 */
 .tkb-root[data-spot] .tkb-card:not(.is-spot) {
-  opacity: .24;
-  filter: blur(0.4px);
-  transform: scale(0.985);
+  opacity: .32;
+  filter: saturate(0.65);
+  transform: scale(0.99);
 }
 .tkb-card.is-spot {
   z-index: 2;
@@ -2301,14 +2296,14 @@ window.__ModuleLoader__.load({
 
 /* 依赖血缘链路悬停 */
 .tkb-root[data-lineage] .tkb-card:not(.is-lin) {
-  opacity: .32;
-  filter: blur(0.3px);
+  opacity: .36;
+  filter: saturate(0.7);
   transform: scale(0.99);
 }
 .tkb-root[data-lineage] .tkb-card.is-lin {
   z-index: 2;
   transform: translateY(-2px);
-  box-shadow: 0 8px 22px -3px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 22px -3px color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);
 }
 /* 上游卡片（前置供给者）：点亮金橙色/翡翠绿能量流动 */
 .tkb-root[data-lineage] .tkb-card.is-up-open {
@@ -2352,7 +2347,7 @@ window.__ModuleLoader__.load({
   line-height: 1.4;
   opacity: 0;
   transform: translate(-50%, 2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--dsw-alias-label-primary) 20%, transparent);
   transition: opacity var(--tkb-d1) var(--tkb-ease), transform var(--tkb-d1) var(--tkb-ease);
 }
 .tkb-tip[data-show] { opacity: 1; transform: translate(-50%, 0); }
@@ -2361,16 +2356,20 @@ window.__ModuleLoader__.load({
 .tkb-tip span:empty { display: none; }
 
 /* =====================================================================
-   动画关键帧清单
+   动画关键帧清单（硬件加速，零强制 Repaint）
    ===================================================================== */
-@keyframes tkb-orbit { to { --tkb-angle: 360deg; } }
+@keyframes tkb-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 @keyframes tkb-flow {
   from { transform: translateY(-100%); }
   to { transform: translateY(220%); }
 }
 @keyframes tkb-sonar-ping {
-  0% { transform: scale(0.85); opacity: 0.9; }
-  100% { transform: scale(1.85); opacity: 0; }
+  0% { transform: scale(0.9); opacity: 0.85; }
+  60% { opacity: 0.25; }
+  100% { transform: scale(1.32); opacity: 0; }
 }
 @keyframes tkb-blink {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -2380,9 +2379,15 @@ window.__ModuleLoader__.load({
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
-@keyframes tkb-aurora-glow {
-  0% { opacity: 0.5; transform: scale(0.98); }
-  100% { opacity: 1; transform: scale(1.02); }
+@keyframes tkb-hearth-breathe {
+  0% {
+    box-shadow: 0 4px 14px -2px color-mix(in srgb, var(--tkb-c-active) 14%, transparent);
+    border-color: color-mix(in srgb, var(--tkb-c-active) 26%, var(--dsw-alias-border-l1));
+  }
+  100% {
+    box-shadow: 0 8px 24px -2px color-mix(in srgb, var(--tkb-c-active) 26%, transparent);
+    border-color: color-mix(in srgb, var(--tkb-c-active) 46%, var(--dsw-alias-border-l1));
+  }
 }
 @keyframes tkb-aurora-sweep {
   0% { left: -60%; opacity: 0; }
@@ -2390,8 +2395,21 @@ window.__ModuleLoader__.load({
   60% { opacity: 0.8; }
   100% { left: 140%; opacity: 0; }
 }
+@keyframes tkb-glint-pass {
+  0% { transform: rotate(25deg) translateX(-150%); opacity: 0; }
+  35% { opacity: 0.8; }
+  100% { transform: rotate(25deg) translateX(360%); opacity: 0; }
+}
+@keyframes tkb-spring-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.18); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes tkb-draw-check {
+  to { stroke-dashoffset: 0; }
+}
 @keyframes tkb-num-in {
-  from { opacity: 0; transform: translateY(40%); }
+  from { opacity: 0; transform: translateY(35%); }
   to { opacity: 1; transform: none; }
 }
 @keyframes tkb-detail-in {
@@ -2416,8 +2434,8 @@ window.__ModuleLoader__.load({
 
 .tkb-root[data-entering] .tkb-lane__head,
 .tkb-root[data-entering] .tkb-lane__body > * {
-  animation: tkb-rise calc(480ms ) var(--tkb-ease) both;
-  animation-delay: calc(var(--i, 0) * 45ms );
+  animation: tkb-rise calc(480ms) var(--tkb-ease) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2428,9 +2446,9 @@ window.__ModuleLoader__.load({
     transition-duration: 1ms !important;
     transition-delay: 0ms !important;
   }
-  .tkb-card[data-status="in_progress"][data-live]::before,
   .tkb-card__rail::after,
-  .tkb-mate[data-running]::after { opacity: 0 !important; }
+  .tkb-mate[data-running]::after,
+  .tkb-mate::before { opacity: 0 !important; }
 }
 
 /* =====================================================================
@@ -2531,8 +2549,6 @@ window.__ModuleLoader__.load({
   font-variant-numeric: tabular-nums;
   animation: tkb-num-in 300ms var(--tkb-ease) both;
 }
-
-
 `;
 
     /* ------------------------------------------------------------------ *
