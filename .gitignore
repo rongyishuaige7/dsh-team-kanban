@@ -2,3 +2,7 @@
 node_modules/
 dist/
 *.log
+*.tgz
+
+# Local harness hooks carry absolute machine paths; never publish them.
+.agents/
