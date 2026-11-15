@@ -492,6 +492,18 @@ window.__ModuleLoader__.load({
       }, []);
 
       useEffect(() => {
+        const hasUnfinished = model.counts.pending > 0 || model.counts.in_progress > 0;
+        if (!hasUnfinished) return undefined;
+        const timer = setInterval(() => {
+          try {
+            const p = runtime.sessions.refreshProjections(sessionId);
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+          } catch (e) {}
+        }, 600);
+        return () => clearInterval(timer);
+      }, [model.counts.pending, model.counts.in_progress, runtime, sessionId]);
+
+      useEffect(() => {
         const tab = tabInfo && tabInfo.tab;
         const actions = tab && tab.actions;
         if (!actions || typeof actions.bindCommands !== 'function') return undefined;
@@ -1208,6 +1220,11 @@ window.__ModuleLoader__.load({
             return true;
           }
           try {
+            if (typeof ctx.sidebarRight.show === 'function') ctx.sidebarRight.show();
+            if (typeof ctx.sidebarRight.open === 'function') ctx.sidebarRight.open();
+            if (typeof ctx.sidebarRight.expand === 'function') ctx.sidebarRight.expand();
+          } catch (e) {}
+          try {
             ctx.sidebarRight.openTabIn(sessionId, KIND);
           } catch (error) {
             return false;
@@ -1246,7 +1263,7 @@ window.__ModuleLoader__.load({
           attempt();
         };
         if (typeof requestAnimationFrame === 'function') frame = requestAnimationFrame(retry);
-        [120, 400, 900].forEach((delay) => {
+        [60, 180, 400, 900, 1800].forEach((delay) => {
           timers.push(setTimeout(retry, delay));
         });
         return stop;
