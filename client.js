@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.2.0-fb';
+    const CLIENT_REV = '0.2.1-fb';
     const TAB_ID = PKG;
     const KIND = 'team-board';
     const LANES = ['pending', 'in_progress', 'completed'];
@@ -2154,7 +2154,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'layout', 'remote'],
+      inject: ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'layout', 'remote', 'remote.session'],
       apply,
     };
   },
