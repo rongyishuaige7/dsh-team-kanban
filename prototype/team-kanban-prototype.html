@@ -1,0 +1,2093 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>智能体任务板 · 交互原型</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234d6bfe'/%3E%3Cpath d='M9 10h4v12H9zM15 10h4v8h-4zM21 10h4v5h-4z' fill='white'/%3E%3C/svg%3E">
+<style>
+/* =====================================================================
+   0. 宿主 token 模拟 —— 仅原型使用；正式 client.js 不包含本段，
+      直接读取 DSH 注入在 body 上的 --dsw-alias-* / --dsw-radius-*
+   ===================================================================== */
+body[data-theme="light"] {
+  color-scheme: light;
+  --dsw-alias-bg-base: #ffffff;
+  --dsw-alias-bg-layer-1: #f6f7f9;
+  --dsw-alias-bg-layer-2: #eef0f3;
+  --dsw-alias-card-fill: #ffffff;
+  --dsw-alias-card-fill-hover: #fbfbfc;
+  --dsw-alias-interactive-bg-hover: rgba(20, 24, 34, .045);
+  --dsw-alias-interactive-bg-active: rgba(20, 24, 34, .075);
+  --dsw-alias-border-l1: rgba(20, 24, 34, .08);
+  --dsw-alias-border-l2: rgba(20, 24, 34, .13);
+  --dsw-alias-border-l3: rgba(20, 24, 34, .22);
+  --dsw-alias-label-primary: #15171c;
+  --dsw-alias-label-secondary: #4a4f59;
+  --dsw-alias-label-tertiary: #8b909a;
+  --dsw-alias-state-business-primary: #4d6bfe;
+  --dsw-alias-state-business-tertiary: rgba(77, 107, 254, .10);
+  --dsw-alias-state-done-primary: #12a26a;
+  --dsw-alias-state-success-primary: #12a26a;
+  --dsw-alias-state-success-tertiary: rgba(18, 162, 106, .10);
+  --dsw-alias-state-warn-primary: #e38b00;
+  --dsw-alias-state-warn-label: #a86400;
+  --dsw-alias-state-warn-tertiary: rgba(227, 139, 0, .12);
+  --dsw-alias-state-idle-primary: #9ea3ad;
+  --dsw-alias-state-error-primary: #e5484d;
+  --dsw-radius-sm: 6px;
+  --dsw-radius-md: 10px;
+}
+body[data-theme="dark"] {
+  color-scheme: dark;
+  --dsw-alias-bg-base: #141519;
+  --dsw-alias-bg-layer-1: #1b1c21;
+  --dsw-alias-bg-layer-2: #25272d;
+  --dsw-alias-card-fill: #1d1e23;
+  --dsw-alias-card-fill-hover: #22242a;
+  --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, .05);
+  --dsw-alias-interactive-bg-active: rgba(255, 255, 255, .085);
+  --dsw-alias-border-l1: rgba(255, 255, 255, .07);
+  --dsw-alias-border-l2: rgba(255, 255, 255, .12);
+  --dsw-alias-border-l3: rgba(255, 255, 255, .2);
+  --dsw-alias-label-primary: #ecedf1;
+  --dsw-alias-label-secondary: #b3b6bf;
+  --dsw-alias-label-tertiary: #7c808b;
+  --dsw-alias-state-business-primary: #7089ff;
+  --dsw-alias-state-business-tertiary: rgba(112, 137, 255, .15);
+  --dsw-alias-state-done-primary: #35c98a;
+  --dsw-alias-state-success-primary: #35c98a;
+  --dsw-alias-state-success-tertiary: rgba(53, 201, 138, .14);
+  --dsw-alias-state-warn-primary: #f0a43c;
+  --dsw-alias-state-warn-label: #f4b866;
+  --dsw-alias-state-warn-tertiary: rgba(240, 164, 60, .15);
+  --dsw-alias-state-idle-primary: #5f636d;
+  --dsw-alias-state-error-primary: #ff6b6f;
+  --dsw-radius-sm: 6px;
+  --dsw-radius-md: 10px;
+}
+
+/* =====================================================================
+   1. 原型外壳（模拟 DSH 窗口 / 对话区 / 右侧栏 / 导演台）
+   ===================================================================== */
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Segoe UI", "Microsoft YaHei", sans-serif;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  display: flex; flex-direction: column; overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .3s ease;
+}
+button { font: inherit; }
+
+.pt-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 16px; }
+.pt-group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.pt-sep { width: 1px; height: 18px; background: var(--dsw-alias-border-l2); }
+.pt-btn {
+  height: 28px; padding: 0 10px; border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l1); background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary); font-size: 12px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  transition: background-color .12s, color .12s, border-color .12s, transform .12s;
+}
+.pt-btn:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l2); }
+.pt-btn:active { transform: translateY(1px); }
+.pt-btn[aria-pressed="true"] {
+  color: var(--dsw-alias-state-business-primary);
+  border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary) 40%, transparent);
+  background: var(--dsw-alias-state-business-tertiary);
+}
+.pt-btn--primary { background: var(--dsw-alias-label-primary); color: var(--dsw-alias-bg-base); border-color: transparent; min-width: 76px; justify-content: center; }
+.pt-btn--primary:hover { color: var(--dsw-alias-bg-base); opacity: .9; }
+.pt-btn svg { width: 12px; height: 12px; }
+.pt-btn.is-nope { animation: pt-nope .34s ease; }
+@keyframes pt-nope { 20%, 60% { transform: translateX(-3px); } 40%, 80% { transform: translateX(3px); } }
+.pt-step { font: 11px/1 ui-monospace, Menlo, monospace; color: var(--dsw-alias-label-tertiary); min-width: 38px; padding-left: 4px; }
+.pt-seg { display: inline-flex; padding: 2px; border-radius: 9px; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l1); }
+.pt-seg button {
+  height: 24px; padding: 0 9px; border: 0; border-radius: 7px; background: transparent;
+  color: var(--dsw-alias-label-tertiary); font-size: 12px; cursor: pointer; transition: color .12s, background-color .12s;
+}
+.pt-seg button:hover { color: var(--dsw-alias-label-secondary); }
+.pt-seg button[aria-pressed="true"] { background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); box-shadow: 0 0 0 1px var(--dsw-alias-border-l1); }
+.pt-readout { font: 11px/1 ui-monospace, Menlo, monospace; color: var(--dsw-alias-label-tertiary); min-width: 46px; }
+
+.pt-stage { flex: 1; min-height: 0; display: flex; padding: 0 16px 16px; }
+.app {
+  position: relative; flex: 1; min-width: 0; display: flex; overflow: hidden;
+  border-radius: 12px; border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-base);
+}
+.conv { flex: 1; min-width: 240px; display: flex; flex-direction: column; }
+.conv__head {
+  flex: none; height: 44px; display: flex; align-items: center; gap: 9px; padding: 0 18px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1); font-size: 13px; font-weight: 600;
+}
+.conv__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dsw-alias-state-business-primary); }
+.conv__body { flex: 1; min-height: 0; overflow: auto; padding: 18px 22px 8px; display: flex; flex-direction: column; gap: 9px; }
+.msg-user { align-self: flex-end; max-width: 78%; padding: 9px 13px; border-radius: 14px 14px 4px 14px; background: var(--dsw-alias-bg-layer-1); font-size: 13px; line-height: 1.6; }
+.msg-agent { font-size: 13px; line-height: 1.7; color: var(--dsw-alias-label-secondary); max-width: 620px; margin-bottom: 4px; }
+.call { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; color: var(--dsw-alias-label-tertiary); animation: call-in .32s cubic-bezier(.2,.8,.2,1) both; }
+.call svg { width: 12px; height: 12px; flex: none; }
+.call code { flex: none; font: 11px/1.6 ui-monospace, Menlo, monospace; color: var(--dsw-alias-label-secondary); background: var(--dsw-alias-bg-layer-1); padding: 1px 6px; border-radius: 5px; }
+.call span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note { font-size: 12px; color: var(--dsw-alias-label-tertiary); padding: 2px 0 2px 20px; animation: call-in .32s ease both; }
+@keyframes call-in { from { opacity: 0; transform: translateY(4px); } }
+.conv__input {
+  flex: none; margin: 8px 18px 16px; height: 44px; border-radius: 12px; border: 1px solid var(--dsw-alias-border-l2);
+  display: flex; align-items: center; padding: 0 14px; color: var(--dsw-alias-label-tertiary); font-size: 13px;
+}
+
+.side {
+  --side-w: 400px;
+  position: relative; flex: none; width: var(--side-w);
+  display: flex; flex-direction: column; overflow: hidden;
+  border-left: 1px solid var(--dsw-alias-border-l1); background: var(--dsw-alias-bg-base);
+  transition: width .42s cubic-bezier(.2,.8,.2,1), opacity .3s ease, transform .3s ease, border-color .3s;
+}
+.side.is-dragging { transition: none; }
+.side[data-geo="dock"] .side__tabs, .side[data-geo="dock"] .side__body { width: calc(var(--side-w) - 1px); }
+.side[data-geo="dock"].is-collapsed { width: 0; border-left-color: transparent; }
+.side__grip { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 30; }
+.side__grip::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--dsw-alias-state-business-primary); opacity: 0; transition: opacity .15s; }
+.side__grip:hover::after, .side.is-dragging .side__grip::after { opacity: .6; }
+.side__tabs {
+  flex: none; height: 40px; display: flex; align-items: center; gap: 2px; padding: 0 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1); overflow: hidden; user-select: none;
+}
+.chip {
+  position: relative; flex: none; height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0 9px;
+  border-radius: 7px; font-size: 12px; color: var(--dsw-alias-label-tertiary); cursor: pointer; white-space: nowrap; overflow: hidden;
+  transition: background-color .15s, color .15s;
+}
+.chip:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary); }
+.chip[aria-selected="true"] { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
+.chip > svg { width: 14px; height: 14px; flex: none; }
+.chip[hidden] { display: none; }
+.chip__x { width: 16px; height: 16px; margin-right: -4px; border-radius: 4px; display: grid; place-items: center; opacity: 0; transition: opacity .12s, background-color .12s; }
+.chip__x svg { width: 10px; height: 10px; }
+.chip:hover .chip__x, .chip[aria-selected="true"] .chip__x { opacity: .65; }
+.chip__x:hover { opacity: 1 !important; background: var(--dsw-alias-interactive-bg-active); }
+.side__body { position: relative; flex: 1; min-height: 0; }
+.side__pane { position: absolute; inset: 0; overflow: hidden; }
+
+.side[data-geo="float"] {
+  position: absolute; right: 24px; top: 24px; width: 600px; height: min(700px, calc(100% - 48px));
+  min-width: 300px; min-height: 320px; max-width: calc(100% - 48px); max-height: calc(100% - 48px);
+  border: 1px solid var(--dsw-alias-border-l3); border-radius: 14px; resize: both; z-index: 20;
+  box-shadow: 0 24px 60px -16px rgba(0, 0, 0, .28);
+}
+.side[data-geo="float"] .side__grip { display: none; }
+.side[data-geo="float"] .side__tabs { cursor: grab; }
+.side[data-geo="full"] { position: absolute; inset: 0; width: auto; z-index: 20; border-left: 0; }
+.side[data-geo="full"] .side__grip { display: none; }
+.side[data-geo="float"].is-collapsed, .side[data-geo="full"].is-collapsed { opacity: 0; transform: scale(.98); pointer-events: none; }
+
+.mock-files { padding: 10px 8px; font-size: 12.5px; color: var(--dsw-alias-label-secondary); }
+.mock-files div { display: flex; align-items: center; gap: 7px; height: 26px; padding: 0 8px; border-radius: 6px; }
+.mock-files div:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.mock-files svg { width: 14px; height: 14px; color: var(--dsw-alias-label-tertiary); flex: none; }
+.mock-files .in { padding-left: 28px; }
+.mock-term { padding: 14px 16px; font: 12px/1.75 ui-monospace, Menlo, monospace; color: var(--dsw-alias-label-secondary); }
+.mock-term .ok { color: var(--dsw-alias-state-done-primary); }
+.mock-term .dim { color: var(--dsw-alias-label-tertiary); }
+.mock-term .cur { display: inline-block; width: 7px; height: 14px; background: currentColor; vertical-align: -2px; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* =====================================================================
+   2. 看板插件样式 —— 与正式 client.js 注入的 <style> 一致
+      规则：只引用 --dsw-alias-* / --dsw-radius-*，派生色一律 color-mix
+   ===================================================================== */
+@property --tkb-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+
+.tkb-root, .tkb-title {
+  --tkb-d1: calc(120ms * var(--tkb-speed, 1));
+  --tkb-d2: calc(220ms * var(--tkb-speed, 1));
+  --tkb-d3: calc(440ms * var(--tkb-speed, 1));
+  --tkb-d4: calc(1200ms * var(--tkb-speed, 1));
+  --tkb-ease: cubic-bezier(.2, .8, .2, 1);
+  --tkb-ease-spring: linear(0, .12 4%, .42 11%, .72 20%, .9 29%, .99 38%, 1.03 47%, 1.035 54%, 1.02 64%, 1.005 78%, 1);
+  --tkb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --tkb-c-pending: var(--dsw-alias-state-idle-primary);
+  --tkb-c-active: var(--dsw-alias-state-business-primary);
+  --tkb-c-done: var(--dsw-alias-state-done-primary);
+  --tkb-c-warn: var(--dsw-alias-state-warn-primary);
+  --tkb-c-error: var(--dsw-alias-state-error-primary);
+}
+@supports not (transition-timing-function: linear(0, 1)) {
+  .tkb-root, .tkb-title { --tkb-ease-spring: cubic-bezier(.34, 1.36, .64, 1); }
+}
+.tkb-root {
+  container: tkb / inline-size;
+  position: relative; display: flex; flex-direction: column;
+  height: 100%; min-height: 0; overflow: hidden; outline: none;
+  background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary);
+  font-size: 13px; line-height: 1.45;
+}
+.tkb-root *, .tkb-root *::before, .tkb-root *::after { box-sizing: border-box; }
+.tkb-root svg { display: block; flex: none; }
+.tkb-root [hidden] { display: none !important; }
+.tkb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---- 状态图标族 ○ ◐ ● ---- */
+.tkb-glyph { width: 12px; height: 12px; }
+.tkb-glyph--pending { color: var(--tkb-c-pending); }
+.tkb-glyph--in_progress { color: var(--tkb-c-active); }
+.tkb-glyph--completed { color: var(--tkb-c-done); }
+.tkb-glyph__check { stroke: var(--dsw-alias-bg-base); }
+
+/* ---- 数字滚动 ---- */
+.tkb-roll { display: inline-flex; font-variant-numeric: tabular-nums; }
+.tkb-roll__c { position: relative; display: inline-block; overflow: hidden; line-height: 1.15; vertical-align: top; }
+.tkb-roll__in { display: inline-block; }
+.tkb-roll__out { position: absolute; left: 0; top: 0; }
+
+/* ---- 顶部：大数字 + 任务段 + 队友 ---- */
+.tkb-head {
+  flex: none; display: flex; align-items: center; gap: 12px; min-width: 0;
+  padding: 12px 14px 11px; border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.tkb-score { flex: none; display: inline-flex; align-items: flex-end; gap: 1px; }
+.tkb-score__done {
+  font-size: 20px; font-weight: 650; letter-spacing: -.02em;
+  transition: color var(--tkb-d3) var(--tkb-ease) var(--tkb-sd, 0ms);
+}
+.tkb-score__total { font-size: 12px; font-weight: 500; color: var(--dsw-alias-label-tertiary); padding-bottom: 2px; }
+.tkb-root[data-alldone] .tkb-score__done { color: var(--tkb-c-done); }
+
+.tkb-strip { position: relative; flex: 1; min-width: 48px; height: 18px; display: flex; align-items: center; gap: 2px; }
+.tkb-slot {
+  position: relative; flex: 1 1 0; height: 6px; border-radius: 2px; overflow: hidden; cursor: pointer;
+  background-color: color-mix(in srgb, var(--tkb-c-pending) 28%, transparent);
+  transition: background-color var(--tkb-d3) var(--tkb-ease) var(--tkb-sd, 0ms), transform var(--tkb-d1) var(--tkb-ease), flex-grow var(--tkb-d3) var(--tkb-ease);
+}
+.tkb-slot::before {
+  content: ""; position: absolute; inset: 0; opacity: 0;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--tkb-c-pending) 60%, transparent) 0 1.5px, transparent 1.5px 4px);
+  transition: opacity var(--tkb-d3) var(--tkb-ease) var(--tkb-sd, 0ms);
+}
+.tkb-slot[data-s="blocked"] { background-color: color-mix(in srgb, var(--tkb-c-pending) 10%, transparent); }
+.tkb-slot[data-s="blocked"]::before { opacity: 1; }
+.tkb-slot[data-s="ready"] { background-color: color-mix(in srgb, var(--tkb-c-pending) 62%, transparent); }
+.tkb-slot[data-s="active"] { background-color: var(--tkb-c-active); }
+.tkb-slot[data-s="done"] { background-color: var(--tkb-c-done); }
+.tkb-slot:hover { transform: scaleY(1.7); }
+
+.tkb-mates { flex: none; display: flex; align-items: center; padding-left: 4px; }
+.tkb-mc { position: relative; display: flex; align-items: center; gap: 6px; border-radius: 14px; cursor: pointer; transition: opacity var(--tkb-d2) var(--tkb-ease), background-color var(--tkb-d2); }
+.tkb-mc + .tkb-mc { margin-left: 7px; }
+.tkb-mc:hover { z-index: 2; }
+.tkb-mc:hover .tkb-mate { transform: translateY(-1px); }
+.tkb-mc__name { display: none; font-size: 12px; color: var(--dsw-alias-label-secondary); white-space: nowrap; }
+.tkb-root[data-spot] .tkb-mc:not(.is-spot) { opacity: .4; }
+.tkb-mc.is-pinned .tkb-mate { background: color-mix(in srgb, var(--tkb-c-active) 20%, var(--dsw-alias-bg-layer-2)); color: var(--tkb-c-active); }
+.tkb-mc.is-new { animation: tkb-pop calc(520ms * var(--tkb-speed, 1)) var(--tkb-ease-spring) both; }
+
+.tkb-mate {
+  position: relative; flex: none; width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center; user-select: none;
+  font-size: 11px; font-weight: 600; color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-layer-2); box-shadow: 0 0 0 2px var(--dsw-alias-bg-base);
+  transition: transform var(--tkb-d1) var(--tkb-ease), opacity var(--tkb-d2) var(--tkb-ease), background-color var(--tkb-d2), color var(--tkb-d2);
+}
+.tkb-mate[data-lead] { border-radius: 7px; }
+.tkb-mate::before {
+  content: ""; position: absolute; inset: -3.5px; border-radius: 50%; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--tkb-angle), transparent 0 35%, color-mix(in srgb, var(--tkb-c-active) 25%, transparent) 60%, var(--tkb-c-active) 94%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0; transition: opacity var(--tkb-d3) var(--tkb-ease);
+}
+.tkb-mate[data-lead]::before { border-radius: 10px; }
+.tkb-mate[data-running]::before { opacity: 1; }
+.tkb-mate[data-running]::before, .tkb-mate[data-running-out]::before {
+  animation: tkb-orbit calc(2400ms * var(--tkb-speed, 1)) linear var(--tkb-phase, 0ms) infinite;
+}
+@keyframes tkb-orbit { to { --tkb-angle: 360deg; } }
+.tkb-mate[data-none] { background: transparent; box-shadow: none; border: 1px dashed var(--dsw-alias-border-l3); cursor: default; }
+.tkb-mate.is-pop { animation: tkb-pop calc(480ms * var(--tkb-speed, 1)) var(--tkb-ease-spring) both; }
+
+/* ---- 异常横幅 ---- */
+.tkb-banner { flex: none; display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--tkb-d3) var(--tkb-ease); }
+.tkb-banner[data-open] { grid-template-rows: 1fr; }
+.tkb-banner__clip { min-height: 0; overflow: hidden; }
+.tkb-banner__box {
+  display: flex; align-items: flex-start; gap: 8px; margin: 10px 10px 2px; padding: 8px 10px;
+  border-radius: var(--dsw-radius-md); font-size: 12px; color: var(--tkb-c-error);
+  background: color-mix(in srgb, var(--tkb-c-error) 8%, var(--dsw-alias-bg-base));
+  border: 1px solid color-mix(in srgb, var(--tkb-c-error) 22%, transparent);
+}
+.tkb-banner__icon { width: 14px; height: 14px; margin-top: 1px; }
+.tkb-banner__text { min-width: 0; }
+.tkb-banner__title { font-weight: 600; }
+.tkb-banner__msg { margin-top: 2px; font-family: var(--tkb-mono); font-size: 11px; color: var(--dsw-alias-label-secondary); overflow-wrap: anywhere; }
+
+/* ---- 分区（窄栏：纵向堆叠 + 吸顶） ---- */
+.tkb-lanes {
+  position: relative; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--dsw-alias-border-l3) transparent;
+  transition: filter var(--tkb-d3) var(--tkb-ease), opacity var(--tkb-d3) var(--tkb-ease);
+}
+.tkb-root[data-stale] .tkb-lanes { filter: saturate(.3); opacity: .78; }
+.tkb-lane { position: relative; }
+.tkb-lane__head {
+  position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px;
+  font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary);
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 84%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4); backdrop-filter: blur(10px) saturate(1.4);
+}
+.tkb-lane__name { white-space: nowrap; }
+.tkb-lane__count {
+  margin-left: auto; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; color: var(--dsw-alias-label-tertiary); background: var(--dsw-alias-bg-layer-1);
+}
+.tkb-lane[data-empty] .tkb-lane__head { color: var(--dsw-alias-label-tertiary); }
+.tkb-lane[data-empty] .tkb-lane__count { opacity: .55; }
+.tkb-lane__body { display: flex; flex-direction: column; gap: 6px; padding: 2px 10px 14px; }
+.tkb-lane[data-empty] .tkb-lane__body { display: none; }
+.tkb-lane[data-lane="completed"] .tkb-lane__body { gap: 1px; }
+.tkb-empty { display: none; }
+.tkb-divider { display: flex; align-items: center; gap: 8px; height: 18px; margin: 2px 2px 0; color: var(--dsw-alias-label-tertiary); }
+.tkb-divider::before, .tkb-divider::after { content: ""; flex: 1; border-top: 1px dashed var(--dsw-alias-border-l2); }
+.tkb-divider svg { width: 12px; height: 12px; opacity: .85; }
+
+/* ---- 卡片 ---- */
+.tkb-card {
+  position: relative; display: grid; align-items: center; column-gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "id deps owner" "title title title" "preview preview preview" "detail detail detail";
+  padding: 9px 10px 10px 12px; border-radius: var(--dsw-radius-md);
+  border: 1px solid var(--dsw-alias-border-l1); background: var(--dsw-alias-card-fill);
+  cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--tkb-d1) var(--tkb-ease), border-color var(--tkb-d2) var(--tkb-ease), opacity var(--tkb-d2) var(--tkb-ease), box-shadow var(--tkb-d2) var(--tkb-ease);
+}
+.tkb-card:hover { background: var(--dsw-alias-card-fill-hover); border-color: var(--dsw-alias-border-l2); }
+.tkb-card:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--tkb-c-active) 60%, transparent); }
+.tkb-card__glyph { grid-area: glyph; display: none; }
+.tkb-card__id { grid-area: id; font-family: var(--tkb-mono); font-size: 11px; color: var(--dsw-alias-label-tertiary); letter-spacing: -.01em; }
+.tkb-card__deps { grid-area: deps; display: flex; align-items: center; gap: 3px; min-width: 0; overflow: hidden; }
+.tkb-card__deps-arrow { width: 11px; height: 11px; margin-right: 1px; color: var(--dsw-alias-label-tertiary); }
+.tkb-card__owner { grid-area: owner; display: flex; align-items: center; gap: 6px; min-height: 20px; }
+.tkb-card__owner-name { display: none; max-width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--dsw-alias-label-tertiary); }
+.tkb-card__owner .tkb-mate { width: 20px; height: 20px; font-size: 10.5px; box-shadow: none; cursor: pointer; }
+.tkb-card__owner .tkb-mate[data-lead] { border-radius: 6px; }
+.tkb-card__owner .tkb-mate[data-none] { cursor: default; }
+.tkb-card__title {
+  grid-area: title; margin-top: 4px; font-size: 13px; font-weight: 500; line-height: 1.42; color: var(--dsw-alias-label-primary);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  transition: color var(--tkb-d3) var(--tkb-ease);
+}
+.tkb-card[aria-expanded="true"] .tkb-card__title { -webkit-line-clamp: unset; }
+.tkb-card__preview { grid-area: preview; display: none; }
+.tkb-card__detail { grid-area: detail; display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--tkb-d2) var(--tkb-ease); }
+.tkb-card[aria-expanded="true"] .tkb-card__detail { grid-template-rows: 1fr; }
+.tkb-card__detail-inner { min-height: 0; overflow: hidden; }
+
+/* 依赖小标签：未完成=警告色；已完成=删除线描绘 */
+.tkb-dep {
+  position: relative; flex: none; display: inline-flex; align-items: center; height: 18px; padding: 0 5px; border-radius: 5px;
+  font-family: var(--tkb-mono); font-size: 10.5px; cursor: pointer;
+  color: var(--dsw-alias-state-warn-label); background: var(--dsw-alias-state-warn-tertiary);
+  transition: color var(--tkb-d2) var(--tkb-ease) var(--tkb-dd, 0ms), background-color var(--tkb-d2) var(--tkb-ease) var(--tkb-dd, 0ms);
+}
+.tkb-dep::after {
+  content: ""; position: absolute; left: 4px; right: 4px; top: 50%; height: 1px; background: currentColor;
+  transform: scaleX(0); transform-origin: left center; transition: transform var(--tkb-d3) var(--tkb-ease) var(--tkb-dd, 0ms);
+}
+.tkb-dep[data-done] { color: var(--dsw-alias-label-tertiary); background: transparent; }
+.tkb-dep[data-done]::after { transform: scaleX(1); }
+.tkb-dep:hover { background: color-mix(in srgb, var(--tkb-c-warn) 22%, transparent); }
+.tkb-dep[data-done]:hover { background: var(--dsw-alias-interactive-bg-hover); }
+
+/* 待处理 · 阻塞：凹陷（虚线 + 透明 + 降一级） */
+.tkb-card[data-status="pending"][data-ready="false"] { background: transparent; border-style: dashed; border-color: var(--dsw-alias-border-l3); }
+.tkb-card[data-status="pending"][data-ready="false"]:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.tkb-card[data-status="pending"][data-ready="false"] .tkb-card__title { color: var(--dsw-alias-label-secondary); }
+
+/* 进行中：微染底 + 左侧边条；负责人运行中时边条流光 */
+.tkb-card[data-status="in_progress"] {
+  background: color-mix(in srgb, var(--tkb-c-active) 5%, var(--dsw-alias-card-fill));
+  border-color: color-mix(in srgb, var(--tkb-c-active) 18%, var(--dsw-alias-border-l1));
+}
+.tkb-card[data-status="in_progress"]:hover { background: color-mix(in srgb, var(--tkb-c-active) 8%, var(--dsw-alias-card-fill-hover)); }
+.tkb-card__rail {
+  position: absolute; left: -1px; top: 9px; bottom: 9px; width: 2px; border-radius: 0 2px 2px 0; overflow: hidden; opacity: 0;
+  background: color-mix(in srgb, var(--tkb-c-active) 30%, transparent);
+  transition: opacity var(--tkb-d3) var(--tkb-ease), background-color var(--tkb-d3) var(--tkb-ease);
+}
+.tkb-card[data-status="in_progress"] .tkb-card__rail { opacity: 1; }
+.tkb-card[data-status="in_progress"][data-live] .tkb-card__rail { background: color-mix(in srgb, var(--tkb-c-active) 45%, transparent); }
+.tkb-card__rail::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 55%; opacity: 0;
+  background: linear-gradient(to bottom, transparent, var(--tkb-c-active) 50%, transparent);
+  transform: translateY(-100%); transition: opacity var(--tkb-d3) var(--tkb-ease);
+}
+.tkb-card[data-live] .tkb-card__rail::after { opacity: 1; }
+.tkb-card[data-live] .tkb-card__rail::after, .tkb-card[data-live-out] .tkb-card__rail::after {
+  animation: tkb-flow calc(1800ms * var(--tkb-speed, 1)) cubic-bezier(.45, 0, .55, 1) var(--tkb-phase, 0ms) infinite;
+}
+@keyframes tkb-flow { from { transform: translateY(-100%); } to { transform: translateY(200%); } }
+.tkb-card[data-status="in_progress"]:not([data-live]) .tkb-card__owner .tkb-mate { opacity: .55; }
+
+/* 已完成：压成单行 */
+.tkb-card[data-status="completed"] {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "glyph id title owner" "detail detail detail detail";
+  padding: 6px 8px 6px 10px; background: transparent; border-color: transparent;
+}
+.tkb-card[data-status="completed"]:hover { background: var(--dsw-alias-interactive-bg-hover); border-color: transparent; }
+.tkb-card[data-status="completed"][aria-expanded="true"] { background: var(--dsw-alias-bg-layer-1); }
+.tkb-card[data-status="completed"] .tkb-card__glyph { display: block; }
+.tkb-card[data-status="completed"] .tkb-card__deps,
+.tkb-card[data-status="completed"] .tkb-card__preview,
+.tkb-card[data-status="completed"] .tkb-card__owner-name { display: none !important; }
+.tkb-card[data-status="completed"] .tkb-card__title { margin-top: 0; font-size: 12.5px; font-weight: 400; color: var(--dsw-alias-label-tertiary); -webkit-line-clamp: 1; }
+.tkb-card[data-status="completed"][aria-expanded="true"] .tkb-card__title { -webkit-line-clamp: unset; color: var(--dsw-alias-label-secondary); }
+.tkb-card[data-status="completed"] .tkb-card__owner .tkb-mate { width: 18px; height: 18px; font-size: 9.5px; opacity: .7; }
+
+/* 展开详情 */
+.tkb-detail {
+  display: flex; flex-direction: column; gap: 9px; margin-top: 9px; padding-top: 9px; cursor: auto;
+  border-top: 1px solid var(--dsw-alias-border-l1); opacity: 0; transform: translateY(-3px);
+  transition: opacity var(--tkb-d2) var(--tkb-ease), transform var(--tkb-d2) var(--tkb-ease);
+}
+.tkb-card[aria-expanded="true"] .tkb-detail { opacity: 1; transform: none; transition-delay: calc(60ms * var(--tkb-speed, 1)); }
+.tkb-detail__desc { margin: 0; font-size: 12.5px; line-height: 1.62; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.tkb-detail__row { display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 4px; align-items: start; }
+.tkb-detail__items { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.tkb-detail__icw { flex: none; width: 18px; height: 22px; display: grid; place-items: center; color: var(--dsw-alias-label-tertiary); }
+.tkb-detail__icw svg { width: 12px; height: 12px; }
+.tkb-ref {
+  display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; height: 22px; padding: 0 8px 0 6px;
+  border: 0; border-radius: 6px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-secondary);
+  font-size: 11.5px; cursor: pointer; transition: background-color var(--tkb-d1), color var(--tkb-d1);
+}
+.tkb-ref:hover { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
+.tkb-ref:focus-visible { outline: 2px solid color-mix(in srgb, var(--tkb-c-active) 60%, transparent); outline-offset: 1px; }
+.tkb-ref .tkb-glyph { width: 10px; height: 10px; }
+.tkb-ref__id { font-family: var(--tkb-mono); font-size: 10.5px; color: var(--dsw-alias-label-tertiary); }
+.tkb-ref__t { min-width: 0; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tkb-scope { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 5px; border: 1px solid var(--dsw-alias-border-l2); font-family: var(--tkb-mono); font-size: 10.5px; color: var(--dsw-alias-label-secondary); }
+.tkb-warnline { display: flex; align-items: flex-start; gap: 6px; padding: 6px 8px; border-radius: var(--dsw-radius-sm); background: var(--dsw-alias-state-warn-tertiary); color: var(--dsw-alias-state-warn-label); font-size: 11.5px; line-height: 1.5; }
+.tkb-warnline svg { width: 13px; height: 13px; margin-top: 2px; }
+
+/* ---- 聚焦：按人 / 依赖链 / 进度段指向 ---- */
+.tkb-root[data-spot] .tkb-card:not(.is-spot) { opacity: .3; }
+.tkb-card.is-spot { border-color: color-mix(in srgb, var(--tkb-c-active) 45%, transparent); }
+.tkb-root[data-lineage] .tkb-card:not(.is-lin) { opacity: .45; }
+.tkb-root[data-lineage] .tkb-card.is-up-open { border-color: color-mix(in srgb, var(--tkb-c-warn) 65%, transparent); }
+.tkb-root[data-lineage] .tkb-card.is-up-done { border-color: color-mix(in srgb, var(--tkb-c-done) 60%, transparent); }
+.tkb-root[data-lineage] .tkb-card.is-down { border-color: color-mix(in srgb, var(--tkb-c-active) 55%, transparent); }
+.tkb-card.is-hint { border-color: color-mix(in srgb, var(--tkb-c-active) 55%, transparent); background: var(--dsw-alias-card-fill-hover); }
+.tkb-wires { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 6; overflow: visible; }
+.tkb-wire { fill: none; stroke-width: 1.5; stroke-linecap: round; opacity: .9; }
+.tkb-wire.is-off { stroke-dasharray: 3 4; opacity: .5; }
+.tkb-wire-dot { fill: var(--dsw-alias-bg-base); stroke-width: 1.5; }
+.tkb-wire--up-open { stroke: var(--tkb-c-warn); }
+.tkb-wire--up-done { stroke: var(--tkb-c-done); }
+.tkb-wire--down { stroke: var(--tkb-c-active); }
+
+/* ---- 飞行层 / 提示 ---- */
+.tkb-flights { position: absolute; inset: 0; pointer-events: none; z-index: 8; overflow: hidden; }
+.tkb-flight { position: absolute; border-radius: var(--dsw-radius-md); overflow: hidden; background: var(--dsw-alias-card-fill); will-change: transform; }
+.tkb-flight > .tkb-card { position: absolute; left: 0; top: 0; margin: 0; transition: none; }
+.tkb-flight[data-to="completed"] { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tkb-c-done) 60%, transparent); }
+.tkb-flight[data-to="in_progress"] { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tkb-c-active) 60%, transparent); }
+.tkb-flight[data-to="pending"] { box-shadow: 0 0 0 1.5px var(--dsw-alias-border-l3); }
+.tkb-flight--vanish { background: transparent; }
+.tkb-tip {
+  position: absolute; left: 0; top: 0; z-index: 20; max-width: 260px; padding: 5px 8px; pointer-events: none;
+  border-radius: var(--dsw-radius-sm); background: var(--dsw-alias-label-primary); color: var(--dsw-alias-bg-base);
+  font-size: 11.5px; line-height: 1.4; opacity: 0; transform: translateY(2px);
+  transition: opacity var(--tkb-d1) var(--tkb-ease), transform var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-tip[data-show] { opacity: 1; transform: none; }
+.tkb-tip b { display: block; font-weight: 600; }
+.tkb-tip span { display: block; margin-top: 1px; opacity: .65; }
+.tkb-tip span:empty { display: none; }
+
+/* ---- 事件动效（同一张卡片按优先级覆盖：后者胜） ---- */
+.tkb-card.is-new { animation: tkb-new var(--tkb-d4) var(--tkb-ease) 1; }
+.tkb-card.is-touched { animation: tkb-touch calc(900ms * var(--tkb-speed, 1)) var(--tkb-ease) 1; }
+.tkb-card.is-catchup { animation: tkb-catchup calc(1800ms * var(--tkb-speed, 1)) var(--tkb-ease) var(--tkb-cd, 0ms) both; }
+.tkb-card.is-unlocking { animation: tkb-unlock calc(900ms * var(--tkb-speed, 1)) var(--tkb-ease) 1; }
+.tkb-card.is-landed { animation: tkb-land calc(800ms * var(--tkb-speed, 1)) var(--tkb-ease) 1; }
+.tkb-card.is-flash { animation: tkb-flash calc(1100ms * var(--tkb-speed, 1)) var(--tkb-ease) 1; }
+.tkb-card.is-landed .tkb-card__glyph { animation: tkb-pop calc(460ms * var(--tkb-speed, 1)) var(--tkb-ease-spring) both; }
+.tkb-card.is-landed .tkb-glyph__check { stroke-dasharray: 8; animation: tkb-draw calc(320ms * var(--tkb-speed, 1)) var(--tkb-ease) calc(120ms * var(--tkb-speed, 1)) both; }
+.tkb-card { --tkb-land: var(--tkb-c-active); }
+.tkb-card[data-status="completed"] { --tkb-land: var(--tkb-c-done); }
+.tkb-card[data-status="pending"] { --tkb-land: var(--dsw-alias-border-l3); }
+@keyframes tkb-new { 0%, 30% { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tkb-c-active) 55%, transparent); } 100% { box-shadow: 0 0 0 1.5px transparent; } }
+@keyframes tkb-touch { 0% { background-color: color-mix(in srgb, var(--tkb-c-active) 14%, var(--dsw-alias-card-fill)); } }
+@keyframes tkb-catchup { 0% { box-shadow: 0 0 0 0 transparent; } 15% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--tkb-c-active) 30%, transparent); } 100% { box-shadow: 0 0 0 3px transparent; } }
+@keyframes tkb-unlock { 0% { box-shadow: 0 0 0 0 transparent; } 25% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--tkb-c-active) 30%, transparent); border-color: color-mix(in srgb, var(--tkb-c-active) 60%, transparent); } 100% { box-shadow: 0 0 0 3px transparent; } }
+@keyframes tkb-land { 0% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--tkb-land) 55%, transparent); } 100% { box-shadow: 0 0 0 2px transparent; } }
+@keyframes tkb-flash { 0%, 40% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--tkb-c-active) 65%, transparent); } 20%, 60% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--tkb-c-active) 18%, transparent); } 100% { box-shadow: 0 0 0 2px transparent; } }
+@keyframes tkb-draw { from { stroke-dashoffset: 8; } to { stroke-dashoffset: 0; } }
+@keyframes tkb-pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes tkb-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes tkb-slot-in { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: none; } }
+@keyframes tkb-glint { 0% { filter: none; transform: none; } 35% { filter: brightness(1.5) saturate(1.2); transform: scaleY(2); } 100% { filter: none; transform: none; } }
+
+/* 首次出现：进度段从左画入 → 各区依次上浮（每次出现仅一次） */
+.tkb-root.is-entering .tkb-score, .tkb-root.is-entering .tkb-mates,
+.tkb-root.is-entering .tkb-lane__head, .tkb-root.is-entering .tkb-lane__body > * {
+  animation: tkb-rise calc(460ms * var(--tkb-speed, 1)) var(--tkb-ease) both;
+  animation-delay: calc(var(--i, 0) * 45ms * var(--tkb-speed, 1));
+}
+.tkb-root.is-entering .tkb-slot {
+  transform-origin: left center; animation: tkb-slot-in calc(520ms * var(--tkb-speed, 1)) var(--tkb-ease) both;
+  animation-delay: calc((80ms + var(--i, 0) * 24ms) * var(--tkb-speed, 1));
+}
+/* 全部完成：一道光沿进度段扫过（一次） */
+.tkb-root[data-celebrate] .tkb-slot { animation: tkb-glint calc(800ms * var(--tkb-speed, 1)) var(--tkb-ease) both; animation-delay: calc(var(--i, 0) * 40ms * var(--tkb-speed, 1)); }
+.tkb-root[data-celebrate] .tkb-score__done { animation: tkb-pop calc(520ms * var(--tkb-speed, 1)) var(--tkb-ease-spring) both; }
+
+/* ---- 减少动效：保留颜色变化，去掉位移与循环 ---- */
+.tkb-root[data-motion="reduced"] .tkb-mate::before,
+.tkb-root[data-motion="reduced"] .tkb-card__rail::after,
+.tkb-root[data-motion="reduced"] .tkb-mc.is-new, .tkb-root[data-motion="reduced"] .tkb-mate.is-pop,
+.tkb-root[data-motion="reduced"] .tkb-card.is-landed .tkb-card__glyph,
+.tkb-root[data-motion="reduced"][data-celebrate] .tkb-slot,
+.tkb-root[data-motion="reduced"][data-celebrate] .tkb-score__done { animation: none !important; }
+.tkb-root[data-motion="reduced"] .tkb-card__rail::after { opacity: 0 !important; }
+@media (prefers-reduced-motion: reduce) {
+  .tkb-root .tkb-mate::before, .tkb-root .tkb-card__rail::after, .tkb-root .tkb-mc.is-new, .tkb-root .tkb-mate.is-pop,
+  .tkb-root .tkb-card.is-landed .tkb-card__glyph, .tkb-root[data-celebrate] .tkb-slot, .tkb-root[data-celebrate] .tkb-score__done { animation: none !important; }
+  .tkb-root .tkb-card__rail::after { opacity: 0 !important; }
+}
+
+/* ---- ≥540：三列并排（分屏 / 拉宽 / 浮窗） ---- */
+@container tkb (min-width: 540px) {
+  .tkb-lanes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; }
+  .tkb-lane { display: flex; flex-direction: column; min-height: 0; }
+  .tkb-lane + .tkb-lane { border-left: 1px solid var(--dsw-alias-border-l1); }
+  .tkb-lane[data-lane="in_progress"] { background: color-mix(in srgb, var(--tkb-c-active) 2.5%, var(--dsw-alias-bg-base)); }
+  .tkb-lane__head { position: relative; height: 38px; padding: 0 12px; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .tkb-lane__body, .tkb-lane[data-empty] .tkb-lane__body {
+    display: flex; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 8px 20px;
+    scrollbar-width: thin; scrollbar-color: var(--dsw-alias-border-l3) transparent;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 18px), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 18px), transparent 100%);
+  }
+  .tkb-empty {
+    display: grid; place-items: center; flex: none; height: 52px; opacity: .55;
+    border: 1px dashed var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-md); color: var(--dsw-alias-label-tertiary);
+  }
+}
+/* ---- ≥820：全屏 / 大浮窗，信息更舒展 ---- */
+@container tkb (min-width: 820px) {
+  .tkb-head { gap: 16px; padding: 14px 18px 13px; }
+  .tkb-score__done { font-size: 22px; }
+  .tkb-mc { padding: 2px 9px 2px 2px; background: var(--dsw-alias-bg-layer-1); }
+  .tkb-mc + .tkb-mc { margin-left: 6px; }
+  .tkb-mc__name { display: inline; }
+  .tkb-mc .tkb-mate { box-shadow: none; }
+  .tkb-lane__head { height: 42px; padding: 0 16px; }
+  .tkb-lane__body, .tkb-lane[data-empty] .tkb-lane__body { gap: 8px; padding: 6px 12px 22px; }
+  .tkb-lane[data-lane="completed"] .tkb-lane__body { gap: 2px; }
+  .tkb-card { padding: 11px 12px 12px 14px; }
+  .tkb-card__preview {
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+    margin-top: 3px; font-size: 12px; color: var(--dsw-alias-label-tertiary);
+  }
+  .tkb-card[aria-expanded="true"] .tkb-card__preview { display: none; }
+  .tkb-card__owner-name { display: inline; }
+}
+
+/* ---- 标签页胶囊标题（TeamKanbanTitle） ---- */
+.tkb-title { display: inline-flex; align-items: center; gap: 6px; }
+.tkb-title__ring { width: 15px; height: 15px; overflow: visible; }
+.tkb-title__track { fill: none; stroke: var(--dsw-alias-border-l3); stroke-width: 1.8; }
+.tkb-title__arc {
+  fill: none; stroke: var(--dsw-alias-state-done-primary); stroke-width: 1.8; stroke-linecap: round;
+  transform: rotate(-90deg); transform-origin: 8px 8px;
+  transition: stroke-dashoffset calc(620ms * var(--tkb-speed, 1)) var(--tkb-ease);
+}
+.tkb-title__check {
+  fill: none; stroke: var(--dsw-alias-state-done-primary); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 9; stroke-dashoffset: 9; transition: stroke-dashoffset calc(360ms * var(--tkb-speed, 1)) var(--tkb-ease) calc(500ms * var(--tkb-speed, 1));
+}
+.tkb-title[data-done] .tkb-title__check { stroke-dashoffset: 0; }
+.tkb-title__count { font-size: 11px; color: var(--dsw-alias-label-tertiary); }
+.tkb-title.is-pulse .tkb-title__ring { animation: tkb-ring-pulse calc(900ms * var(--tkb-speed, 1)) var(--tkb-ease) 1; }
+.tkb-title.is-pulse .tkb-title__count { animation: tkb-count-pulse calc(900ms * var(--tkb-speed, 1)) var(--tkb-ease) 1; }
+@keyframes tkb-ring-pulse { 30% { transform: scale(1.28); } }
+@keyframes tkb-count-pulse { 0%, 40% { color: var(--dsw-alias-state-done-primary); } }
+</style>
+</head>
+<body data-theme="light">
+<header class="pt-bar" id="ptBar">
+  <div class="pt-group">
+    <button class="pt-btn pt-btn--primary" data-act="play" id="ptPlay"></button>
+    <button class="pt-btn" data-act="next">下一步</button>
+    <button class="pt-btn" data-act="reset">重置</button>
+    <span class="pt-step" id="ptStep"></span>
+  </div>
+  <span class="pt-sep"></span>
+  <div class="pt-group">
+    <button class="pt-btn" data-act="add">新任务</button>
+    <button class="pt-btn" data-act="claim">认领</button>
+    <button class="pt-btn" data-act="complete">完成</button>
+    <button class="pt-btn" data-act="revise">修订</button>
+    <button class="pt-btn" data-act="stall">运行 ⇄ 空闲</button>
+    <button class="pt-btn" data-act="del">删除</button>
+    <button class="pt-btn" data-act="clear">清空</button>
+    <button class="pt-btn" data-act="team" id="ptTeam" aria-pressed="true">团队模式</button>
+    <button class="pt-btn" data-act="failure" id="ptFailure" aria-pressed="false">投影异常</button>
+  </div>
+  <span class="pt-sep"></span>
+  <div class="pt-group">
+    <div class="pt-seg" data-seg="theme"><button data-v="light" aria-pressed="true">亮</button><button data-v="dark">暗</button></div>
+    <div class="pt-seg" data-seg="lang"><button data-v="zh" aria-pressed="true">中</button><button data-v="en">EN</button></div>
+    <div class="pt-seg" data-seg="geo"><button data-v="dock" aria-pressed="true">停靠</button><button data-v="float">浮动</button><button data-v="full">全屏</button></div>
+    <div class="pt-seg" data-seg="width"><button data-v="360">360</button><button data-v="460">460</button><button data-v="600">600</button><button data-v="900">900</button></div>
+    <span class="pt-readout" id="ptWidth"></span>
+    <div class="pt-seg" data-seg="speed"><button data-v="1" aria-pressed="true">1×</button><button data-v="3">慢放</button></div>
+    <button class="pt-btn" data-act="reduced" id="ptReduced" aria-pressed="false">减少动效</button>
+    <button class="pt-btn" data-act="others" id="ptOthers" aria-pressed="true">其他标签</button>
+  </div>
+</header>
+<main class="pt-stage">
+  <div class="app" id="app">
+    <section class="conv">
+      <div class="conv__head"><span class="conv__dot"></span><span>构建「智能体任务板」插件</span></div>
+      <div class="conv__body" id="convBody">
+        <div class="msg-user">用团队模式把「智能体任务板」插件做出来：先梳理契约，再并行实现 watcher 与主题，最后联调验收。</div>
+        <div class="msg-agent">好的。我先拆解任务并建立依赖，然后派发给队友并行推进。</div>
+      </div>
+      <div class="conv__input">继续对话…</div>
+    </section>
+    <aside class="side" id="side" data-geo="dock">
+      <div class="side__grip" id="sideGrip"></div>
+      <div class="side__tabs" id="sideTabs" role="tablist"></div>
+      <div class="side__body" id="sideBody">
+        <div class="side__pane" data-pane="files">
+          <div class="mock-files" id="mockFiles"></div>
+        </div>
+        <div class="side__pane" data-pane="terminal" hidden>
+          <div class="mock-term">
+            <div><span class="dim">$</span> dsh plugin --profile desktop add ~/Desktop/dsh-team-kanban</div>
+            <div class="ok">✓ bundle @local/dsh-client-ui-team-kanban installed</div>
+            <div><span class="dim">$</span> <span class="cur"></span></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+<script>
+(() => {
+'use strict';
+
+/* ================= 0. 工具与运动环境 ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const h = (tag, cls, text) => { const el = document.createElement(tag); if (cls) el.className = cls; if (text != null) el.textContent = text; return el; };
+const SVGNS = 'http://www.w3.org/2000/svg';
+const env = { speed: 1, reducedToggle: false };
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+const reduced = () => env.reducedToggle || mq.matches;
+const ms = n => n * env.speed;
+const EASE = 'cubic-bezier(.2,.8,.2,1)';
+let SPRING = 'cubic-bezier(.34,1.36,.64,1)';
+try { document.body.animate([{ opacity: 1 }, { opacity: 1 }], { duration: 1, easing: 'linear(0, 1)' }).cancel(); SPRING = 'linear(0, .12 4%, .42 11%, .72 20%, .9 29%, .99 38%, 1.03 47%, 1.035 54%, 1.02 64%, 1.005 78%, 1)'; } catch (e) { /* 旧内核回退 */ }
+/* 让所有循环动效对齐同一全局节拍：负 delay = -(now % 周期) */
+const phase = period => `${-(performance.now() % ms(period))}ms`;
+const numId = id => parseInt(String(id).replace(/\D+/g, ''), 10) || 0;
+const shortId = id => String(id).replace(/^task-/, '');
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+const ICON = {
+  pending: '<svg viewBox="0 0 12 12" class="tkb-glyph tkb-glyph--pending"><circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  in_progress: '<svg viewBox="0 0 12 12" class="tkb-glyph tkb-glyph--in_progress"><circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 2.6a3.4 3.4 0 0 1 0 6.8z" fill="currentColor"/></svg>',
+  completed: '<svg viewBox="0 0 12 12" class="tkb-glyph tkb-glyph--completed"><circle cx="6" cy="6" r="5.6" fill="currentColor"/><path class="tkb-glyph__check" d="M3.6 6.1 5.2 7.7 8.4 4.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chain: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 9.5 9.5 6.5"/><path d="M7.2 4.6 8.3 3.5a2.5 2.5 0 0 1 3.5 3.5l-1.1 1.1"/><path d="M8.8 11.4 7.7 12.5a2.5 2.5 0 0 1-3.5-3.5l1.1-1.1"/></svg>',
+  dep: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 9.5 3 3"/><path d="M3 7.5V3h4.5"/></svg>',
+  down: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2.5 9 9"/><path d="M9 4.5V9H4.5"/></svg>',
+  scope: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5z"/></svg>',
+  warn: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5 14 13H2z"/><path d="M8 6.5v3"/><path d="M8 11.4v.1"/></svg>',
+  error: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5"/><path d="M8 10.8v.1"/></svg>',
+  files: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5z"/></svg>',
+  file: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/></svg>',
+  terminal: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="m5 7 2 1.5L5 10"/><path d="M8.5 10.5H11"/></svg>',
+  close: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l5 5M8.5 3.5l-5 5"/></svg>',
+  play: '<svg viewBox="0 0 12 12"><path d="M3 2v8l7-4z" fill="currentColor"/></svg>',
+  pause: '<svg viewBox="0 0 12 12"><path d="M3 2h2v8H3zM7 2h2v8H7z" fill="currentColor"/></svg>',
+};
+const tpl = document.createElement('template');
+function icon(name, cls) {
+  tpl.innerHTML = ICON[name];
+  const n = tpl.content.firstElementChild.cloneNode(true);
+  if (cls) n.classList.add(cls);
+  n.setAttribute('aria-hidden', 'true');
+  return n;
+}
+
+/* ================= 1. 文案（teamKanban 命名空间） ================= */
+const DICT = {
+  zh: {
+    'tab.title': '任务板', 'column.pending': '待处理', 'column.in_progress': '进行中', 'column.completed': '已完成', 'column.empty': '暂无任务',
+    'card.unowned': '未分配', 'card.ready': '就绪', 'card.blocked': '被依赖阻塞', 'card.blockedBy': '依赖', 'card.blocks': '解锁后续',
+    'card.writeScopes': '写入范围', 'card.running': '运行中', 'card.idle': '空闲', 'card.lead': '主智能体',
+    'error.title': '任务记录异常',
+    'a11y.created': '新任务 {id}', 'a11y.moved.in_progress': '{id} 开始执行', 'a11y.moved.completed': '{id} 已完成',
+    'a11y.moved.pending': '{id} 退回待处理', 'a11y.unlocked': '{id} 已就绪', 'a11y.deleted': '{id} 已删除',
+    'pane.files': '文件', 'pane.terminal': '终端',
+  },
+  en: {
+    'tab.title': 'Task board', 'column.pending': 'Pending', 'column.in_progress': 'In progress', 'column.completed': 'Completed', 'column.empty': 'No tasks',
+    'card.unowned': 'Unowned', 'card.ready': 'Ready', 'card.blocked': 'Blocked', 'card.blockedBy': 'Blocked by', 'card.blocks': 'Unblocks',
+    'card.writeScopes': 'Write scopes', 'card.running': 'Running', 'card.idle': 'Idle', 'card.lead': 'Lead agent',
+    'error.title': 'Invalid task record',
+    'a11y.created': 'New task {id}', 'a11y.moved.in_progress': '{id} started', 'a11y.moved.completed': '{id} completed',
+    'a11y.moved.pending': '{id} back to pending', 'a11y.unlocked': '{id} is ready', 'a11y.deleted': '{id} deleted',
+    'pane.files': 'Files', 'pane.terminal': 'Terminal',
+  },
+};
+let LANG = 'zh';
+const tx = (k, v) => {
+  let s = (DICT[LANG] && DICT[LANG][k]) || DICT.zh[k] || k;
+  if (v) s = s.replace(/\{(\w+)\}/g, (_, n) => (v[n] != null ? v[n] : ''));
+  return s;
+};
+
+/* ================= 2. 模拟投影：agentTeam + subagentCatalog + 运行态 ================= */
+const ROOT_ID = 'root';
+const MATE_DEFS = {
+  explorer: { id: 'sa-explorer', name: 'explorer', label: '探索者' },
+  builder: { id: 'sa-builder', name: 'builder', label: '构建者' },
+  designer: { id: 'sa-designer', name: 'designer', label: '设计师' },
+  reviewer: { id: 'sa-reviewer', name: 'reviewer', label: '审查员' },
+};
+const mateById = id => Object.values(MATE_DEFS).find(m => m.id === id);
+function mateLabel(id) {
+  if (id === ROOT_ID) return tx('card.lead');
+  const m = mateById(id);
+  if (!m) return id;
+  return LANG === 'zh' ? m.label : cap(m.name);
+}
+function mateMono(id) {
+  if (id === ROOT_ID) return LANG === 'zh' ? '主' : 'L';
+  const m = mateById(id);
+  if (!m) return '?';
+  return LANG === 'zh' ? m.label[0] : m.name[0].toUpperCase();
+}
+const state = { enabled: true, tasks: [], failure: undefined, catalog: [], running: new Set(), completedSeq: new Map(), seq: 0, nextId: 1 };
+
+function statusText(t) {
+  if (t.status === 'pending') return t.ready ? tx('card.ready') : tx('card.blocked');
+  if (t.status === 'in_progress') return `${tx('column.in_progress')} · ${t.ownerId ? mateLabel(t.ownerId) : tx('card.unowned')}`;
+  return tx('column.completed');
+}
+
+/* 一份投影 → 视图模型 */
+function derive(st) {
+  const tasks = st.tasks.filter(t => t.status !== 'deleted');
+  const map = new Map(tasks.map(t => [t.id, t]));
+  const byNum = (a, b) => numId(a.id) - numId(b.id);
+  const ready = [], blocked = [], active = [], done = [];
+  tasks.forEach(t => {
+    if (t.status === 'pending') (t.ready ? ready : blocked).push(t);
+    else if (t.status === 'in_progress') active.push(t);
+    else if (t.status === 'completed') done.push(t);
+  });
+  ready.sort(byNum); blocked.sort(byNum); active.sort(byNum);
+  done.sort((a, b) => (st.completedSeq.get(b.id) || 0) - (st.completedSeq.get(a.id) || 0) || byNum(a, b));
+  const dependents = new Map();
+  tasks.forEach(t => t.blockedBy.forEach(b => { if (!dependents.has(b)) dependents.set(b, []); dependents.get(b).push(t.id); }));
+  const running = new Set(st.running);
+  const isRunning = id => running.has(id);
+  const mates = st.catalog.map(m => ({ id: m.id, lead: false, running: isRunning(m.id) }));
+  if (tasks.some(t => t.ownerId === ROOT_ID)) mates.unshift({ id: ROOT_ID, lead: true, running: isRunning(ROOT_ID) });
+  return {
+    tasks, map, ready, blocked, active, done, dependents, isRunning, mates,
+    lanes: { pending: ready.concat(blocked), in_progress: active, completed: done },
+    total: tasks.length,
+    counts: { pending: ready.length + blocked.length, in_progress: active.length, completed: done.length },
+  };
+}
+/* 前后两份快照 → 事件 */
+function diff(prev, next) {
+  const ev = { created: [], deleted: [], moved: [], unlocked: [], owner: [], touched: [] };
+  next.tasks.forEach(t => {
+    const p = prev.get(t.id);
+    if (!p) { ev.created.push(t.id); return; }
+    if (p.status !== t.status) ev.moved.push({ id: t.id, from: p.status, to: t.status });
+    if (p.status === 'pending' && t.status === 'pending' && !p.ready && t.ready) ev.unlocked.push(t.id);
+    if (p.ownerId !== t.ownerId) ev.owner.push(t.id);
+    if (p.revision !== t.revision && p.status === t.status && p.ownerId === t.ownerId) ev.touched.push(t.id);
+  });
+  prev.forEach((_, id) => { if (!next.map.has(id)) ev.deleted.push(id); });
+  return ev;
+}
+const snapshot = next => new Map(next.tasks.map(t => [t.id, { ...t, blockedBy: t.blockedBy.slice() }]));
+
+/* 数字逐位滚动：只滚动变化的那一位 */
+function roll(el, text, o = {}) {
+  const prevText = el._v;
+  if (prevText === text) return;
+  el._v = text;
+  const run = o.anim || ((e, k, p) => e.animate(k, p));
+  const can = prevText != null && o.animate && !reduced();
+  const num = s => parseInt(String(s).replace(/\D/g, ''), 10) || 0;
+  const dir = num(text) >= num(prevText) ? 1 : -1;
+  const old = String(prevText == null ? '' : prevText);
+  el.replaceChildren();
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const cell = h('span', 'tkb-roll__c');
+    const inn = h('span', 'tkb-roll__in', ch);
+    cell.append(inn);
+    el.append(cell);
+    const oi = i - (text.length - old.length);
+    const och = oi >= 0 ? old[oi] : '';
+    if (can && och !== ch) {
+      const opt = { duration: ms(440), delay: o.delay || 0 };
+      run(inn, [{ transform: `translateY(${dir * 100}%)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { ...opt, easing: SPRING, fill: 'backwards' });
+      if (och) {
+        const out = h('span', 'tkb-roll__out', och);
+        cell.append(out);
+        const a = run(out, [{ transform: 'none', opacity: 1 }, { transform: `translateY(${-dir * 100}%)`, opacity: 0 }], { ...opt, easing: EASE, fill: 'both' });
+        a.finished.then(() => out.remove(), () => out.remove());
+      }
+    }
+  }
+}
+
+/* ================= 3. 看板（TeamKanbanBoard） ================= */
+function createBoard(mount) {
+  const LANES = ['pending', 'in_progress', 'completed'];
+  const root = h('div', 'tkb-root');
+  root.tabIndex = -1;
+  if (env.reducedToggle) root.dataset.motion = 'reduced';
+
+  /* --- 骨架 --- */
+  const head = h('div', 'tkb-head');
+  const score = h('div', 'tkb-score');
+  const scoreDone = h('span', 'tkb-score__done tkb-roll');
+  const scoreTotal = h('span', 'tkb-score__total tkb-roll');
+  score.append(scoreDone, scoreTotal);
+  const strip = h('div', 'tkb-strip');
+  const matesEl = h('div', 'tkb-mates');
+  head.append(score, strip, matesEl);
+
+  const banner = h('div', 'tkb-banner');
+  const bClip = h('div', 'tkb-banner__clip');
+  const bBox = h('div', 'tkb-banner__box');
+  const bText = h('div', 'tkb-banner__text');
+  const bTitle = h('div', 'tkb-banner__title');
+  const bMsg = h('div', 'tkb-banner__msg');
+  bText.append(bTitle, bMsg);
+  bBox.append(icon('error', 'tkb-banner__icon'), bText);
+  bClip.append(bBox);
+  banner.append(bClip);
+
+  const lanesEl = h('div', 'tkb-lanes');
+  const lanes = {};
+  LANES.forEach(key => {
+    const el = h('section', 'tkb-lane');
+    el.dataset.lane = key;
+    const hd = h('div', 'tkb-lane__head');
+    const name = h('span', 'tkb-lane__name');
+    const count = h('span', 'tkb-lane__count tkb-roll');
+    hd.append(icon(key), name, count);
+    const body = h('div', 'tkb-lane__body');
+    const empty = h('div', 'tkb-empty');
+    empty.append(icon(key));
+    empty.setAttribute('data-tip', '');
+    empty._tip = () => [tx('column.empty'), ''];
+    el.append(hd, body);
+    lanesEl.append(el);
+    lanes[key] = { el, hd, name, count, body, empty };
+  });
+  const divider = h('div', 'tkb-divider');
+  divider.append(icon('chain'));
+  divider.setAttribute('role', 'separator');
+  divider.setAttribute('data-tip', '');
+  divider._tip = () => [tx('card.blocked'), ''];
+
+  const wires = document.createElementNS(SVGNS, 'svg');
+  wires.setAttribute('class', 'tkb-wires');
+  const flights = h('div', 'tkb-flights');
+  const tip = h('div', 'tkb-tip');
+  const tipT = h('b');
+  const tipS = h('span');
+  tip.append(tipT, tipS);
+  const sr = h('div', 'tkb-sr');
+  sr.setAttribute('aria-live', 'polite');
+  root.append(head, banner, lanesEl, wires, flights, tip, sr);
+  mount.append(root);
+
+  /* --- 状态 --- */
+  const cards = new Map();
+  let prev = new Map();
+  let vm = null;
+  let first = true;
+  let expandedId = null;
+  let spot = null;
+  let pinned = false;
+  let awaySnap = null;
+  let lastRects = new Map();
+  let lastMode = null;
+
+  /* --- 运动登记：新投影到达时一次性收束，DOM 永远是真相 --- */
+  const live = new Set();
+  const timers = new Set();
+  const anim = (el, kf, opt) => {
+    const a = el.animate(kf, opt);
+    live.add(a);
+    const rm = () => live.delete(a);
+    a.finished.then(rm, rm);
+    return a;
+  };
+  const later = (fn, d) => {
+    const r = { fn };
+    r.id = setTimeout(() => { timers.delete(r); fn(); }, d);
+    timers.add(r);
+  };
+  function flushMotion() {
+    const pend = [...timers];
+    timers.clear();
+    pend.forEach(r => { clearTimeout(r.id); r.fn(); });
+    [...live].forEach(a => { try { a.finish(); } catch (e) { a.cancel(); } });
+    live.clear();
+    flights.replaceChildren();
+    cards.forEach(el => { el.style.visibility = ''; });
+  }
+  const pulse = (el, cls, dur) => {
+    if (!el) return;
+    el._pt = el._pt || {};
+    clearTimeout(el._pt[cls]);
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+    el._pt[cls] = setTimeout(() => el.classList.remove(cls), ms(dur) + 80);
+  };
+  function setLive(el, attr, on, period) {
+    const has = el.hasAttribute(attr);
+    if (on && !has) {
+      clearTimeout(el._lf);
+      el.style.setProperty('--tkb-phase', phase(period));
+      el.removeAttribute(attr + '-out');
+      el.setAttribute(attr, '');
+    } else if (!on && has) {
+      el.removeAttribute(attr);
+      el.setAttribute(attr + '-out', '');
+      clearTimeout(el._lf);
+      el._lf = setTimeout(() => el.removeAttribute(attr + '-out'), ms(520));
+    }
+  }
+  const canAnimate = () => root.isConnected && root.offsetParent !== null && root.clientWidth > 0;
+  const rel = (el, rr) => { const r = el.getBoundingClientRect(); return { x: r.left - rr.left, y: r.top - rr.top, w: r.width, h: r.height }; };
+  function measureAll() {
+    const rr = root.getBoundingClientRect();
+    lastRects = new Map();
+    cards.forEach((el, id) => { if (el.isConnected) lastRects.set(id, rel(el, rr)); });
+    return lastRects;
+  }
+
+  /* --- 顶部 --- */
+  function slotTip(s) {
+    if (s._task) return [`#${shortId(s._task.id)} ${s._task.subject}`, statusText(s._task)];
+    const kind = { done: tx('column.completed'), active: tx('column.in_progress'), ready: tx('card.ready'), blocked: tx('card.blocked') }[s.dataset.s];
+    return [String(s._n), kind];
+  }
+  function patchHeader(next, landing, animate) {
+    const { total, counts } = next;
+    scoreDone.style.setProperty('--tkb-sd', `${landing}ms`);
+    roll(scoreDone, String(counts.completed), { delay: landing, animate, anim });
+    roll(scoreTotal, '/' + total, { animate, anim });
+
+    const prop = total > 24;
+    const data = prop
+      ? [['done', counts.completed], ['active', counts.in_progress], ['ready', next.ready.length], ['blocked', next.blocked.length]]
+      : [].concat(next.done.map(t => ['done', t]), next.active.map(t => ['active', t]), next.ready.map(t => ['ready', t]), next.blocked.map(t => ['blocked', t]));
+    while (strip.childElementCount < data.length) {
+      const s = h('span', 'tkb-slot');
+      s.setAttribute('data-tip', '');
+      s._tip = () => slotTip(s);
+      strip.append(s);
+      if (animate && !reduced()) anim(s, [{ flexGrow: 0, opacity: 0 }, { flexGrow: 1, opacity: 1 }], { duration: ms(420), easing: EASE });
+    }
+    while (strip.childElementCount > data.length) strip.lastElementChild.remove();
+    [...strip.children].forEach((s, i) => {
+      const [kind, x] = data[i];
+      s.style.setProperty('--i', i);
+      s.style.setProperty('--tkb-sd', landing ? `${landing + ms(i * 16)}ms` : '0ms');
+      if (prop) { s.style.flexGrow = x; s._task = null; s._n = x; } else { s.style.flexGrow = ''; s._task = x; }
+      s.dataset.s = kind;
+    });
+
+    patchMates(next, animate);
+
+    const allDone = total > 0 && counts.completed === total;
+    if (allDone && !root.hasAttribute('data-alldone')) {
+      root.setAttribute('data-alldone', '');
+      if (animate && !reduced()) {
+        later(() => {
+          root.removeAttribute('data-celebrate');
+          void root.offsetWidth;
+          root.setAttribute('data-celebrate', '');
+          setTimeout(() => root.removeAttribute('data-celebrate'), ms(1700));
+        }, landing + ms(120));
+      }
+    } else if (!allDone) root.removeAttribute('data-alldone');
+  }
+  function togglePin(id) {
+    if (pinned && spot === id) { pinned = false; setSpot(null); } else { pinned = true; setSpot(id); }
+  }
+  function mkMateChip(m) {
+    const c = h('span', 'tkb-mc');
+    c._id = m.id;
+    const av = h('span', 'tkb-mate');
+    if (m.lead) av.setAttribute('data-lead', '');
+    const nm = h('span', 'tkb-mc__name');
+    c.append(av, nm);
+    c._av = av;
+    c._nm = nm;
+    c.setAttribute('data-tip', '');
+    c._tip = () => [mateLabel(m.id), vm && vm.isRunning(m.id) ? tx('card.running') : tx('card.idle')];
+    c.addEventListener('pointerenter', () => { if (!pinned) setSpot(m.id); });
+    c.addEventListener('pointerleave', () => { if (!pinned) setSpot(null); });
+    c.addEventListener('click', e => { e.stopPropagation(); togglePin(m.id); });
+    return c;
+  }
+  function patchMates(next, animate) {
+    const ex = new Map();
+    [...matesEl.children].forEach(c => ex.set(c._id, c));
+    next.mates.forEach((m, i) => {
+      let c = ex.get(m.id);
+      if (!c) { c = mkMateChip(m); if (animate) pulse(c, 'is-new', 520); }
+      ex.delete(m.id);
+      c._av.textContent = mateMono(m.id);
+      c._nm.textContent = mateLabel(m.id);
+      setLive(c._av, 'data-running', m.running, 2400);
+      if (matesEl.children[i] !== c) matesEl.insertBefore(c, matesEl.children[i] || null);
+    });
+    ex.forEach(c => c.remove());
+    matesEl.hidden = next.mates.length === 0;
+  }
+  function patchBanner(st) {
+    const on = !!st.failure;
+    banner.toggleAttribute('data-open', on);
+    root.toggleAttribute('data-stale', on);
+    if (on) bMsg.textContent = st.failure;
+  }
+
+  /* --- 卡片 --- */
+  function mkCard(id) {
+    const el = h('article', 'tkb-card');
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+    el._id = id;
+    const p = {
+      rail: h('span', 'tkb-card__rail'),
+      glyph: h('span', 'tkb-card__glyph'),
+      id: h('span', 'tkb-card__id'),
+      deps: h('span', 'tkb-card__deps'),
+      owner: h('span', 'tkb-card__owner'),
+      title: h('div', 'tkb-card__title'),
+      preview: h('div', 'tkb-card__preview'),
+      detail: h('div', 'tkb-card__detail'),
+      inner: h('div', 'tkb-card__detail-inner'),
+    };
+    p.glyph.append(icon('completed'));
+    p.detail.append(p.inner);
+    el.append(p.rail, p.glyph, p.id, p.deps, p.owner, p.title, p.preview, p.detail);
+    el._p = p;
+    return el;
+  }
+  function patchCard(el, t, next, unlocking) {
+    const p = el._p;
+    el._owner = t.ownerId || null;
+    el.dataset.status = t.status;
+    el.dataset.ready = t.ready ? 'true' : 'false';
+    setLive(el, 'data-live', t.status === 'in_progress' && !!t.ownerId && next.isRunning(t.ownerId), 1800);
+    const idText = '#' + shortId(t.id);
+    if (p.id.textContent !== idText) p.id.textContent = idText;
+    if (p.title.textContent !== t.subject) p.title.textContent = t.subject;
+    const pv = (t.description || '').split('\n')[0];
+    if (p.preview.textContent !== pv) p.preview.textContent = pv;
+    renderOwner(p.owner, t);
+    const showDeps = t.status === 'pending' && (!t.ready || unlocking);
+    renderDeps(p.deps, showDeps ? t.blockedBy : [], next);
+    renderDetail(p.inner, t, next);
+    el.setAttribute('aria-expanded', expandedId === t.id ? 'true' : 'false');
+    el.setAttribute('aria-label', `#${shortId(t.id)} ${t.subject}，${statusText(t)}`);
+  }
+  function renderOwner(box, t) {
+    const key = t.ownerId || (t.status === 'in_progress' ? '-' : '');
+    const k2 = key + '|' + LANG;
+    if (box._k === k2) return;
+    const changed = box._k !== undefined && box._k.split('|')[0] !== key;
+    box._k = k2;
+    box.replaceChildren();
+    if (!key) return;
+    const ownerId = t.ownerId;
+    const nm = h('span', 'tkb-card__owner-name', key === '-' ? tx('card.unowned') : mateLabel(ownerId));
+    const av = h('span', 'tkb-mate');
+    av.setAttribute('data-tip', '');
+    if (key === '-') {
+      av.setAttribute('data-none', '');
+      av._tip = () => [tx('card.unowned'), ''];
+    } else {
+      av.textContent = mateMono(ownerId);
+      if (ownerId === ROOT_ID) av.setAttribute('data-lead', '');
+      av._tip = () => [mateLabel(ownerId), vm && vm.isRunning(ownerId) ? tx('card.running') : tx('card.idle')];
+      av.addEventListener('click', e => { e.stopPropagation(); togglePin(ownerId); });
+    }
+    box.append(nm, av);
+    if (changed && key !== '-') pulse(av, 'is-pop', 480);
+  }
+  function renderDeps(box, ids, next) {
+    if (!ids.length) { if (box.firstChild) box.replaceChildren(); box.style.opacity = ''; return; }
+    box._tok = (box._tok || 0) + 1;
+    box.style.opacity = '';
+    if (!box._arrow) box._arrow = icon('dep', 'tkb-card__deps-arrow');
+    if (box.firstChild !== box._arrow) box.prepend(box._arrow);
+    const ex = new Map();
+    box.querySelectorAll('.tkb-dep').forEach(c => ex.set(c._id, c));
+    ids.forEach((id, i) => {
+      let c = ex.get(id);
+      if (!c) {
+        c = h('span', 'tkb-dep', '#' + shortId(id));
+        c._id = id;
+        c.setAttribute('data-tip', '');
+        c._tip = () => { const d = vm && vm.map.get(id); return d ? [`#${shortId(id)} ${d.subject}`, statusText(d)] : [`#${shortId(id)}`, '']; };
+        c.addEventListener('click', e => { e.stopPropagation(); jumpTo(id); });
+      }
+      ex.delete(id);
+      const d = next.map.get(id);
+      c.style.removeProperty('--tkb-dd');
+      c.toggleAttribute('data-done', !!d && d.status === 'completed');
+      if (box.children[i + 1] !== c) box.insertBefore(c, box.children[i + 1] || null);
+    });
+    ex.forEach(c => c.remove());
+  }
+  function refRow(kind, label, ids, next) {
+    const row = h('div', 'tkb-detail__row');
+    const icw = h('span', 'tkb-detail__icw');
+    icw.append(icon(kind));
+    icw.setAttribute('data-tip', '');
+    icw._tip = () => [label, ''];
+    const items = h('div', 'tkb-detail__items');
+    row.append(icw, items);
+    ids.forEach(id => {
+      const d = next.map.get(id);
+      const r = h('button', 'tkb-ref');
+      r.type = 'button';
+      r.append(icon(d ? d.status : 'pending'), h('span', 'tkb-ref__id', '#' + shortId(id)), h('span', 'tkb-ref__t', d ? d.subject : ''));
+      r.addEventListener('click', e => { e.stopPropagation(); jumpTo(id); });
+      items.append(r);
+    });
+    return row;
+  }
+  function renderDetail(inner, t, next) {
+    const downs = next.dependents.get(t.id) || [];
+    const stat = ids => ids.map(id => id + ':' + (next.map.get(id) ? next.map.get(id).status : 'x')).join(',');
+    const sig = [LANG, t.description, stat(t.blockedBy), stat(downs), t.writeScopes.join('|'), t.writeScopeWarnings.join('|')].join('¦');
+    if (inner._sig === sig) return;
+    inner._sig = sig;
+    const wrap = h('div', 'tkb-detail');
+    wrap.append(h('p', 'tkb-detail__desc', t.description || '—'));
+    if (t.blockedBy.length) wrap.append(refRow('dep', tx('card.blockedBy'), t.blockedBy, next));
+    if (downs.length) wrap.append(refRow('down', tx('card.blocks'), downs, next));
+    if (t.writeScopes.length) {
+      const row = h('div', 'tkb-detail__row');
+      const icw = h('span', 'tkb-detail__icw');
+      icw.append(icon('scope'));
+      icw.setAttribute('data-tip', '');
+      icw._tip = () => [tx('card.writeScopes'), ''];
+      const items = h('div', 'tkb-detail__items');
+      row.append(icw, items);
+      t.writeScopes.forEach(s => items.append(h('span', 'tkb-scope', s)));
+      wrap.append(row);
+    }
+    t.writeScopeWarnings.forEach(w => { const l = h('div', 'tkb-warnline'); l.append(icon('warn'), h('span', '', w)); wrap.append(l); });
+    inner.replaceChildren(wrap);
+  }
+
+  /* --- 分区排布：就绪在上，阻塞沉到分隔线下 --- */
+  function patchLanes(next, ev) {
+    const unlocking = new Set(ev.unlocked);
+    next.tasks.forEach(t => {
+      let el = cards.get(t.id);
+      if (!el) { el = mkCard(t.id); cards.set(t.id, el); }
+      patchCard(el, t, next, unlocking.has(t.id));
+    });
+    cards.forEach((el, id) => {
+      if (!next.map.has(id)) { el.remove(); cards.delete(id); if (expandedId === id) expandedId = null; }
+    });
+    LANES.forEach(key => {
+      const L = lanes[key];
+      let desired;
+      if (key === 'pending') {
+        desired = next.ready.map(t => cards.get(t.id));
+        if (next.blocked.length) { desired.push(divider); next.blocked.forEach(t => desired.push(cards.get(t.id))); }
+      } else desired = next.lanes[key].map(t => cards.get(t.id));
+      if (!desired.length) desired.push(L.empty);
+      desired.forEach((node, i) => { if (L.body.children[i] !== node) L.body.insertBefore(node, L.body.children[i] || null); });
+      while (L.body.childElementCount > desired.length) L.body.lastElementChild.remove();
+      L.el.toggleAttribute('data-empty', next.lanes[key].length === 0);
+    });
+  }
+
+  /* --- 动效 --- */
+  function ghostOf(el) {
+    const g = el.cloneNode(true);
+    ['tabindex', 'role', 'aria-label', 'aria-expanded'].forEach(a => g.removeAttribute(a));
+    g.setAttribute('aria-hidden', 'true');
+    g.classList.remove('is-new', 'is-touched', 'is-landed', 'is-unlocking', 'is-flash', 'is-catchup', 'is-spot', 'is-lin', 'is-focus', 'is-up-done', 'is-up-open', 'is-down', 'is-hint');
+    g.style.visibility = '';
+    g.querySelectorAll('[data-tip]').forEach(n => n.removeAttribute('data-tip'));
+    return g;
+  }
+  /* 跨列飞行：外层裁切盒负责位移与尺寸，内部新旧两张快照交叉淡化 */
+  function flyCard(el, gOld, from, to, status, F) {
+    const tok = el._ft = (el._ft || 0) + 1;
+    const gNew = ghostOf(el);
+    el.style.visibility = 'hidden';
+    const w = h('div', 'tkb-flight');
+    w.dataset.to = status;
+    Object.assign(w.style, { left: from.x + 'px', top: from.y + 'px', width: from.w + 'px', height: from.h + 'px' });
+    Object.assign(gOld.style, { width: from.w + 'px', height: from.h + 'px' });
+    Object.assign(gNew.style, { width: to.w + 'px', height: to.h + 'px' });
+    w.append(gOld, gNew);
+    flights.append(w);
+    const dx = to.x - from.x, dy = to.y - from.y, dist = Math.hypot(dx, dy) || 1;
+    const lift = Math.min(20, 6 + dist * .05);
+    let px = -dy / dist, py = dx / dist;
+    if (py > 0 || (Math.abs(py) < 1e-6 && px > 0)) { px = -px; py = -py; }
+    anim(w, [
+      { transform: 'translate(0px,0px) scale(1)', width: from.w + 'px', height: from.h + 'px' },
+      { transform: `translate(${dx * .5 + px * lift}px,${dy * .5 + py * lift}px) scale(1.035)`, offset: .45 },
+      { transform: `translate(${dx}px,${dy}px) scale(1)`, width: to.w + 'px', height: to.h + 'px' },
+    ], { duration: F, easing: 'cubic-bezier(.5,.05,.2,1)', fill: 'forwards' });
+    anim(gOld, [{ opacity: 1 }, { opacity: 1, offset: .25 }, { opacity: 0, offset: .7 }, { opacity: 0 }], { duration: F, fill: 'forwards' });
+    anim(gNew, [{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1, offset: .8 }, { opacity: 1 }], { duration: F, fill: 'forwards' });
+    later(() => {
+      w.remove();
+      if (el._ft === tok) { el.style.visibility = ''; pulse(el, 'is-landed', 800); }
+    }, F);
+  }
+  function vanish(g, b, rm) {
+    const w = h('div', 'tkb-flight tkb-flight--vanish');
+    Object.assign(w.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });
+    Object.assign(g.style, { width: b.w + 'px', height: b.h + 'px' });
+    w.append(g);
+    flights.append(w);
+    const D = ms(rm ? 150 : 280);
+    anim(w, rm ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(4px) scale(.94)' }], { duration: D, easing: EASE, fill: 'forwards' });
+    later(() => w.remove(), D);
+  }
+  function fadeDeps(el) {
+    const box = el._p.deps;
+    if (!box.firstChild || el.dataset.status !== 'pending' || el.dataset.ready !== 'true') return;
+    if (reduced() || !canAnimate()) { box.replaceChildren(); return; }
+    const tok = box._tok;
+    anim(box, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(-4px)' }], { duration: ms(240), easing: EASE })
+      .finished.then(() => { if (box._tok === tok) { box.style.opacity = '0'; box.replaceChildren(); box.style.opacity = ''; } }, () => {});
+  }
+  function motion(next, ev, before, ghosts, o) {
+    const { rm, crowd, F } = o;
+    const after = lastRects;
+    const doneNow = new Set(ev.moved.filter(m => m.to === 'completed').map(m => m.id));
+    const moved = new Map(ev.moved.map(m => [m.id, m]));
+    /* 因果编排：被「刚完成的任务」解锁的卡片，等上游落地后再解锁 */
+    const hold = new Map();
+    if (!rm && !crowd) {
+      ev.unlocked.forEach(id => { if (next.map.get(id).blockedBy.some(b => doneNow.has(b))) hold.set(id, F + ms(160)); });
+    }
+    cards.forEach((el, id) => {
+      const b = before.get(id), a = after.get(id);
+      if (!b || !a) return;
+      const g = ghosts.get(id);
+      if (g) {
+        if (rm || crowd) { anim(el, [{ opacity: 0 }, { opacity: 1 }], { duration: ms(rm ? 150 : 240), easing: EASE }); pulse(el, 'is-landed', 800); }
+        else flyCard(el, g, b, a, moved.get(id).to, F);
+        return;
+      }
+      if (rm) return;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      if (Math.abs(dx) > .5 || Math.abs(dy) > .5) {
+        anim(el, [{ transform: `translate(${dx}px,${dy}px)` }, { transform: 'none' }], { duration: ms(400), easing: EASE, delay: hold.get(id) || 0, fill: 'backwards' });
+      }
+    });
+    ev.deleted.forEach(id => { const g = ghosts.get(id), b = before.get(id); if (g && b) vanish(g, b, rm); });
+    ev.created.forEach((id, i) => {
+      const el = cards.get(id);
+      if (!el) return;
+      const d = ms(Math.min(i, 8) * 50);
+      anim(el, rm ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateY(8px) scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: ms(rm ? 150 : 380), delay: d, easing: EASE, fill: 'backwards' });
+      pulse(el, 'is-new', 1200 + Math.min(i, 8) * 50);
+    });
+    ev.unlocked.forEach(id => {
+      const el = cards.get(id);
+      if (!el) return;
+      const d = hold.get(id) || 0;
+      if (d) {
+        el.dataset.ready = 'false';
+        el._p.deps.querySelectorAll('.tkb-dep').forEach(c => { if (doneNow.has(c._id)) c.style.setProperty('--tkb-dd', `${Math.max(0, d - ms(140))}ms`); });
+      }
+      later(() => { el.dataset.ready = 'true'; pulse(el, 'is-unlocking', 900); }, d);
+      later(() => fadeDeps(el), d + ms(1100));
+    });
+    ev.touched.forEach(id => pulse(cards.get(id), 'is-touched', 900));
+  }
+  function entrance() {
+    if (reduced()) return;
+    root.classList.add('is-entering');
+    score.style.setProperty('--i', 0);
+    matesEl.style.setProperty('--i', 1);
+    LANES.forEach((key, li) => {
+      lanes[key].hd.style.setProperty('--i', li + 1);
+      [...lanes[key].body.children].forEach((c, ci) => c.style.setProperty('--i', Math.min(li + 2 + ci, 10)));
+    });
+    setTimeout(() => root.classList.remove('is-entering'), ms(1300));
+  }
+
+  /* --- 主入口：一份新投影 --- */
+  function update(st) {
+    flushMotion();
+    hideTip();
+    clearLineage();
+    const next = derive(st);
+    const ev = diff(prev, next);
+    const animate = !first && canAnimate();
+    const rm = reduced();
+    const crowd = ev.moved.length > 6;
+    const F = ms(460);
+    const flying = animate && !rm && !crowd;
+    const landing = flying && ev.moved.some(m => m.to === 'completed') ? F : 0;
+    const before = new Map(), ghosts = new Map();
+    if (animate) {
+      const rr = root.getBoundingClientRect();
+      cards.forEach((el, id) => {
+        before.set(id, rel(el, rr));
+        const p = prev.get(id), n = next.map.get(id);
+        if (!n || (p && p.status !== n.status)) ghosts.set(id, ghostOf(el));
+      });
+    }
+    patchHeader(next, landing, animate);
+    patchBanner(st);
+    patchLanes(next, ev);
+    const gain = new Set(flying ? ev.moved.map(m => m.to) : []);
+    LANES.forEach(key => roll(lanes[key].count, String(next.lanes[key].length), { delay: gain.has(key) ? F : 0, animate, anim }));
+    vm = next;
+    applySpot();
+    measureAll();
+    if (animate) motion(next, ev, before, ghosts, { rm, crowd, F });
+    else if (first && canAnimate()) entrance();
+    if (!first) announce(ev);
+    prev = snapshot(next);
+    first = false;
+    return { ev, landing };
+  }
+
+  /* --- 交互：展开 / 跳转 / 按人聚焦 / 依赖链 --- */
+  function toggle(id) {
+    const was = expandedId;
+    expandedId = was === id ? null : id;
+    if (was && cards.get(was)) cards.get(was).setAttribute('aria-expanded', 'false');
+    if (expandedId) {
+      const el = cards.get(expandedId);
+      el.setAttribute('aria-expanded', 'true');
+      setTimeout(() => { if (expandedId === id) el.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' }); }, ms(240));
+    }
+  }
+  function jumpTo(id) {
+    const el = cards.get(id);
+    if (!el) return;
+    el.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' });
+    el.focus({ preventScroll: true });
+    setTimeout(() => pulse(el, 'is-flash', 1100), reduced() ? 0 : ms(260));
+  }
+  function setSpot(id) {
+    spot = id;
+    if (!id) pinned = false;
+    applySpot();
+  }
+  function applySpot() {
+    if (spot) root.dataset.spot = spot; else root.removeAttribute('data-spot');
+    cards.forEach(el => el.classList.toggle('is-spot', !!spot && el._owner === spot));
+    [...matesEl.children].forEach(c => {
+      c.classList.toggle('is-spot', c._id === spot);
+      c.classList.toggle('is-pinned', pinned && c._id === spot);
+    });
+  }
+  function anchorOf(el, rr) {
+    const r = rel(el, rr);
+    const br = rel(el.parentElement, rr);
+    let cy = r.y + Math.min(r.h / 2, 20);
+    let off = false;
+    if (cy < br.y + 4) { cy = br.y + 4; off = true; } else if (cy > br.y + br.h - 4) { cy = br.y + br.h - 4; off = true; }
+    return { l: r.x, r: r.x + r.w, cx: r.x + r.w / 2, cy, off };
+  }
+  function drawWires(id, up, down) {
+    const rr = root.getBoundingClientRect();
+    wires.setAttribute('width', rr.width);
+    wires.setAttribute('height', rr.height);
+    wires.setAttribute('viewBox', `0 0 ${rr.width} ${rr.height}`);
+    const f = anchorOf(cards.get(id), rr);
+    const pairs = up.map(u => [u, vm.map.get(u).status === 'completed' ? 'up-done' : 'up-open']).concat(down.map(d => [d, 'down']));
+    pairs.forEach(([oid, kind], i) => {
+      const el = cards.get(oid);
+      if (!el) return;
+      const a = anchorOf(el, rr);
+      const [s, e] = kind === 'down' ? [f, a] : [a, f];
+      let x1, x2, c1, c2;
+      if (Math.abs(s.cx - e.cx) > 24) {
+        const dir = s.cx < e.cx ? 1 : -1;
+        x1 = dir > 0 ? s.r : s.l;
+        x2 = dir > 0 ? e.l : e.r;
+        const k = Math.max(28, Math.abs(x2 - x1) * .5);
+        c1 = [x1 + dir * k, s.cy];
+        c2 = [x2 - dir * k, e.cy];
+      } else {
+        x1 = s.r - 6; x2 = e.r - 6;
+        const k = 26 + Math.min(40, Math.abs(e.cy - s.cy) * .15);
+        c1 = [x1 + k, s.cy];
+        c2 = [x2 + k, e.cy];
+      }
+      const off = s.off || e.off;
+      const path = document.createElementNS(SVGNS, 'path');
+      path.setAttribute('d', `M${x1},${s.cy} C${c1[0]},${c1[1]} ${c2[0]},${c2[1]} ${x2},${e.cy}`);
+      path.setAttribute('class', `tkb-wire tkb-wire--${kind}${off ? ' is-off' : ''}`);
+      wires.append(path);
+      [[x1, s.cy], [x2, e.cy]].forEach(([x, y]) => {
+        const c = document.createElementNS(SVGNS, 'circle');
+        c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 2.6);
+        c.setAttribute('class', `tkb-wire-dot tkb-wire--${kind}`);
+        wires.append(c);
+      });
+      if (reduced()) return;
+      if (off) { anim(path, [{ opacity: 0 }, { opacity: .5 }], { duration: ms(240), delay: ms(i * 40), fill: 'backwards' }); return; }
+      const len = path.getTotalLength();
+      path.style.strokeDasharray = String(len);
+      anim(path, [{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: ms(340), delay: ms(i * 40), easing: EASE, fill: 'backwards' })
+        .finished.then(() => { path.style.strokeDasharray = ''; }, () => {});
+    });
+  }
+  function showLineage(id) {
+    if (!vm || spot) return;
+    const t = vm.map.get(id);
+    if (!t) return;
+    const up = t.blockedBy.filter(x => vm.map.has(x));
+    const down = vm.dependents.get(id) || [];
+    if (!up.length && !down.length) return;
+    root.setAttribute('data-lineage', '');
+    cards.get(id).classList.add('is-lin', 'is-focus');
+    up.forEach(u => { const el = cards.get(u); if (el) el.classList.add('is-lin', vm.map.get(u).status === 'completed' ? 'is-up-done' : 'is-up-open'); });
+    down.forEach(d => { const el = cards.get(d); if (el) el.classList.add('is-lin', 'is-down'); });
+    if (root.clientWidth >= 540) drawWires(id, up, down);
+  }
+  function clearLineage() {
+    if (!root.hasAttribute('data-lineage')) return;
+    root.removeAttribute('data-lineage');
+    cards.forEach(el => el.classList.remove('is-lin', 'is-focus', 'is-up-done', 'is-up-open', 'is-down'));
+    wires.replaceChildren();
+  }
+
+  /* --- 事件绑定 --- */
+  const isCard = c => c && cards.get(c._id) === c;
+  lanesEl.addEventListener('click', e => {
+    if (e.target.closest('.tkb-detail')) return;
+    const c = e.target.closest('.tkb-card');
+    if (isCard(c)) toggle(c._id);
+  });
+  let hoverTimer = 0, hoverId = null;
+  lanesEl.addEventListener('pointerover', e => {
+    const c = e.target.closest('.tkb-card');
+    const id = isCard(c) ? c._id : null;
+    if (id === hoverId) return;
+    hoverId = id;
+    clearTimeout(hoverTimer);
+    clearLineage();
+    if (id) hoverTimer = setTimeout(() => showLineage(id), 160);
+  });
+  lanesEl.addEventListener('pointerleave', () => { hoverId = null; clearTimeout(hoverTimer); clearLineage(); });
+  let scrollRaf = 0;
+  root.addEventListener('scroll', () => {
+    clearLineage();
+    hideTip();
+    cancelAnimationFrame(scrollRaf);
+    scrollRaf = requestAnimationFrame(() => { if (!live.size) measureAll(); });
+  }, true);
+
+  strip.addEventListener('pointerover', e => {
+    const s = e.target.closest('.tkb-slot');
+    cards.forEach(el => el.classList.toggle('is-hint', !!(s && s._task) && el._id === s._task.id));
+  });
+  strip.addEventListener('pointerleave', () => cards.forEach(el => el.classList.remove('is-hint')));
+  strip.addEventListener('click', e => { const s = e.target.closest('.tkb-slot'); if (s && s._task) jumpTo(s._task.id); });
+
+  let tipTimer = 0, tipFor = null, tipHiddenAt = 0;
+  function showTip(tg) {
+    if (!tg.isConnected) return;
+    const [a, b] = tg._tip();
+    tipT.textContent = a;
+    tipS.textContent = b || '';
+    tip.style.left = '0px';
+    tip.style.top = '0px';
+    tip.setAttribute('data-show', '');
+    const rr = root.getBoundingClientRect(), r = tg.getBoundingClientRect();
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let x = r.left - rr.left + r.width / 2 - tw / 2;
+    x = Math.max(6, Math.min(rr.width - tw - 6, x));
+    let y = r.top - rr.top - th - 6;
+    if (y < 4) y = r.bottom - rr.top + 6;
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  }
+  function hideTip() {
+    clearTimeout(tipTimer);
+    if (tip.hasAttribute('data-show')) { tip.removeAttribute('data-show'); tipHiddenAt = performance.now(); }
+    tipFor = null;
+  }
+  root.addEventListener('pointerover', e => {
+    const tg = e.target.closest && e.target.closest('[data-tip]');
+    if (tg === tipFor) return;
+    clearTimeout(tipTimer);
+    if (!tg || !tg._tip) { hideTip(); return; }
+    tipFor = tg;
+    const quick = performance.now() - tipHiddenAt < 450 || tip.hasAttribute('data-show');
+    tipTimer = setTimeout(() => showTip(tg), quick ? 0 : 320);
+  });
+  root.addEventListener('pointerleave', hideTip);
+
+  root.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      if (expandedId) { const id = expandedId; toggle(id); cards.get(id) && cards.get(id).focus(); e.preventDefault(); }
+      else if (spot) setSpot(null);
+      return;
+    }
+    const c = e.target.closest && e.target.closest('.tkb-card');
+    if (!isCard(c) || e.target.closest('.tkb-ref')) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(c._id); return; }
+    const list = k => [...lanes[k].body.querySelectorAll(':scope > .tkb-card')];
+    const li = LANES.indexOf(c.closest('.tkb-lane').dataset.lane);
+    const cur = list(LANES[li]);
+    const i = cur.indexOf(c);
+    let target = null;
+    const seek = (from, step, pick) => {
+      for (let k = from; k >= 0 && k < LANES.length; k += step) { const l = list(LANES[k]); if (l.length) return pick(l); }
+      return null;
+    };
+    if (e.key === 'ArrowDown') target = cur[i + 1] || seek(li + 1, 1, l => l[0]);
+    else if (e.key === 'ArrowUp') target = cur[i - 1] || seek(li - 1, -1, l => l[l.length - 1]);
+    else if (e.key === 'ArrowRight') target = seek(li + 1, 1, l => l[Math.min(i, l.length - 1)]);
+    else if (e.key === 'ArrowLeft') target = seek(li - 1, -1, l => l[Math.min(i, l.length - 1)]);
+    if (target) { e.preventDefault(); target.focus({ preventScroll: true }); target.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' }); }
+  });
+
+  /* --- 读屏播报（节流合并） --- */
+  let srTimer = 0, srQueue = [];
+  function announce(ev) {
+    const m = [];
+    const id = x => '#' + shortId(x);
+    ev.created.forEach(x => m.push(tx('a11y.created', { id: id(x) })));
+    ev.moved.forEach(x => m.push(tx('a11y.moved.' + x.to, { id: id(x.id) })));
+    ev.unlocked.forEach(x => m.push(tx('a11y.unlocked', { id: id(x) })));
+    ev.deleted.forEach(x => m.push(tx('a11y.deleted', { id: id(x) })));
+    if (!m.length) return;
+    srQueue.push(...m);
+    clearTimeout(srTimer);
+    srTimer = setTimeout(() => { sr.textContent = srQueue.join(LANG === 'zh' ? '；' : '; '); srQueue = []; }, 500);
+  }
+
+  /* --- 离开 / 回来：回来时把离开期间变化过的卡片依次点亮 --- */
+  const sig = t => (t ? [t.status, t.ready, t.revision, t.ownerId || ''].join('|') : '');
+  function markAway() {
+    awaySnap = new Map();
+    prev.forEach((t, id) => awaySnap.set(id, sig(t)));
+  }
+  function markBack() {
+    if (!awaySnap) return;
+    const snap = awaySnap;
+    awaySnap = null;
+    requestAnimationFrame(() => {
+      measureAll();
+      let i = 0;
+      cards.forEach((el, id) => {
+        if (snap.get(id) === sig(prev.get(id))) return;
+        el.style.setProperty('--tkb-cd', `${ms(i * 80)}ms`);
+        pulse(el, 'is-catchup', 1800 + i * 80);
+        i++;
+      });
+    });
+  }
+
+  /* --- 宽度跨越断点：卡片从旧位置形变到新布局 --- */
+  const ro = new ResizeObserver(() => {
+    const w = root.clientWidth;
+    if (!w) return;
+    const mode = w < 540 ? 's' : w < 820 ? 'm' : 'l';
+    const old = lastRects;
+    const fresh = measureAll();
+    if (lastMode && mode !== lastMode && !reduced() && !first && !live.size) {
+      clearLineage();
+      fresh.forEach((a, id) => {
+        const b = old.get(id);
+        if (!b) return;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        if (Math.abs(dx) + Math.abs(dy) > 1) anim(cards.get(id), [{ transform: `translate(${dx}px,${dy}px)` }, { transform: 'none' }], { duration: ms(440), easing: EASE });
+      });
+    }
+    lastMode = mode;
+  });
+  ro.observe(root);
+
+  function relabel() {
+    LANES.forEach(k => { lanes[k].name.textContent = tx('column.' + k); lanes[k].empty.setAttribute('aria-label', tx('column.empty')); });
+    divider.setAttribute('aria-label', tx('card.blocked'));
+    bTitle.textContent = tx('error.title');
+    cards.forEach(el => { el._p.inner._sig = null; });
+  }
+  relabel();
+
+  return {
+    el: root,
+    update,
+    relabel,
+    markAway,
+    markBack,
+    setReduced(on) { if (on) root.dataset.motion = 'reduced'; else root.removeAttribute('data-motion'); },
+    resync() {
+      root.querySelectorAll('[data-running]').forEach(el => el.style.setProperty('--tkb-phase', phase(2400)));
+      root.querySelectorAll('[data-live]').forEach(el => el.style.setProperty('--tkb-phase', phase(1800)));
+    },
+    destroy() { flushMotion(); ro.disconnect(); hideTip(); root.remove(); },
+  };
+}
+
+/* ================= 4. 宿主模拟：右侧栏 + 标签胶囊 + TeamKanbanWatcher ================= */
+const app = $('#app'), side = $('#side'), tabsEl = $('#sideTabs'), bodyEl = $('#sideBody'), convBody = $('#convBody');
+const host = { active: 'files', boardOpen: false, dismissed: false, others: true, geo: 'dock', board: null, chip: null, pane: null, title: null };
+
+(function buildMockFiles() {
+  const rows = [['files', 'dsh-team-kanban', ''], ['file', 'package.json', 'in'], ['file', 'cordis.patch.yml', 'in'], ['file', 'index.js', 'in'], ['file', 'client.js', 'in'], ['file', 'icon.svg', 'in'], ['files', 'locale', 'in'], ['file', 'PRD.md', 'in'], ['file', 'DESIGN.md', 'in']];
+  const box = $('#mockFiles');
+  rows.forEach(([ic, name, cls]) => { const r = h('div', cls); r.append(icon(ic), h('span', '', name)); box.append(r); });
+})();
+
+const staticChips = {};
+['files', 'terminal'].forEach(id => {
+  const c = h('div', 'chip');
+  c.setAttribute('role', 'tab');
+  c.dataset.tab = id;
+  c.append(icon(id), h('span', 'chip__label'));
+  c.addEventListener('click', () => activate(id));
+  tabsEl.append(c);
+  staticChips[id] = c;
+});
+function relabelChips() {
+  Object.entries(staticChips).forEach(([id, c]) => { c.querySelector('.chip__label').textContent = tx('pane.' + id); });
+  if (host.title) host.title.label.textContent = tx('tab.title');
+}
+function updateTabs() {
+  Object.entries(staticChips).forEach(([id, c]) => { c.hidden = !host.others; c.setAttribute('aria-selected', String(host.active === id)); });
+  if (host.chip) host.chip.setAttribute('aria-selected', String(host.active === 'board'));
+}
+function activate(id) {
+  const prevId = host.active;
+  if (prevId === id) return;
+  host.active = id;
+  if (prevId === 'board' && host.board) host.board.markAway();
+  bodyEl.querySelectorAll('.side__pane').forEach(p => { p.hidden = p.dataset.pane !== id; });
+  const pane = bodyEl.querySelector(`.side__pane[data-pane="${id}"]`);
+  if (pane && !reduced()) pane.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms(160), easing: EASE });
+  updateTabs();
+  if (id === 'board' && host.board) host.board.markBack();
+}
+function chipEnter(chip) {
+  if (reduced()) return;
+  const w = chip.getBoundingClientRect().width;
+  chip.animate([{ width: '0px', opacity: 0, paddingLeft: '0px', paddingRight: '0px' }, { width: w + 'px', opacity: 1, paddingLeft: '9px', paddingRight: '9px' }], { duration: ms(380), easing: EASE });
+}
+function chipExit(chip) {
+  if (reduced()) { chip.remove(); return; }
+  const w = chip.getBoundingClientRect().width;
+  chip.style.pointerEvents = 'none';
+  chip.animate([{ width: w + 'px', opacity: 1 }, { width: '0px', opacity: 0, paddingLeft: '0px', paddingRight: '0px' }], { duration: ms(280), easing: EASE, fill: 'forwards' })
+    .finished.then(() => chip.remove(), () => chip.remove());
+}
+function mkTitle() {
+  const el = h('span', 'tkb-title');
+  const ring = document.createElementNS(SVGNS, 'svg');
+  ring.setAttribute('viewBox', '0 0 16 16');
+  ring.setAttribute('class', 'tkb-title__ring');
+  ring.innerHTML = '<circle class="tkb-title__track" cx="8" cy="8" r="6"/><circle class="tkb-title__arc" cx="8" cy="8" r="6"/><path class="tkb-title__check" d="M5.4 8.2 7.2 10 10.8 6.3"/>';
+  const label = h('span', 'tkb-title__label', tx('tab.title'));
+  const count = h('span', 'tkb-title__count tkb-roll');
+  el.append(ring, label, count);
+  const arc = ring.querySelector('.tkb-title__arc');
+  const C = 2 * Math.PI * 6;
+  arc.style.strokeDasharray = String(C);
+  arc.style.strokeDashoffset = String(C);
+  return { el, label, count, arc, C };
+}
+function openBoard(focus) {
+  host.boardOpen = true;
+  const chip = h('div', 'chip');
+  chip.setAttribute('role', 'tab');
+  chip.dataset.tab = 'board';
+  const title = mkTitle();
+  const x = h('span', 'chip__x');
+  x.append(icon('close'));
+  x.setAttribute('role', 'button');
+  x.setAttribute('aria-label', LANG === 'zh' ? '关闭' : 'Close');
+  chip.append(title.el, x);
+  chip.addEventListener('click', e => { if (e.target.closest('.chip__x')) { closeBoard('user'); return; } activate('board'); });
+  tabsEl.append(chip);
+  host.chip = chip;
+  host.title = title;
+  chipEnter(chip);
+  const pane = h('div', 'side__pane');
+  pane.dataset.pane = 'board';
+  pane.hidden = true;
+  bodyEl.append(pane);
+  host.pane = pane;
+  host.board = createBoard(pane);
+  updateSide();
+  if (focus || !host.others) activate('board');
+  updateTabs();
+}
+function closeBoard(reason) {
+  if (!host.boardOpen) return;
+  host.boardOpen = false;
+  if (reason === 'user') {
+    host.dismissed = true;
+    logNote(LANG === 'zh' ? '任务板已手动关闭 · 后续流转不再自动弹出' : 'Task board closed · won’t reopen on further updates');
+  }
+  chipExit(host.chip);
+  host.chip = null;
+  host.title = null;
+  host.board.destroy();
+  host.board = null;
+  host.pane.remove();
+  host.pane = null;
+  if (host.active === 'board') { host.active = null; if (host.others) activate('files'); }
+  updateTabs();
+  updateSide();
+}
+function updateSide() { side.classList.toggle('is-collapsed', !host.others && !host.boardOpen); }
+function updateTitle(r) {
+  const T = host.title;
+  if (!T) return;
+  const vis = state.tasks.filter(t => t.status !== 'deleted');
+  const done = vis.filter(t => t.status === 'completed').length, total = vis.length;
+  const onBoard = host.active === 'board';
+  roll(T.count, `${done}/${total}`, { animate: true, delay: onBoard ? r.landing : 0 });
+  T.arc.style.transitionDelay = onBoard ? `${r.landing}ms` : '0ms';
+  T.arc.style.strokeDashoffset = String(T.C * (1 - (total ? done / total : 0)));
+  T.el.toggleAttribute('data-done', total > 0 && done === total);
+  if (!onBoard && r.ev.moved.some(m => m.to === 'completed') && !reduced()) {
+    T.el.classList.remove('is-pulse');
+    void T.el.offsetWidth;
+    T.el.classList.add('is-pulse');
+    setTimeout(() => T.el.classList.remove('is-pulse'), ms(950));
+  }
+}
+/* TeamKanbanWatcher：与 DESIGN.md 4.4 的状态机一致 */
+function sync() {
+  const visible = state.tasks.filter(t => t.status !== 'deleted');
+  const should = state.enabled === true && visible.length > 0;
+  if (!should) { host.dismissed = false; if (host.boardOpen) closeBoard('auto'); }
+  else if (!host.boardOpen && !host.dismissed) openBoard(true);
+  if (host.boardOpen) updateTitle(host.board.update(state));
+  updateSide();
+}
+
+/* ================= 5. 对话区日志 + 投影写入（模拟 team_task_* 工具调用） ================= */
+function logCall(tool, text, status) {
+  const row = h('div', 'call');
+  if (status) row.append(icon(status));
+  row.append(h('code', '', tool), h('span', '', text));
+  convBody.append(row);
+  while (convBody.childElementCount > 90) convBody.children[2].remove();
+  convBody.scrollTo({ top: convBody.scrollHeight, behavior: reduced() ? 'auto' : 'smooth' });
+}
+function logNote(text) {
+  convBody.append(h('div', 'note', text));
+  convBody.scrollTo({ top: convBody.scrollHeight, behavior: 'smooth' });
+}
+const vis = () => state.tasks.filter(t => t.status !== 'deleted');
+const byNum = (a, b) => numId(a.id) - numId(b.id);
+const T = n => state.tasks.find(t => t.id === 'task-' + n && t.status !== 'deleted');
+function recomputeReady() {
+  const m = new Map(vis().map(t => [t.id, t]));
+  state.tasks.forEach(t => { t.ready = t.blockedBy.every(b => m.get(b) && m.get(b).status === 'completed'); });
+}
+function mkTask(n, subject, description, blockedBy = [], writeScopes = [], warnings = []) {
+  if (state.tasks.some(t => t.id === 'task-' + n)) return;
+  state.nextId = Math.max(state.nextId, n + 1);
+  state.tasks.push({ id: 'task-' + n, revision: 1, subject, description, status: 'pending', blockedBy: blockedBy.map(x => 'task-' + x), writeScopes, ownerId: undefined, ownerName: undefined, ready: false, writeScopeWarnings: warnings });
+  logCall('team_task_create', `#${n} ${subject}`, 'pending');
+}
+function spawn(key) {
+  const m = MATE_DEFS[key];
+  if (state.catalog.some(c => c.id === m.id)) return;
+  state.catalog.push({ ...m, mode: 'teammate' });
+  logCall('agent_spawn', mateLabel(m.id));
+}
+function claimT(t, ownerId) {
+  if (!t || t.status !== 'pending' || !t.ready) return;
+  t.status = 'in_progress';
+  t.ownerId = ownerId;
+  t.ownerName = mateLabel(ownerId);
+  t.revision++;
+  state.running.add(ownerId);
+  logCall('team_task_update', `#${shortId(t.id)} → in_progress · ${mateLabel(ownerId)}`, 'in_progress');
+}
+function completeT(t) {
+  if (!t || t.status !== 'in_progress') return;
+  t.status = 'completed';
+  t.revision++;
+  state.completedSeq.set(t.id, ++state.seq);
+  const o = t.ownerId;
+  if (o && !state.tasks.some(x => x !== t && x.ownerId === o && x.status === 'in_progress')) state.running.delete(o);
+  logCall('team_task_update', `#${shortId(t.id)} → completed`, 'completed');
+}
+function revise(t, line) {
+  if (!t) return;
+  t.revision++;
+  t.description += '\n' + line;
+  logCall('team_task_update', `#${shortId(t.id)} · revision ${t.revision}`);
+}
+function setRunning(id, on) {
+  if (on) state.running.add(id); else state.running.delete(id);
+  logCall('agent_status', `${mateLabel(id)} · ${on ? tx('card.running') : tx('card.idle')}`);
+}
+function commit(fn) { fn(); recomputeReady(); sync(); refreshUI(); }
+
+/* ================= 6. 剧本：一次完整的多智能体协作 ================= */
+const M = MATE_DEFS;
+const SCRIPT = [
+  { wait: 2300, run() { mkTask(1, '梳理 sidebar-right 标签页注册契约', '核对 tab-registry.ts 与 contract/slots.ts，\n确认 openTabIn / closeIn / tabsIn 的调用时序与同分栏去重规则。', [], ['docs/contract-notes.md']); } },
+  { wait: 2200, run() {
+    mkTask(2, '实现 TeamKanbanWatcher 自动开闭状态机', '挂载在 conversation.session.header.actions，按 agentTeam 投影开闭标签页；\n维护 dismissedSessions 防打扰标记。', [1], ['client.js#watcher']);
+    mkTask(3, '设计看板主题 token 映射与容器断点', '只使用 --dsw-alias-* 变量；540 / 820 两档容器查询；Light / Dark 对比度自检。', [1], ['client.js#styles']);
+    mkTask(4, '实现 TeamKanbanBoard 三列视图与任务卡片', '三列分组、卡片展开、依赖高亮、飞行层动效与减少动效降级。', [2, 3], ['client.js#board'], ['与 #3 的写入范围 client.js 存在重叠']);
+    mkTask(5, '编写 teamKanban 中英文字典', '对齐 DESIGN.md 3.3 的键名清单，补充读屏播报文案。', [], ['locale/zh.json', 'locale/en.json']);
+    mkTask(6, '联调验收 T1–T6 场景', '安装到 desktop profile，逐项验证自动显隐、手动关闭防打扰、主题与几何适配。', [4, 5]);
+  } },
+  { wait: 2000, run() { spawn('explorer'); claimT(T(1), M.explorer.id); } },
+  { wait: 2000, run() { claimT(T(5), ROOT_ID); } },
+  { wait: 2000, run() { revise(T(1), '补充：右侧栏 store 未实例化时 openTabIn 安全 noop，需在首次挂载后补同步。'); } },
+  { wait: 2800, run() { completeT(T(1)); } },
+  { wait: 2200, run() { spawn('builder'); spawn('designer'); claimT(T(2), M.builder.id); claimT(T(3), M.designer.id); } },
+  { wait: 2200, run() { completeT(T(5)); } },
+  { wait: 2400, run() { if (T(3) && T(3).status === 'in_progress') setRunning(M.designer.id, false); } },
+  { wait: 1800, run() { if (T(3) && T(3).status === 'in_progress') setRunning(M.designer.id, true); } },
+  { wait: 2200, run() { completeT(T(2)); } },
+  { wait: 2800, run() { completeT(T(3)); } },
+  { wait: 2200, run() { claimT(T(4), M.builder.id); } },
+  { wait: 2600, run() { state.failure = 'agent-team.jsonl:42 · Unexpected token } in JSON at position 1187'; logCall('projection', 'agentTeam · failure'); } },
+  { wait: 2000, run() { state.failure = undefined; logCall('projection', 'agentTeam · recovered'); } },
+  { wait: 2800, run() { completeT(T(4)); } },
+  { wait: 2200, run() { spawn('reviewer'); claimT(T(6), M.reviewer.id); } },
+  { wait: 2600, run() { completeT(T(6)); } },
+];
+const play = { step: 0, on: false, timer: 0 };
+function tick() {
+  if (!play.on) return;
+  if (play.step >= SCRIPT.length) { play.on = false; refreshUI(); return; }
+  const s = SCRIPT[play.step++];
+  commit(() => s.run());
+  play.timer = setTimeout(tick, ms(s.wait));
+}
+function startPlay() { if (play.step >= SCRIPT.length) resetAll(); play.on = true; refreshUI(); tick(); }
+function pausePlay() { play.on = false; clearTimeout(play.timer); refreshUI(); }
+function resetAll() {
+  pausePlay();
+  Object.assign(state, { enabled: true, tasks: [], failure: undefined, catalog: [], running: new Set(), completedSeq: new Map(), seq: 0, nextId: 1 });
+  play.step = 0;
+  while (convBody.childElementCount > 2) convBody.lastElementChild.remove();
+  host.dismissed = false;
+  sync();
+  refreshUI();
+}
+
+/* ================= 7. 手动事件 ================= */
+const POOL = [
+  ['补充浮动窗口几何下的回归截图', '在 float 形态下拖拽缩放，确认容器查询断点切换顺滑、无水平溢出。'],
+  ['校验 client.js 无跨插件 require', '静态扫描 require 调用，禁止 dsh-client-ui-primitives 与 dsh-client-ui-agent-team。'],
+  ['核对暗色主题下的状态色对比度', '逐个检查 business / done / warn 在 card-fill 上的对比度。'],
+  ['压测 30+ 任务时的滚动与动效性能', '批量生成任务，观察飞行层降级与帧率。'],
+  ['为卡片展开态补充键盘导航', '方向键在卡片间移动，Enter 展开，Esc 收起。'],
+  ['整理 T1–T6 验收记录', '截图与结论归档到 docs/acceptance.md。'],
+];
+let poolI = 0;
+const ACTIONS = {
+  add() {
+    const n = Math.max(state.nextId, 7);
+    const [s, d] = POOL[poolI++ % POOL.length];
+    const open = vis().filter(t => t.status !== 'completed');
+    const dep = open.length && Math.random() < .5 ? [numId(open[Math.floor(Math.random() * open.length)].id)] : [];
+    mkTask(n, s, d, dep);
+    return true;
+  },
+  claim() {
+    const t = vis().filter(x => x.status === 'pending' && x.ready).sort(byNum)[0];
+    if (!t) return false;
+    let owner = (state.catalog.find(m => !state.running.has(m.id)) || {}).id;
+    if (!owner) {
+      const key = Object.keys(MATE_DEFS).find(k => !state.catalog.some(c => c.id === MATE_DEFS[k].id));
+      if (key) { spawn(key); owner = MATE_DEFS[key].id; } else owner = ROOT_ID;
+    }
+    claimT(t, owner);
+    return true;
+  },
+  complete() { const t = vis().filter(x => x.status === 'in_progress').sort(byNum)[0]; if (!t) return false; completeT(t); return true; },
+  revise() {
+    const c = vis().filter(x => x.status !== 'completed');
+    if (!c.length) return false;
+    const t = c[Math.floor(Math.random() * c.length)];
+    revise(t, `· 修订 r${t.revision + 1}：补充边界条件。`);
+    return true;
+  },
+  stall() {
+    const t = vis().filter(x => x.status === 'in_progress' && x.ownerId).sort(byNum)[0];
+    if (!t) return false;
+    setRunning(t.ownerId, !state.running.has(t.ownerId));
+    return true;
+  },
+  del() {
+    const deps = new Set(vis().flatMap(t => t.blockedBy));
+    const t = vis().filter(x => x.status === 'pending' && !deps.has(x.id)).sort(byNum).pop();
+    if (!t) return false;
+    t.status = 'deleted';
+    logCall('team_task_delete', `#${shortId(t.id)}`);
+    return true;
+  },
+  clear() {
+    if (!vis().length) return false;
+    vis().forEach(t => { t.status = 'deleted'; });
+    state.running.clear();
+    logCall('team_task_delete', LANG === 'zh' ? '全部任务' : 'all tasks');
+    return true;
+  },
+  team() { state.enabled = !state.enabled; logCall('agent_team', state.enabled ? 'enabled' : 'disabled'); return true; },
+  failure() {
+    state.failure = state.failure ? undefined : 'agent-team.jsonl:42 · Unexpected token } in JSON at position 1187';
+    logCall('projection', state.failure ? 'agentTeam · failure' : 'agentTeam · recovered');
+    return true;
+  },
+};
+
+/* ================= 8. 导演台 ================= */
+const ptPlay = $('#ptPlay');
+function refreshUI() {
+  const done = play.step >= SCRIPT.length;
+  ptPlay.replaceChildren(icon(play.on ? 'pause' : 'play'), h('span', '', play.on ? '暂停' : done ? '重播' : '演示'));
+  $('#ptStep').textContent = `${play.step}/${SCRIPT.length}`;
+  $('#ptTeam').setAttribute('aria-pressed', String(state.enabled));
+  $('#ptFailure').setAttribute('aria-pressed', String(!!state.failure));
+  $('#ptReduced').setAttribute('aria-pressed', String(env.reducedToggle));
+  $('#ptOthers').setAttribute('aria-pressed', String(host.others));
+}
+function nope(btn) { btn.classList.remove('is-nope'); void btn.offsetWidth; btn.classList.add('is-nope'); }
+$('#ptBar').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const act = btn.dataset.act;
+  if (act === 'play') { play.on ? pausePlay() : startPlay(); return; }
+  if (act === 'next') { pausePlay(); if (play.step < SCRIPT.length) { const s = SCRIPT[play.step++]; commit(() => s.run()); } else nope(btn); return; }
+  if (act === 'reset') { resetAll(); setTimeout(startPlay, 500); return; }
+  if (act === 'reduced') { env.reducedToggle = !env.reducedToggle; if (host.board) host.board.setReduced(env.reducedToggle); refreshUI(); return; }
+  if (act === 'others') {
+    host.others = !host.others;
+    if (!host.others && host.active !== 'board') { if (host.boardOpen) activate('board'); else host.active = null; }
+    if (host.others && !host.active) activate('files');
+    updateTabs(); updateSide(); refreshUI();
+    return;
+  }
+  if (ACTIONS[act]) {
+    pausePlay();
+    let ok = false;
+    commit(() => { ok = ACTIONS[act](); });
+    if (!ok) nope(btn);
+    return;
+  }
+  const seg = btn.closest('.pt-seg');
+  if (!seg) return;
+  const v = btn.dataset.v;
+  if (seg.dataset.seg !== 'width') seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+  switch (seg.dataset.seg) {
+    case 'theme': document.body.dataset.theme = v; break;
+    case 'lang':
+      LANG = v;
+      document.documentElement.lang = v === 'zh' ? 'zh-CN' : 'en';
+      relabelChips();
+      if (host.board) { host.board.relabel(); updateTitle(host.board.update(state)); }
+      break;
+    case 'geo':
+      host.geo = v;
+      side.dataset.geo = v;
+      ['width', 'height', 'left', 'top', 'right'].forEach(p => { side.style[p] = ''; });
+      if (!reduced()) side.animate([{ opacity: .4, transform: 'scale(.985)' }, { opacity: 1, transform: 'none' }], { duration: ms(260), easing: EASE });
+      break;
+    case 'width':
+      if (host.geo === 'full') { setGeo('dock'); }
+      if (host.geo === 'float') side.style.width = v + 'px';
+      else side.style.setProperty('--side-w', Math.min(+v, app.clientWidth - 240) + 'px');
+      break;
+    case 'speed':
+      env.speed = +v;
+      document.body.style.setProperty('--tkb-speed', v);
+      if (host.board) host.board.resync();
+      break;
+  }
+});
+function setGeo(v) {
+  host.geo = v;
+  side.dataset.geo = v;
+  ['width', 'height', 'left', 'top', 'right'].forEach(p => { side.style[p] = ''; });
+  document.querySelectorAll('[data-seg="geo"] button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+}
+
+/* 停靠：拖拽左缘调宽；浮动：拖拽标签栏空白处移动 */
+const grip = $('#sideGrip');
+grip.addEventListener('pointerdown', e => {
+  if (host.geo !== 'dock') return;
+  e.preventDefault();
+  grip.setPointerCapture(e.pointerId);
+  side.classList.add('is-dragging');
+  const startX = e.clientX, startW = side.getBoundingClientRect().width;
+  const move = ev => side.style.setProperty('--side-w', Math.max(300, Math.min(app.clientWidth - 240, startW - (ev.clientX - startX))) + 'px');
+  const up = () => { side.classList.remove('is-dragging'); grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); };
+  grip.addEventListener('pointermove', move);
+  grip.addEventListener('pointerup', up);
+});
+tabsEl.addEventListener('pointerdown', e => {
+  if (host.geo !== 'float' || e.target.closest('.chip')) return;
+  e.preventDefault();
+  tabsEl.setPointerCapture(e.pointerId);
+  const ar = app.getBoundingClientRect(), sr = side.getBoundingClientRect();
+  const ox = e.clientX - sr.left, oy = e.clientY - sr.top;
+  side.style.right = 'auto';
+  const move = ev => {
+    side.style.left = Math.max(0, Math.min(ar.width - sr.width, ev.clientX - ar.left - ox)) + 'px';
+    side.style.top = Math.max(0, Math.min(ar.height - 60, ev.clientY - ar.top - oy)) + 'px';
+  };
+  const up = () => { tabsEl.removeEventListener('pointermove', move); tabsEl.removeEventListener('pointerup', up); };
+  tabsEl.addEventListener('pointermove', move);
+  tabsEl.addEventListener('pointerup', up);
+});
+const ptWidth = $('#ptWidth');
+new ResizeObserver(() => { ptWidth.textContent = Math.round(side.getBoundingClientRect().width) + 'px'; }).observe(side);
+mq.addEventListener('change', refreshUI);
+
+/* ================= 9. 启动 ================= */
+relabelChips();
+updateTabs();
+refreshUI();
+sync();
+setTimeout(startPlay, 900);
+})();
+</script>
+</body>
+</html>
