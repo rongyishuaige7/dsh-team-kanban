@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.1.5-dbg';
+    const CLIENT_REV = '0.1.6-dbg';
     const TAB_ID = PKG;
     const KIND = 'team-board';
     const LANES = ['pending', 'in_progress', 'completed'];
@@ -1234,6 +1234,10 @@ window.__ModuleLoader__.load({
       const projectedTeam = useProjection('agentTeam');
       const listedTeam = useSessions((state) => state.projectionsBySession[sessionId]?.values.agentTeam);
       const team = projectedTeam || listedTeam;
+      /* Reference projections: these move on the same frame feed, so comparing
+         them with `agentTeam` tells a dead feed from a key-specific gap. */
+      const liveCatalog = useProjection('subagentCatalog');
+      const liveTitle = useProjection('title');
 
       /* Three states, never two. An absent projection means the frame or the
          Session baseline has not landed yet, which must not be read as "no
@@ -1250,29 +1254,16 @@ window.__ModuleLoader__.load({
         return () => diagNote('watcher-unmount', { sid: String(sessionId).slice(-12) });
       }, [sessionId]);
 
+      /* Fires on any of the three projections or the team value changing, so a
+         frozen `agentTeam` next to a moving catalog/title is visible. */
       useEffect(() => {
-        let previous = null;
-        const read = () => {
-          try {
-            const values = ctx.sessions && typeof ctx.sessions.projectionValues === 'function'
-              ? ctx.sessions.projectionValues(sessionId)
-              : undefined;
-            const value = values && values.agentTeam;
-            return value
-              ? (value.enabled === true ? 'on' : 'off') + ':' + (value.tasks || []).map((task) => String(task.status)[0]).join('')
-              : 'none';
-          } catch (error) {
-            return 'error:' + String(error && error.message).slice(0, 40);
-          }
-        };
-        const timer = setInterval(() => {
-          const signature = read();
-          if (signature === previous) return;
-          previous = signature;
-          diagNote('store', { sid: String(sessionId).slice(-12), sig: signature });
-        }, 2000);
-        return () => clearInterval(timer);
-      }, [sessionId, ctx]);
+        diagNote('live', {
+          sid: String(sessionId).slice(-12),
+          cat: Array.isArray(liveCatalog) ? liveCatalog.length : (liveCatalog === undefined ? -1 : -2),
+          title: typeof liveTitle === 'string' ? liveTitle.slice(0, 16) : null,
+          teamN: Array.isArray(team && team.tasks) ? team.tasks.length : -1,
+        });
+      }, [liveCatalog, liveTitle, team, sessionId]);
 
       useEffect(() => {
         if (addressedChild || listedChild) {
@@ -1918,7 +1909,14 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       const t = ctx.locale.bind(NS);
       if (typeof window !== 'undefined') window.__teamKanbanRev = CLIENT_REV;
-      diagNote('apply', { rev: CLIENT_REV, hasLayout: !!ctx.layout });
+      diagNote('apply', {
+        rev: CLIENT_REV,
+        hasLayout: !!ctx.layout,
+        sessionsApi: typeof ctx.sessions,
+        pv: (() => {
+          try { return typeof (ctx.sessions && ctx.sessions.projectionValues); } catch (error) { return 'throw'; }
+        })(),
+      });
 
       /* Disabling or unloading the bundle must not leave a dead `team-board`
          chip in the saved right-sidebar layout: close what this plugin opened. */
