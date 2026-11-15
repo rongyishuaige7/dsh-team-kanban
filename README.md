@@ -101,7 +101,7 @@ client.js               Client 侧 bundle：注册标签类型 team kind、标�
 - 不写会话、不调 `team_task_*`、不改团队开关，纯只读。
 - 不读 `~/.dsh/sessions`，不发任何网络请求；唯一的宿主 RPC 是只读的 `ctx.remote.session.projections({ sessionId })`。
 - 不 require 宿主的内部 UI 包（`dsh-client-ui-primitives`、`dsh-client-ui-agent-team` 等），只依赖公开的 slot / projection / locale / sidebarRight 契约。
-- 唯一写入是浏览器内的 UI 状态（卡片展开、手动关闭标记），随页面生命周期消失。
+- 唯一写入是浏览器内的 UI 状态（卡片展开、手动关闭标记）以及一条排障记录 `localStorage['team-kanban:diag.v1']`；两者都不含对话内容，也不离开本机。
 
 ## 开发
 
@@ -109,7 +109,7 @@ Node ≥ 20，无第三方依赖，无构建步骤——`client.js` 是手写的
 
 ```bash
 npm run check   # node --check 两个入口
-npm test        # node:test，29 项：纯函数、双结构渲染冒烟、清单一致性、旧标签清理、空闲探测
+npm test        # node:test，30 项：纯函数、双结构渲染冒烟、清单一致性、旧标签清理、空闲探测、诊断记录
 ```
 
 测试用假的 `__ModuleLoader__` 加载 `client.js`，用 hook 形状的 React 替身走完渲染路径，不需要浏览器或宿主。
@@ -125,6 +125,20 @@ dsh-team-kanban/
 ├── PRD.md / DESIGN.md   # 需求与技术设计（含宿主契约核实记录）
 └── docs/                # 排查记录与宿主缺陷报告
 ```
+
+## 排障
+
+看板不出现时，先看 `localStorage['team-kanban:diag.v1']`（DevTools → Application → Local Storage，或插件报障时附上这一条）：
+
+| `phase` | 含义 |
+|---|---|
+| 键不存在 | 客户端半根本没执行：宿主图里的行 id 与 `client.js` 注册的 id 不一致（常见于改名后旧包条目没清干净） |
+| `apply` | 客户端模块跑起来了，但停在标签类型注册之前 |
+| `registered` | 标签类型注册成功；看 `kind` 是否等于 `dsh-team-kanban.board` |
+| `register-failed` | 宿主拒绝注册，`error` 通常含 `already registered`（同一份代码被注册两次） |
+| `watch` | watcher 已在跑，`tasks` / `running` 是它当时的判断；`tasks: -1` 表示投影还没到 |
+| `opened` / `open-failed` | 打开成功 / 9 秒内重试都失败，`error` 是最后一次的原因 |
+| `pull-failed` / `unsupported` | 拉投影失败 / 宿主没有 `agentTeam` 投影 |
 
 ## 已知限制
 

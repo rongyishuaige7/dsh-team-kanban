@@ -2,6 +2,19 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.2] - 2026-11-15
+
+把「插件根本没加载」这一层失败变成可读的证据。
+
+### Added
+
+- `localStorage` 诊断记录 `team-kanban:diag.v1`：apply、标签类型注册、watcher 决策、打开成功/失败、拉取失败、宿主不支持，各写一条 `{ rev, phase, sessionId, error }`。没有 DevTools 也能看出卡在哪一步；对 bug report 也直接可用。
+- 测试 30 项。
+
+### Fixed
+
+- 文档补上这次事故的完整因果：profile 里同时留着旧名 `@local/dsh-client-ui-team-kanban` 和新名 `dsh-team-kanban` 两条 bundle 时，宿主按**旧行 id** 去取 `client.js`，而改名后的文件注册的是 `dsh-team-kanban`。`dsh-client-modules` 只认「文件注册 id === 图行 id」（`system.ts:205-236`），于是该条目记为 `loaded without registering` 并静默失败——没有 watcher、没有标签、没有报错弹窗。
+
 ## [0.4.1] - 2026-11-15
 
 修复「任务已经建好、看板却一直不出现」的一类静默失败。

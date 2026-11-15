@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.4.1';
+    const CLIENT_REV = '0.4.2';
     const TAB_ID = PKG;
     /* Namespaced on purpose: the host turns a kind into the opaque page
        address `sidebar://<kind>`, and a bare `team-board` would be the first
@@ -21,6 +21,24 @@ window.__ModuleLoader__.load({
        carry them after the upgrade and nothing else would ever close them. */
     const LEGACY_KINDS = ['team-board'];
     const isBoardKind = (kind) => kind === KIND || LEGACY_KINDS.includes(kind);
+    /* The Host's entry loader reports a module registering under the wrong id
+       only to its own diagnostic store, which a user cannot read without
+       DevTools. One small localStorage record makes that class of silent
+       failure readable from outside and from a bug report. */
+    const DIAG_KEY = 'team-kanban:diag.v1';
+    let diagState = {};
+    function diag(patch) {
+      try {
+        if (typeof window === 'undefined' || !window.localStorage) return;
+        diagState = Object.assign({}, diagState, patch, {
+          rev: CLIENT_REV,
+          at: new Date().toISOString(),
+        });
+        window.localStorage.setItem(DIAG_KEY, JSON.stringify(diagState));
+      } catch (error) {
+        /* Storage can be unavailable; diagnostics must never affect the board. */
+      }
+    }
     const LANES = ['pending', 'in_progress', 'completed'];
     const EMPTY = Object.freeze([]);
 
@@ -527,6 +545,7 @@ window.__ModuleLoader__.load({
       if (unsupportedSessions.has(sessionId)) return;
       unsupportedSessions.add(sessionId);
       console.warn('[team-kanban] this Host serves no agentTeam projection for', sessionId, '- stopping discovery for it');
+      diag({ phase: 'unsupported', sessionId });
       notifyFallback(sessionId, true);
     }
 
@@ -1534,7 +1553,9 @@ window.__ModuleLoader__.load({
           failures += 1;
           if (!reported) {
             reported = true;
-            console.warn('[team-kanban] could not pull projections for', sessionId, '-', failure || 'no values returned');
+            const message = failure || 'no values returned';
+            console.warn('[team-kanban] could not pull projections for', sessionId, '-', message);
+            diag({ phase: 'pull-failed', sessionId, error: message });
           }
           if (failures >= 3) stop();
         };
@@ -1579,6 +1600,13 @@ window.__ModuleLoader__.load({
            the layout as blank pages for as long as the session lives. */
         listTabs().forEach((tab) => {
           if (tab && tab.id && LEGACY_KINDS.includes(tab.kind)) closeBoardTab(ctx, sessionId, tab.id);
+        });
+
+        diag({
+          phase: 'watch',
+          sessionId,
+          running: runningNow === 1,
+          tasks: absent ? -1 : team.tasks.length,
         });
 
         if (absent) return undefined;
@@ -1630,6 +1658,7 @@ window.__ModuleLoader__.load({
 
         if (attemptOpen(false)) {
           openConfirmed.set(sessionId, true);
+          diag({ phase: 'opened', sessionId });
           return undefined;
         }
 
@@ -1645,13 +1674,15 @@ window.__ModuleLoader__.load({
             const last = index === delays.length - 1;
             if (attemptOpen(!last)) {
               openConfirmed.set(sessionId, true);
+              diag({ phase: 'opened', sessionId });
               return;
             }
             if (last) {
-              console.warn('[team-kanban] gave up opening the board for', sessionId, '-',
-                lastOpenError && lastOpenError.message
-                  ? lastOpenError.message
-                  : 'the tab type is registered but this Session never adopted it');
+              const message = lastOpenError && lastOpenError.message
+                ? lastOpenError.message
+                : 'the tab type is registered but this Session never adopted it';
+              console.warn('[team-kanban] gave up opening the board for', sessionId, '-', message);
+              diag({ phase: 'open-failed', sessionId, error: message });
             }
           }, delay)
         );
@@ -2881,6 +2912,7 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       const t = ctx.locale.bind(NS);
       if (typeof window !== 'undefined') window.__teamKanbanRev = CLIENT_REV;
+      diag({ phase: 'apply' });
       /* Disabling or unloading the bundle must not leave a dead board chip in
          the saved right-sidebar layout: close what this plugin opened. */
       ctx.effect(() => () => {
@@ -2927,14 +2959,18 @@ window.__ModuleLoader__.load({
          the failure visible instead of folding the whole bundle. */
       ctx.effect(() => {
         try {
-          return ctx.sidebarRightTabs.register({
+          const dispose = ctx.sidebarRightTabs.register({
             id: TAB_ID,
             kind: KIND,
             priority: 'extension',
             title: () => t('tab.title'),
           });
+          diag({ phase: 'registered', kind: KIND });
+          return dispose;
         } catch (error) {
-          console.warn('[team-kanban] could not register the sidebar tab type -', error && error.message ? error.message : error);
+          const message = error && error.message ? error.message : String(error);
+          console.warn('[team-kanban] could not register the sidebar tab type -', message);
+          diag({ phase: 'register-failed', error: message });
           return () => {};
         }
       }, 'team-kanban: tab type');

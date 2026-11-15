@@ -25,7 +25,15 @@ function fakeReact() {
 function boot(pulledValues, { tabs = [] } = {}) {
   const { React, effects } = fakeReact();
   let definition;
-  const window = { __ModuleLoader__: { load(value) { definition = value; } } };
+  const storage = new Map();
+  const window = {
+    __ModuleLoader__: { load(value) { definition = value; } },
+    localStorage: {
+      getItem: (key) => (storage.has(key) ? storage.get(key) : null),
+      setItem: (key, value) => { storage.set(key, String(value)); },
+      removeItem: (key) => { storage.delete(key); },
+    },
+  };
   new Function('window', SOURCE)(window);
   const plugin = definition.factory((id) => {
     if (id === 'react') return React;
@@ -61,7 +69,7 @@ function boot(pulledValues, { tabs = [] } = {}) {
     remote: { session: { projections: async () => ({ ok: true, value: { values: pulledValues } }) } },
   };
   plugin.apply(ctx);
-  return { plugin, slots, effects, opened, closed, tabs, disposers, window };
+  return { plugin, slots, effects, opened, closed, tabs, storage, disposers, window };
 }
 
 function sessionProps(team, { running = false } = {}) {
@@ -199,6 +207,14 @@ test('an idle session probes once and opens a board created in its last turn', a
   } finally {
     cleanups.forEach((cleanup) => cleanup());
   }
+});
+
+test('apply leaves a diagnostic record that needs no DevTools', () => {
+  const { storage } = boot({ agentTeam: rcTeam });
+  const record = JSON.parse(storage.get('team-kanban:diag.v1'));
+  assert.match(record.rev, /^\d+\.\d+\.\d+$/);
+  assert.equal(record.phase, 'registered');
+  assert.equal(record.kind, 'dsh-team-kanban.board');
 });
 
 test('a chip left under the 0.3.x kind is closed and replaced', async () => {
