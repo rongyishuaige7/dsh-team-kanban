@@ -12,9 +12,9 @@
    ===================================================================== */
 body[data-theme="light"] {
   color-scheme: light;
-  --dsw-alias-bg-base: #ffffff;
-  --dsw-alias-bg-layer-1: #ffffff;
-  --dsw-alias-bg-layer-2: #ffffff;
+  --dsw-alias-bg-base: #fff;
+  --dsw-alias-bg-layer-1: #fff;
+  --dsw-alias-bg-layer-2: #fff;
   --dsw-alias-card-fill: #fafafa;
   --dsw-alias-card-fill-hover: #f5f5f5;
   --dsw-alias-interactive-bg-hover: rgba(38, 49, 72, 0.06);
@@ -23,10 +23,10 @@ body[data-theme="light"] {
   --dsw-alias-border-l2: rgba(0, 0, 0, 0.1);
   --dsw-alias-border-l3: rgba(0, 0, 0, 0.12);
   --dsw-alias-label-primary: #0f1115;
-  --dsw-alias-label-primary-inverted: #ffffff;
+  --dsw-alias-label-primary-inverted: #fff;
   --dsw-alias-label-secondary: #61666b;
   --dsw-alias-label-tertiary: #81858c;
-  --dsw-alias-label-on-color: #ffffff;
+  --dsw-alias-label-on-color: #fff;
   --dsw-alias-state-business-primary: #4176e6;
   --dsw-alias-state-business-tertiary: #e4edfd;
   --dsw-alias-state-success-primary: #22c55e;
@@ -36,8 +36,8 @@ body[data-theme="light"] {
   --dsw-alias-state-warn-tertiary: #fef5e7;
   --dsw-alias-state-idle-primary: #d4d4d4;
   --dsw-alias-state-error-primary: #ec1313;
-  --dsw-radius-sm: 6px;
-  --dsw-radius-md: 10px;
+  --dsw-radius-sm: 8px;
+  --dsw-radius-md: 12px;
 }
 body[data-theme="dark"] {
   color-scheme: dark;
@@ -55,7 +55,7 @@ body[data-theme="dark"] {
   --dsw-alias-label-primary-inverted: #353638;
   --dsw-alias-label-secondary: #cfd3d6;
   --dsw-alias-label-tertiary: #adb2b8;
-  --dsw-alias-label-on-color: #ffffff;
+  --dsw-alias-label-on-color: #fff;
   --dsw-alias-state-business-primary: #7aaaff;
   --dsw-alias-state-business-tertiary: #34415b;
   --dsw-alias-state-success-primary: #22c55e;
@@ -65,8 +65,8 @@ body[data-theme="dark"] {
   --dsw-alias-state-warn-tertiary: #27241f;
   --dsw-alias-state-idle-primary: #545557;
   --dsw-alias-state-error-primary: #f25a5a;
-  --dsw-radius-sm: 6px;
-  --dsw-radius-md: 10px;
+  --dsw-radius-sm: 8px;
+  --dsw-radius-md: 12px;
 }
 
 /* =====================================================================
@@ -399,6 +399,117 @@ button { font: inherit; }
   color: var(--dsw-alias-label-tertiary);
   white-space: nowrap;
 }
+
+/* =====================================================================
+   团队控制（本插件唯一的写入口：停用团队协作）
+   ===================================================================== */
+.tkb-team {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+.tkb-team__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 11px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color var(--tkb-d2) var(--tkb-ease),
+              border-color var(--tkb-d2) var(--tkb-ease),
+              color var(--tkb-d2) var(--tkb-ease);
+}
+.tkb-team__btn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+.tkb-team__btn:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+.tkb-team__btn[aria-expanded="true"] {
+  border-color: var(--dsw-alias-border-l3);
+  color: var(--dsw-alias-label-primary);
+}
+.tkb-team__icon { display: block; flex: none; color: currentColor; }
+.tkb-team__label { white-space: nowrap; }
+.tkb-team__pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 6;
+  width: 232px;
+  padding: 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-layer-2);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent);
+  animation: tkb-pop-in 160ms var(--tkb-ease) both;
+}
+.tkb-team__title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+.tkb-team__body {
+  margin: 0 0 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-secondary);
+}
+.tkb-team__err {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--dsw-alias-state-error-primary);
+}
+.tkb-team__actions { display: flex; justify-content: flex-end; gap: 6px; }
+.tkb-team__ghost,
+.tkb-team__danger {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  appearance: none;
+}
+.tkb-team__ghost {
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+}
+.tkb-team__ghost:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.tkb-team__danger {
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  background: transparent;
+  color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 85%, var(--dsw-alias-label-primary));
+}
+.tkb-team__danger:hover {
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);
+}
+.tkb-team__ghost:disabled,
+.tkb-team__danger:disabled { opacity: .55; cursor: default; }
+@keyframes tkb-pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+@container tkb (max-width: 520px) {
+  .tkb-team__label { display: none; }
+  .tkb-team__btn { padding: 0 6px; }
+  .tkb-mates { max-width: calc(100% - 180px); }
+}
+
 .tkb-mc {
   position: relative;
   display: flex;
@@ -1313,6 +1424,7 @@ button { font: inherit; }
     <button class="pt-btn" data-act="del">删除</button>
     <button class="pt-btn" data-act="clear">清空</button>
     <button class="pt-btn" data-act="team" id="ptTeam" aria-pressed="true">团队模式</button>
+    <button class="pt-btn" data-act="teampop" id="ptTeamPop" aria-pressed="false">停用弹层</button>
     <button class="pt-btn" data-act="failure" id="ptFailure" aria-pressed="false">投影异常</button>
   </div>
   <span class="pt-sep"></span>
@@ -1408,6 +1520,8 @@ const DICT = {
     'tab.title': '任务板', 'column.pending': '待处理', 'column.in_progress': '进行中', 'column.completed': '已完成', 'column.empty': '暂无任务',
     'card.unowned': '未分配', 'card.ready': '就绪', 'card.blocked': '被依赖阻塞', 'card.blockedBy': '依赖', 'card.blocks': '解锁后续',
     'card.writeScopes': '写入范围', 'card.running': '运行中', 'card.idle': '空闲', 'card.lead': '主智能体',
+    'team.label': '团队', 'team.disable': '停用智能体团队协作', 'team.confirmTitle': '停用智能体团队协作？',
+    'team.confirmBody': '本会话将不再使用共享任务工具；已有任务会保留，看板会关闭。', 'team.confirm': '停用', 'team.cancel': '取消',
     'error.title': '任务记录异常',
     'a11y.created': '新任务 {id}', 'a11y.moved.in_progress': '{id} 开始执行', 'a11y.moved.completed': '{id} 已完成',
     'a11y.moved.pending': '{id} 退回待处理', 'a11y.unlocked': '{id} 已就绪', 'a11y.deleted': '{id} 已删除',
@@ -1417,6 +1531,8 @@ const DICT = {
     'tab.title': 'Task board', 'column.pending': 'Pending', 'column.in_progress': 'In progress', 'column.completed': 'Completed', 'column.empty': 'No tasks',
     'card.unowned': 'Unowned', 'card.ready': 'Ready', 'card.blocked': 'Blocked', 'card.blockedBy': 'Blocked by', 'card.blocks': 'Unblocks',
     'card.writeScopes': 'Write scopes', 'card.running': 'Running', 'card.idle': 'Idle', 'card.lead': 'Lead agent',
+    'team.label': 'Team', 'team.disable': 'Disable agent teamwork', 'team.confirmTitle': 'Disable agent teamwork?',
+    'team.confirmBody': 'This session stops using shared task tools. Existing tasks are kept and the board closes.', 'team.confirm': 'Disable', 'team.cancel': 'Cancel',
     'error.title': 'Invalid task record',
     'a11y.created': 'New task {id}', 'a11y.moved.in_progress': '{id} started', 'a11y.moved.completed': '{id} completed',
     'a11y.moved.pending': '{id} back to pending', 'a11y.unlocked': '{id} is ready', 'a11y.deleted': '{id} deleted',
@@ -1548,7 +1664,95 @@ function createBoard(mount) {
   score.append(scoreDone, scoreTotal);
   const strip = h('div', 'tkb-strip');
   const matesEl = h('div', 'tkb-mates');
-  head.append(score, strip, matesEl);
+
+  const teamWrap = h('div', 'tkb-team');
+  const teamBtn = h('button', 'tkb-team__btn');
+  teamBtn.type = 'button';
+  teamBtn.setAttribute('aria-haspopup', 'dialog');
+  teamBtn.setAttribute('aria-expanded', 'false');
+  teamBtn.setAttribute('title', tx('team.disable'));
+  teamBtn.setAttribute('aria-label', tx('team.disable'));
+
+  const teamIcon = document.createElementNS(SVGNS, 'svg');
+  teamIcon.setAttribute('class', 'tkb-team__icon');
+  teamIcon.setAttribute('viewBox', '0 0 16 16');
+  teamIcon.setAttribute('width', '12');
+  teamIcon.setAttribute('height', '12');
+  teamIcon.setAttribute('aria-hidden', 'true');
+  const p1 = document.createElementNS(SVGNS, 'path');
+  p1.setAttribute('d', 'M8 2.3v5.2');
+  p1.setAttribute('fill', 'none');
+  p1.setAttribute('stroke', 'currentColor');
+  p1.setAttribute('stroke-width', '1.6');
+  p1.setAttribute('stroke-linecap', 'round');
+  const p2 = document.createElementNS(SVGNS, 'path');
+  p2.setAttribute('d', 'M4.4 4.2a4.9 4.9 0 1 0 7.2 0');
+  p2.setAttribute('fill', 'none');
+  p2.setAttribute('stroke', 'currentColor');
+  p2.setAttribute('stroke-width', '1.6');
+  p2.setAttribute('stroke-linecap', 'round');
+  teamIcon.append(p1, p2);
+
+  const teamLabel = h('span', 'tkb-team__label');
+  teamLabel.textContent = tx('team.label');
+  teamBtn.append(teamIcon, teamLabel);
+
+  const teamPop = h('div', 'tkb-team__pop');
+  teamPop.setAttribute('role', 'dialog');
+  teamPop.setAttribute('aria-label', tx('team.confirmTitle'));
+  teamPop.hidden = true;
+
+  const teamTitle = h('p', 'tkb-team__title');
+  teamTitle.textContent = tx('team.confirmTitle');
+  const teamBody = h('p', 'tkb-team__body');
+  teamBody.textContent = tx('team.confirmBody');
+  const teamActions = h('div', 'tkb-team__actions');
+  const ghostBtn = h('button', 'tkb-team__ghost');
+  ghostBtn.type = 'button';
+  ghostBtn.textContent = tx('team.cancel');
+  const dangerBtn = h('button', 'tkb-team__danger');
+  dangerBtn.type = 'button';
+  dangerBtn.textContent = tx('team.confirm');
+
+  teamActions.append(ghostBtn, dangerBtn);
+  teamPop.append(teamTitle, teamBody, teamActions);
+  teamWrap.append(teamBtn, teamPop);
+
+  function openTeamPop() {
+    teamPop.hidden = false;
+    teamBtn.setAttribute('aria-expanded', 'true');
+    refreshUI();
+  }
+  function closeTeamPop() {
+    teamPop.hidden = true;
+    teamBtn.setAttribute('aria-expanded', 'false');
+    refreshUI();
+  }
+  function toggleTeamPop() {
+    if (teamPop.hidden) openTeamPop(); else closeTeamPop();
+  }
+  teamBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    hideTip();
+    toggleTeamPop();
+  });
+  ghostBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeTeamPop();
+  });
+  dangerBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeTeamPop();
+    commit(() => { ACTIONS.team(); });
+  });
+  const onDocClick = (e) => {
+    if (!teamWrap.contains(e.target) && !e.target.closest('#ptTeamPop')) {
+      if (!teamPop.hidden) closeTeamPop();
+    }
+  };
+  document.addEventListener('click', onDocClick);
+
+  head.append(score, strip, matesEl, teamWrap);
 
   const banner = h('div', 'tkb-banner');
   const bClip = h('div', 'tkb-banner__clip');
@@ -2313,6 +2517,14 @@ function createBoard(mount) {
     LANES.forEach(k => { lanes[k].name.textContent = tx('column.' + k); lanes[k].empty.setAttribute('aria-label', tx('column.empty')); });
     divider.setAttribute('aria-label', tx('card.blocked'));
     bTitle.textContent = tx('error.title');
+    teamBtn.setAttribute('title', tx('team.disable'));
+    teamBtn.setAttribute('aria-label', tx('team.disable'));
+    teamLabel.textContent = tx('team.label');
+    teamPop.setAttribute('aria-label', tx('team.confirmTitle'));
+    teamTitle.textContent = tx('team.confirmTitle');
+    teamBody.textContent = tx('team.confirmBody');
+    ghostBtn.textContent = tx('team.cancel');
+    dangerBtn.textContent = tx('team.confirm');
     cards.forEach(el => { el._p.inner._sig = null; });
   }
   relabel();
@@ -2323,12 +2535,14 @@ function createBoard(mount) {
     relabel,
     markAway,
     markBack,
+    toggleTeamPop,
+    isTeamPopOpen: () => !teamPop.hidden,
     setReduced(on) { if (on) root.dataset.motion = 'reduced'; else root.removeAttribute('data-motion'); },
     resync() {
       root.querySelectorAll('[data-running]').forEach(el => el.style.setProperty('--tkb-phase', phase(2400)));
       root.querySelectorAll('[data-live]').forEach(el => el.style.setProperty('--tkb-phase', phase(1800)));
     },
-    destroy() { flushMotion(); ro.disconnect(); hideTip(); root.remove(); },
+    destroy() { document.removeEventListener('click', onDocClick); flushMotion(); ro.disconnect(); hideTip(); root.remove(); },
   };
 }
 
@@ -2654,6 +2868,8 @@ function refreshUI() {
   ptPlay.replaceChildren(icon(play.on ? 'pause' : 'play'), h('span', '', play.on ? '暂停' : done ? '重播' : '演示'));
   $('#ptStep').textContent = `${play.step}/${SCRIPT.length}`;
   $('#ptTeam').setAttribute('aria-pressed', String(state.enabled));
+  const ptTeamPop = $('#ptTeamPop');
+  if (ptTeamPop) ptTeamPop.setAttribute('aria-pressed', String(host.board && host.board.isTeamPopOpen ? host.board.isTeamPopOpen() : false));
   $('#ptFailure').setAttribute('aria-pressed', String(!!state.failure));
   $('#ptReduced').setAttribute('aria-pressed', String(env.reducedToggle));
   $('#ptOthers').setAttribute('aria-pressed', String(host.others));
@@ -2667,6 +2883,7 @@ $('#ptBar').addEventListener('click', e => {
   if (act === 'next') { pausePlay(); if (play.step < SCRIPT.length) { const s = SCRIPT[play.step++]; commit(() => s.run()); } else nope(btn); return; }
   if (act === 'reset') { resetAll(); setTimeout(startPlay, 500); return; }
   if (act === 'reduced') { env.reducedToggle = !env.reducedToggle; if (host.board) host.board.setReduced(env.reducedToggle); refreshUI(); return; }
+  if (act === 'teampop') { if (host.board && host.board.toggleTeamPop) host.board.toggleTeamPop(); return; }
   if (act === 'others') {
     host.others = !host.others;
     if (!host.others && host.active !== 'board') { if (host.boardOpen) activate('board'); else host.active = null; }

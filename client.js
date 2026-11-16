@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.5.5';
+    const CLIENT_REV = '0.5.6';
     const TAB_ID = PKG;
     /* Namespaced on purpose: the host turns a kind into the opaque page
        address `sidebar://<kind>`, and a bare `team-board` would be the first
@@ -2175,7 +2175,7 @@ window.__ModuleLoader__.load({
 .tkb-team__danger {
   border: 1px solid var(--dsw-alias-state-error-primary);
   background: transparent;
-  color: var(--dsw-alias-label-primary);
+  color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 85%, var(--dsw-alias-label-primary));
 }
 .tkb-team__danger:hover {
   background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);
