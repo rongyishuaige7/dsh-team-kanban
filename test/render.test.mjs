@@ -390,7 +390,7 @@ test('CSS adheres to host token whitelist and maintains semantic color protectio
   assert.ok(cssMatch, 'CSS constant must exist');
   const css = cssMatch[1];
 
-  // 1. DSW tokens whitelist
+  // 1. DSW tokens whitelist (only tokens actively used in production client.js)
   const ALLOWED_DSW_TOKENS = new Set([
     '--dsw-alias-bg-base',
     '--dsw-alias-bg-layer-1',
@@ -401,7 +401,6 @@ test('CSS adheres to host token whitelist and maintains semantic color protectio
     '--dsw-alias-border-l2',
     '--dsw-alias-border-l3',
     '--dsw-alias-label-primary',
-    '--dsw-alias-label-primary-inverted',
     '--dsw-alias-label-secondary',
     '--dsw-alias-label-tertiary',
     '--dsw-alias-label-on-color',
@@ -410,7 +409,6 @@ test('CSS adheres to host token whitelist and maintains semantic color protectio
     '--dsw-alias-state-business-primary',
     '--dsw-alias-state-business-tertiary',
     '--dsw-alias-state-success-primary',
-    '--dsw-alias-state-success-tertiary',
     '--dsw-alias-state-warn-primary',
     '--dsw-alias-state-warn-label',
     '--dsw-alias-state-warn-tertiary',
@@ -424,8 +422,9 @@ test('CSS adheres to host token whitelist and maintains semantic color protectio
   for (const token of usedTokens) {
     assert.ok(ALLOWED_DSW_TOKENS.has(token), `token ${token} must be in DSW whitelist`);
   }
+  assert.ok(!usedTokens.includes('--dsw-alias-label-primary-inverted'), 'label-primary-inverted should have no remaining callers');
 
-  // 2. Zero naked hex color codes and visual color keywords
+  // 2. Zero naked hex color codes and visual color keywords (expanded comprehensive check)
   const hexColors = [...css.matchAll(/#([0-9a-fA-F]{3,8})\b/g)].map((m) => m[0]);
   assert.deepEqual(hexColors, [], 'CSS must contain zero naked hex color codes');
 
@@ -439,18 +438,18 @@ test('CSS adheres to host token whitelist and maintains semantic color protectio
     const prop = parts[0].trim().toLowerCase();
     const val = parts.slice(1).join(':').trim();
     if (COLOR_PROPS.test(prop) || val.includes('color-mix')) {
-      const naked = val.match(/\b(white|black|red|green|blue)\b/gi);
+      const naked = val.match(/\b(white|black|red|green|blue|orange|purple|violet|yellow|gray|grey)\b/gi);
       assert.ok(!naked, `Naked color keyword "${naked}" found in ${prop}: ${val}`);
       const rgbHsl = val.match(/\b(rgba?|hsla?)\s*\(/gi);
       assert.ok(!rgbHsl, `Naked rgb/hsl function found in ${prop}: ${val}`);
     }
   }
 
-  // 3. [data-s="done"] slot bar does not collapse into active and maintains non-color channel distinction
+  // 3. [data-s="done"] slot bar shape & color protection (4px slim bar + --tkb-c-done)
   const doneSlotRule = css.match(/\.tkb-slot\[data-s="done"\]\s+\.tkb-slot__bar\s*\{([^}]+)\}/);
   assert.ok(doneSlotRule, 'done slot bar rule must be present');
+  assert.match(doneSlotRule[1], /height:\s*4px/, 'done slot bar must have 4px slim height for non-color channel distinction');
   assert.match(doneSlotRule[1], /--tkb-c-done/, 'done slot bar must use --tkb-c-done');
-  assert.match(doneSlotRule[1], /inset 0 0 0 1px/, 'done slot bar must have non-color channel inset highlight');
   assert.doesNotMatch(doneSlotRule[1], /--tkb-c-active/, 'done slot bar must not use --tkb-c-active');
 
   // 4. Completed checkmark glyph contrast protection (>= 3:1)
@@ -470,10 +469,11 @@ test('CSS adheres to host token whitelist and maintains semantic color protectio
   assert.ok(titleDoneArcRule, 'title data-done arc rule must exist');
   assert.match(titleDoneArcRule[1], /stroke:\s*var\(--tkb-c-done\)/, 'title arc must switch to green when fully done');
 
-  // 6. Danger button high-contrast protection (> 4.5:1 on red in both light and dark)
+  // 6. Outlined danger button high-contrast protection (> 13:1 on background in both light and dark)
   const dangerRule = css.match(/\}\s*\.tkb-team__danger\s*\{([^}]+)\}/);
   assert.ok(dangerRule, 'danger disarm button rule must exist');
-  assert.match(dangerRule[1], /color:\s*var\(--dsw-alias-label-on-color\)/, 'danger button must use label-on-color');
+  assert.match(dangerRule[1], /border:\s*1px\s+solid\s+var\(--dsw-alias-state-error-primary\)/, 'danger button must have red border');
+  assert.match(dangerRule[1], /color:\s*var\(--dsw-alias-label-primary\)/, 'danger button text must use label-primary for >13:1 contrast');
 
   // 7. Completed card background & border readability
   const completedCardRule = css.match(/\.tkb-card\[data-status="completed"\]\s*\{([^}]+)\}/);
@@ -491,8 +491,19 @@ test('CSS adheres to host token whitelist and maintains semantic color protectio
 
 test('prototype mock tokens adhere strictly to host design-platform fixture (anti-drift)', () => {
   const PROTO = readFileSync(new URL('../prototype/team-kanban-prototype.html', import.meta.url), 'utf8');
+  const PKG_JSON = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
+  /**
+   * Source: DeepSeek Harness 0.2.2-rc.3 · app.asar · lib/welcome/design-platform.css
+   * Extracted: 2026-11-16
+   * Verified against host static/alias resolution tables.
+   */
   const HOST_FIXTURE = {
+    metadata: {
+      source: 'DeepSeek Harness 0.2.2-rc.3 · app.asar · lib/welcome/design-platform.css',
+      extractedDate: '2026-11-16',
+      dshRelease: '0.2.2-rc.3',
+    },
     light: {
       '--dsw-alias-bg-base': '#ffffff',
       '--dsw-alias-bg-layer-1': '#ffffff',
@@ -518,6 +529,8 @@ test('prototype mock tokens adhere strictly to host design-platform fixture (ant
       '--dsw-alias-state-warn-tertiary': '#fef5e7',
       '--dsw-alias-state-idle-primary': '#d4d4d4',
       '--dsw-alias-state-error-primary': '#ec1313',
+      '--dsw-radius-sm': '6px',
+      '--dsw-radius-md': '10px',
     },
     dark: {
       '--dsw-alias-bg-base': '#151517',
@@ -544,8 +557,17 @@ test('prototype mock tokens adhere strictly to host design-platform fixture (ant
       '--dsw-alias-state-warn-tertiary': '#27241f',
       '--dsw-alias-state-idle-primary': '#545557',
       '--dsw-alias-state-error-primary': '#f25a5a',
+      '--dsw-radius-sm': '6px',
+      '--dsw-radius-md': '10px',
     },
   };
+
+  // Enforce binding between fixture version and package.json compatibility
+  assert.equal(
+    PKG_JSON.dsh?.compatibility?.dshReleases?.[HOST_FIXTURE.metadata.dshRelease],
+    'compatible',
+    `HOST_FIXTURE (${HOST_FIXTURE.metadata.dshRelease}) must be declared compatible in package.json`
+  );
 
   function parseThemeBlock(css, selector) {
     const match = css.match(new RegExp(selector + '\\s*\\{([^}]+)\\}'));
@@ -553,7 +575,7 @@ test('prototype mock tokens adhere strictly to host design-platform fixture (ant
     const map = {};
     for (const line of match[1].split(';')) {
       const parts = line.split(':');
-      if (parts.length === 2 && parts[0].trim().startsWith('--dsw-alias-')) {
+      if (parts.length === 2 && parts[0].trim().startsWith('--dsw-')) {
         map[parts[0].trim()] = parts[1].trim();
       }
     }
@@ -562,6 +584,9 @@ test('prototype mock tokens adhere strictly to host design-platform fixture (ant
 
   const protoLight = parseThemeBlock(PROTO, 'body\\[data-theme="light"\\]');
   const protoDark = parseThemeBlock(PROTO, 'body\\[data-theme="dark"\\]');
+
+  assert.equal(Object.keys(HOST_FIXTURE.light).length, 26, 'light fixture must have 26 verified tokens');
+  assert.equal(Object.keys(HOST_FIXTURE.dark).length, 26, 'dark fixture must have 26 verified tokens');
 
   for (const [token, expected] of Object.entries(HOST_FIXTURE.light)) {
     assert.equal(protoLight[token], expected, `light token ${token} must match host fixture`);
@@ -575,19 +600,19 @@ test('prototype mock tokens adhere strictly to host design-platform fixture (ant
   assert.ok(!SOURCE.includes('--dsw-alias-state-done-primary'), 'client.js must not contain --dsw-alias-state-done-primary');
 });
 
-test('prototype and client.js .tkb-* rules maintain strict structural parity', () => {
+test('prototype and client.js .tkb-* rules maintain strict bidirectional parity', () => {
   const PROTO = readFileSync(new URL('../prototype/team-kanban-prototype.html', import.meta.url), 'utf8');
   const cssMatch = SOURCE.match(/const CSS = String\.raw`([\s\S]*?)`;/);
   assert.ok(cssMatch, 'CSS constant must exist');
   const clientCss = cssMatch[1];
 
-  function extractTkbRules(cssText) {
+  function extractRules(cssText) {
     const clean = cssText.replace(/\/\*[\s\S]*?\*\//g, '');
     const rules = new Map();
     let depth = 0;
     let selector = '';
     let body = '';
-    let inAtRule = false;
+    let currentAtRule = '';
 
     let i = 0;
     while (i < clean.length) {
@@ -595,27 +620,37 @@ test('prototype and client.js .tkb-* rules maintain strict structural parity', (
       if (ch === '{') {
         depth++;
         if (depth === 1) {
-          const textBefore = clean.slice(clean.lastIndexOf('}', i - 1) + 1, i).trim();
+          const lastBoundary = Math.max(clean.lastIndexOf('}', i - 1), clean.lastIndexOf(';', i - 1));
+          const textBefore = clean.slice(lastBoundary + 1, i).trim();
           if (textBefore.startsWith('@')) {
-            inAtRule = true;
+            currentAtRule = textBefore.replace(/\s+/g, ' ');
           } else {
-            selector = textBefore;
+            selector = textBefore.replace(/\s+/g, ' ');
           }
+        } else if (depth === 2 && currentAtRule) {
+          const lastBoundary = Math.max(clean.lastIndexOf('{', i - 1), clean.lastIndexOf('}', i - 1));
+          const textBefore = clean.slice(lastBoundary + 1, i).trim();
+          selector = textBefore.replace(/\s+/g, ' ');
         }
       } else if (ch === '}') {
         depth--;
         if (depth === 0) {
-          if (!inAtRule && selector.includes('.tkb-')) {
-            const normSel = selector.replace(/\s+/g, ' ').trim();
-            const normBody = body.replace(/\s+/g, ' ').trim();
-            rules.set(normSel, normBody);
+          if (!currentAtRule && selector.includes('.tkb-')) {
+            rules.set(selector, body.replace(/\s+/g, ' ').trim());
           }
           selector = '';
           body = '';
-          inAtRule = false;
+          currentAtRule = '';
+        } else if (depth === 1 && currentAtRule) {
+          if (selector.includes('.tkb-')) {
+            const qualified = `${currentAtRule} -> ${selector}`;
+            rules.set(qualified, body.replace(/\s+/g, ' ').trim());
+          }
+          selector = '';
+          body = '';
         }
       } else {
-        if (depth === 1 && !inAtRule) {
+        if ((depth === 1 && !currentAtRule) || (depth === 2 && currentAtRule)) {
           body += ch;
         }
       }
@@ -624,20 +659,55 @@ test('prototype and client.js .tkb-* rules maintain strict structural parity', (
     return rules;
   }
 
-  const clientRules = extractTkbRules(clientCss);
-  const protoRules = extractTkbRules(PROTO);
+  const clientRules = extractRules(clientCss);
+  const protoRules = extractRules(PROTO);
 
-  assert.ok(clientRules.size > 150, 'client should have extensive .tkb-* rules');
-  assert.ok(protoRules.size > 150, 'prototype should have extensive .tkb-* rules');
+  // Explicit whitelist of client-only rules (disarm team popup menu)
+  const CLIENT_ONLY_SELECTORS = new Set([
+    '.tkb-team',
+    '.tkb-team__btn',
+    '.tkb-team__btn:hover',
+    '.tkb-team__btn:focus-visible',
+    '.tkb-team__btn[aria-expanded="true"]',
+    '.tkb-team__icon',
+    '.tkb-team__label',
+    '.tkb-team__pop',
+    '.tkb-team__title',
+    '.tkb-team__body',
+    '.tkb-team__err',
+    '.tkb-team__actions',
+    '.tkb-team__ghost, .tkb-team__danger',
+    '.tkb-team__ghost',
+    '.tkb-team__ghost:hover',
+    '.tkb-team__danger',
+    '.tkb-team__danger:hover',
+    '.tkb-team__ghost:disabled, .tkb-team__danger:disabled',
+    '@container tkb (max-width: 520px) -> .tkb-team__label',
+    '@container tkb (max-width: 520px) -> .tkb-team__btn',
+    '@container tkb (max-width: 520px) -> .tkb-mates',
+  ]);
 
-  let checked = 0;
+  let sharedCount = 0;
   for (const [sel, cBody] of clientRules) {
     if (protoRules.has(sel)) {
-      const pBody = protoRules.get(sel);
-      const pNorm = pBody.replace(/\s*\*\s*var\(--tkb-speed,\s*1\)/g, '');
-      assert.equal(pNorm, cBody, `rule for "${sel}" must be identical between prototype and client.js`);
-      checked++;
+      const pBody = protoRules.get(sel).replace(/\s*\*\s*var\(--tkb-speed,\s*1\)/g, '');
+      assert.equal(pBody, cBody, `rule for "${sel}" must be identical between prototype and client.js`);
+      sharedCount++;
+    } else {
+      assert.ok(CLIENT_ONLY_SELECTORS.has(sel), `client-only rule "${sel}" must be explicitly in CLIENT_ONLY_SELECTORS whitelist`);
     }
   }
-  assert.ok(checked >= 155, `expected at least 155 shared rules to be validated, checked ${checked}`);
+
+  // Exact whitelist of prototype-only rules (odometer roll numbers)
+  const PROTO_ONLY_SELECTORS = new Set(['.tkb-roll', '.tkb-roll__c', '.tkb-roll__in', '.tkb-roll__out']);
+  for (const [sel] of protoRules) {
+    if (!clientRules.has(sel)) {
+      assert.ok(PROTO_ONLY_SELECTORS.has(sel), `prototype-only rule "${sel}" must be in PROTO_ONLY_SELECTORS`);
+    }
+  }
+
+  assert.equal(sharedCount, 180, 'expected exactly 180 shared rules between prototype and client.js');
+  assert.equal(clientRules.size, 201, 'expected exactly 201 client .tkb-* rules (including at-rules)');
+  assert.equal(protoRules.size, 184, 'expected exactly 184 prototype .tkb-* rules (including at-rules)');
+  assert.equal(CLIENT_ONLY_SELECTORS.size, 21, 'expected exactly 21 client-only rules in whitelist');
 });

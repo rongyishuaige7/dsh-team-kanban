@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.5.4';
+    const CLIENT_REV = '0.5.5';
     const TAB_ID = PKG;
     /* Namespaced on purpose: the host turns a kind into the opaque page
        address `sidebar://<kind>`, and a bare `team-board` would be the first
@@ -2036,7 +2036,8 @@ window.__ModuleLoader__.load({
   border-radius: 2px;
   overflow: hidden;
   background-color: var(--dsw-alias-border-l1);
-  transition: background-color var(--tkb-d3) var(--tkb-ease),
+  transition: height var(--tkb-d2) var(--tkb-ease),
+              background-color var(--tkb-d3) var(--tkb-ease),
               transform var(--tkb-d1) var(--tkb-ease),
               box-shadow var(--tkb-d2) var(--tkb-ease);
 }
@@ -2055,12 +2056,11 @@ window.__ModuleLoader__.load({
   box-shadow: 0 0 6px color-mix(in srgb, var(--tkb-c-active) 40%, transparent);
 }
 .tkb-slot[data-s="done"] .tkb-slot__bar {
+  height: 4px;
   background-color: var(--tkb-c-done);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dsw-alias-label-on-color) 35%, transparent);
 }
 .tkb-slot[data-s="done"]:hover .tkb-slot__bar {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dsw-alias-label-on-color) 50%, transparent),
-              0 0 4px color-mix(in srgb, var(--tkb-c-done) 40%, transparent);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--tkb-c-done) 40%, transparent);
 }
 
 /* =====================================================================
@@ -2173,9 +2173,12 @@ window.__ModuleLoader__.load({
 }
 .tkb-team__ghost:hover { background: var(--dsw-alias-interactive-bg-hover); }
 .tkb-team__danger {
-  border: 1px solid transparent;
-  background: var(--dsw-alias-state-error-primary);
-  color: var(--dsw-alias-label-on-color);
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+}
+.tkb-team__danger:hover {
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);
 }
 .tkb-team__ghost:disabled,
 .tkb-team__danger:disabled { opacity: .55; cursor: default; }

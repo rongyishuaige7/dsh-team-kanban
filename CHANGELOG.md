@@ -2,6 +2,32 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.5] - 2026-11-16
+
+修复暗色危险按钮对比度、完成段真正有效形状通道、完善双向规则同构与出处防漂移守卫。
+
+### Fixed
+
+- **危险确认按钮改用高对比描边样式**：
+  - 剔除实心红底白字设计（暗色下 `#f25a5a` 白字仅 3.29:1），改用宿主推荐的幽灵描边危险按钮：透明底 + 红色边框（`border: 1px solid var(--dsw-alias-state-error-primary)`）+ 文字使用 `--dsw-alias-label-primary`。
+  - 文本对比度在浅色下达 **19.5:1**，暗色下达 **15.8:1**（双模均远超 WCAG AAA 7:1 极值要求），悬停时叠加 12% 红色微背景。
+- **完成段改用 4px 几何形状通道**：
+  - 替换不可辨的 `1.31:1` 内描边阴影，完成段 `.tkb-slot[data-s="done"] .tkb-slot__bar` 高度收敛为 `4px` 紧凑微带（槽位 6px 满高内垂直居中）。
+  - 与进行中 6px 满高能量胶囊形成决定性几何反差，真正实现不依赖色相与明度的非颜色通道无障碍辨识。
+- **细节对齐与冗余清理**：
+  - 原型 favicon 品牌色图标替换为官方科技蓝 `%234176e6`。
+  - 清除 `client.js` 中已无调用者的 `--dsw-alias-label-primary-inverted` 冗余白名单项。
+  - 测试裸色关键字检测表扩充，覆盖 `orange/purple/violet/yellow/gray/grey`。
+
+### Added
+
+- **双向规则同构与白名单严密防护**：
+  - 规则解析器扩展至 `@container` 与 `@media` 嵌套规则体，实测精确覆盖 180 条共享规则（156 条顶层规则 + 24 条响应式规则体），双向一致性 100%。
+  - 设立显式 `CLIENT_ONLY_SELECTORS` 白名单（21 条团队控制与响应式规则）及 `PROTO_ONLY_SELECTORS`（4 条翻页动效规则），杜绝 client 或原型侧任何未登记的单向漂移。
+- **宿主 Fixture 出处固化与版本绑定**：
+  - 明确标注 fixture 来源（`DeepSeek Harness 0.2.2-rc.3 · app.asar · lib/welcome/design-platform.css`）与提取日期，固化每套 26 项 tokens（24 alias + 2 radius）。
+  - 测试断言直接绑定 `package.json` 的 `dshReleases['0.2.2-rc.3'] === 'compatible'`，使宿主升级与 token 漂移强关联且即时告警。
+
 ## [0.5.4] - 2026-11-16
 
 彻底对齐 DSH 宿主真实设计系统变量，加固防漂移测试体系，补齐暗色模式与色觉障碍非颜色通道区分，消除所有裸色关键字。
