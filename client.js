@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.5.2';
+    const CLIENT_REV = '0.5.3';
     const TAB_ID = PKG;
     /* Namespaced on purpose: the host turns a kind into the opaque page
        address `sidebar://<kind>`, and a bare `team-board` would be the first
@@ -1895,7 +1895,6 @@ window.__ModuleLoader__.load({
   --tkb-d1: calc(140ms);
   --tkb-d2: calc(240ms);
   --tkb-d3: calc(480ms);
-  --tkb-d4: calc(1400ms);
   --tkb-ease: cubic-bezier(.2, .8, .2, 1);
   --tkb-ease-spring: cubic-bezier(.34, 1.42, .64, 1);
   --tkb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
@@ -1941,6 +1940,10 @@ window.__ModuleLoader__.load({
 .tkb-glyph--pending { color: var(--tkb-c-pending); }
 .tkb-glyph--in_progress { color: var(--tkb-c-active); }
 .tkb-glyph--completed { color: var(--tkb-c-done); }
+.tkb-glyph--completed circle {
+  stroke: color-mix(in srgb, var(--tkb-c-done) 60%, var(--dsw-alias-label-primary));
+  stroke-width: 0.8;
+}
 .tkb-glyph__check {
   stroke: var(--dsw-alias-bg-base);
   stroke-dasharray: 10;
@@ -2017,7 +2020,15 @@ window.__ModuleLoader__.load({
   appearance: none;
   transition: flex-grow var(--tkb-d3) var(--tkb-ease);
 }
-.tkb-slot:focus-visible { outline: none; }
+.tkb-slot::before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  bottom: -9px;
+  left: -1px;
+  right: -1px;
+  pointer-events: auto;
+}
 .tkb-slot__bar {
   position: relative;
   width: 100%;
@@ -2044,7 +2055,10 @@ window.__ModuleLoader__.load({
   box-shadow: 0 0 6px color-mix(in srgb, var(--tkb-c-active) 40%, transparent);
 }
 .tkb-slot[data-s="done"] .tkb-slot__bar {
-  background-color: var(--tkb-c-active);
+  background-color: var(--tkb-c-done);
+}
+.tkb-slot[data-s="done"]:hover .tkb-slot__bar {
+  box-shadow: 0 0 4px color-mix(in srgb, var(--tkb-c-done) 40%, transparent);
 }
 
 /* =====================================================================
@@ -2159,7 +2173,7 @@ window.__ModuleLoader__.load({
 .tkb-team__danger {
   border: 1px solid transparent;
   background: var(--dsw-alias-state-error-primary);
-  color: var(--dsw-alias-label-primary-inverted, #fff);
+  color: var(--dsw-alias-label-primary-inverted);
 }
 .tkb-team__ghost:disabled,
 .tkb-team__danger:disabled { opacity: .55; cursor: default; }
@@ -2236,7 +2250,7 @@ window.__ModuleLoader__.load({
 .tkb-mate[data-lead] {
   border-radius: 7px;
   background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, var(--dsw-alias-bg-layer-2));
-  color: var(--dsw-alias-state-business-primary);
+  color: color-mix(in srgb, var(--dsw-alias-state-business-primary) 70%, var(--dsw-alias-label-primary));
 }
 .tkb-mate[data-running] {
   box-shadow: 0 0 0 2px var(--dsw-alias-bg-base), 0 0 0 3px color-mix(in srgb, var(--tkb-c-active) 65%, transparent);
@@ -2614,7 +2628,7 @@ window.__ModuleLoader__.load({
   position: absolute;
   left: 0; right: 0; top: 0; height: 60%;
   opacity: 0;
-  background: linear-gradient(to bottom, transparent, var(--dsw-alias-label-primary-inverted, #fff) 50%, transparent);
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--tkb-c-active) 35%, white) 50%, transparent);
   transform: translateY(-100%);
   transition: opacity var(--tkb-d3) var(--tkb-ease);
 }
@@ -2632,26 +2646,23 @@ window.__ModuleLoader__.load({
     "glyph id title owner"
     "detail detail detail detail";
   padding: 6px 9px 6px 11px;
-  background: color-mix(in srgb, var(--dsw-alias-card-fill) 65%, transparent);
-  border-color: color-mix(in srgb, var(--dsw-alias-border-l1) 60%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-card-fill) 50%, transparent);
+  border-color: color-mix(in srgb, var(--dsw-alias-border-l1) 45%, transparent);
   box-shadow: none;
-  opacity: .80;
   position: relative;
 }
 .tkb-card[data-status="completed"]:hover {
   background: var(--dsw-alias-card-fill-hover);
   border-color: var(--dsw-alias-border-l2);
   transform: translateY(-1px);
-  opacity: 1;
 }
 .tkb-card[data-status="completed"][data-expanded] {
   background: var(--dsw-alias-bg-layer-1);
   border-color: var(--dsw-alias-border-l2);
-  opacity: 1;
 }
 .tkb-card[data-status="completed"] .tkb-card__glyph { display: block; }
 .tkb-card[data-status="completed"] .tkb-glyph--completed {
-  color: var(--tkb-c-active);
+  color: var(--tkb-c-done);
 }
 
 .tkb-card[data-status="completed"] .tkb-card__deps,
@@ -2661,18 +2672,17 @@ window.__ModuleLoader__.load({
   margin-top: 0;
   font-size: 12.5px;
   font-weight: 400;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--dsw-alias-label-secondary);
   -webkit-line-clamp: 1;
 }
 .tkb-card[data-status="completed"][data-expanded] .tkb-card__title {
   -webkit-line-clamp: unset;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--dsw-alias-label-primary);
 }
 .tkb-card[data-status="completed"] .tkb-card__owner .tkb-mate {
   width: 18px;
   height: 18px;
   font-size: 9.5px;
-  opacity: .7;
 }
 
 /* =====================================================================
@@ -2691,12 +2701,12 @@ window.__ModuleLoader__.load({
   transition: transform var(--tkb-d1), box-shadow var(--tkb-d2);
 }
 .tkb-badge[data-kind="ready"] {
-  color: var(--tkb-c-active);
+  color: color-mix(in srgb, var(--tkb-c-active) 75%, var(--dsw-alias-label-primary));
   background: var(--dsw-alias-state-business-tertiary);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-active) 24%, transparent);
 }
 .tkb-badge[data-kind="blocked"] {
-  color: var(--dsw-alias-state-warn-label);
+  color: color-mix(in srgb, var(--dsw-alias-state-warn-label) 60%, var(--dsw-alias-label-primary));
   background: var(--dsw-alias-state-warn-tertiary);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-warn) 20%, transparent);
 }
@@ -2713,7 +2723,7 @@ window.__ModuleLoader__.load({
   font-size: 10.5px;
   cursor: pointer;
   white-space: nowrap;
-  color: var(--dsw-alias-state-warn-label);
+  color: color-mix(in srgb, var(--dsw-alias-state-warn-label) 60%, var(--dsw-alias-label-primary));
   background: var(--dsw-alias-state-warn-tertiary);
   transition: transform var(--tkb-d1), background-color var(--tkb-d1);
 }
@@ -2966,8 +2976,7 @@ window.__ModuleLoader__.load({
     transition-delay: 0ms !important;
   }
   .tkb-card__rail::after,
-  .tkb-mate[data-running]::after,
-  .tkb-mate::before { opacity: 0 !important; }
+  .tkb-mate[data-running]::after { opacity: 0 !important; }
 }
 
 /* =====================================================================
@@ -3043,7 +3052,7 @@ window.__ModuleLoader__.load({
 .tkb-title__track { fill: none; stroke: var(--dsw-alias-border-l3); stroke-width: 1.8; }
 .tkb-title__arc {
   fill: none;
-  stroke: var(--dsw-alias-state-done-primary);
+  stroke: var(--tkb-c-done);
   stroke-width: 1.8;
   stroke-linecap: round;
   transform: rotate(-90deg);
@@ -3052,7 +3061,7 @@ window.__ModuleLoader__.load({
 }
 .tkb-title__check {
   fill: none;
-  stroke: var(--dsw-alias-state-done-primary);
+  stroke: var(--tkb-c-done);
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;

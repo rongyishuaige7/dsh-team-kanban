@@ -1,6 +1,6 @@
 {
   "name": "dsh-team-kanban",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "A living three-column kanban board in the right sidebar for DeepSeek Harness agent teams, driven by the native agentTeam projection DAG.",
   "keywords": [
     "dsh",
@@ -63,7 +63,7 @@
       "dshReleases": {
         "0.2.2-rc.3": "compatible"
       },
-      "note": "0.2.2-rc.3 desktop 已验收 T3（清空自动关闭）与 T4（流转与角标同步）；0.5.0 的停用按钮、T1/T2/T5/T6 待补。0.2.1-alpha.4 的 Team 结构仅单测覆盖，未实机验证。"
+      "note": "0.2.2-rc.3 desktop 已验收 T3（清空自动关闭）与 T4（流转与角标同步）；0.5.1 修复停用 RPC 结果校验与自动刷新，0.5.3 统一 DSH 默认科技蓝与 WCAG 对比度系统；T1/T2/T5/T6 待实机补验。0.2.1-alpha.4 的 Team 结构仅单测覆盖。"
     }
   }
 }

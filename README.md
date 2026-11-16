@@ -37,7 +37,7 @@ A living three-column kanban board for [DeepSeek Harness](https://github.com/dee
 
 ![任务板：右侧栏三列看板](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/board.png)
 
-*真实截图：DSH `0.2.2-rc.3` 桌面端，右侧栏拉宽后的三列布局。这一轮四个任务已全部完成，所以前两列为空。*
+*真实截图：DSH `0.2.2-rc.3` 桌面端早期版本，右侧栏拉宽后的三列布局。自 0.5.2 起已重构升级为官方科技蓝与绿色完成语义，去除紫色与过度动效。*
 
 仓库里的 [`prototype/team-kanban-prototype.html`](prototype/team-kanban-prototype.html) 是一个零依赖的离线原型（假数据 + 真实动效），直接用浏览器打开即可看到看板形态与动效，不需要安装插件。
 

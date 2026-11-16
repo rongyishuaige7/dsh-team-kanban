@@ -22,19 +22,20 @@ body[data-theme="light"] {
   --dsw-alias-border-l1: rgba(20, 24, 34, .08);
   --dsw-alias-border-l2: rgba(20, 24, 34, .13);
   --dsw-alias-border-l3: rgba(20, 24, 34, .22);
-  --dsw-alias-label-primary: #15171c;
-  --dsw-alias-label-secondary: #4a4f59;
-  --dsw-alias-label-tertiary: #8b909a;
-  --dsw-alias-state-business-primary: #4d6bfe;
-  --dsw-alias-state-business-tertiary: rgba(77, 107, 254, .10);
-  --dsw-alias-state-done-primary: #12a26a;
-  --dsw-alias-state-success-primary: #12a26a;
-  --dsw-alias-state-success-tertiary: rgba(18, 162, 106, .10);
-  --dsw-alias-state-warn-primary: #e38b00;
-  --dsw-alias-state-warn-label: #a86400;
-  --dsw-alias-state-warn-tertiary: rgba(227, 139, 0, .12);
+  --dsw-alias-label-primary: #222325;
+  --dsw-alias-label-primary-inverted: #ffffff;
+  --dsw-alias-label-secondary: #5f636d;
+  --dsw-alias-label-tertiary: #9ea3ad;
+  --dsw-alias-state-business-primary: #4176e6;
+  --dsw-alias-state-business-tertiary: #e4edfd;
+  --dsw-alias-state-done-primary: #7c3aed;
+  --dsw-alias-state-success-primary: #22c55e;
+  --dsw-alias-state-success-tertiary: #e6faed;
+  --dsw-alias-state-warn-primary: #f59e0b;
+  --dsw-alias-state-warn-label: #dd8629;
+  --dsw-alias-state-warn-tertiary: #fef5e7;
   --dsw-alias-state-idle-primary: #9ea3ad;
-  --dsw-alias-state-error-primary: #e5484d;
+  --dsw-alias-state-error-primary: #dc2626;
   --dsw-radius-sm: 6px;
   --dsw-radius-md: 10px;
 }
@@ -50,19 +51,20 @@ body[data-theme="dark"] {
   --dsw-alias-border-l1: rgba(255, 255, 255, .07);
   --dsw-alias-border-l2: rgba(255, 255, 255, .12);
   --dsw-alias-border-l3: rgba(255, 255, 255, .2);
-  --dsw-alias-label-primary: #ecedf1;
-  --dsw-alias-label-secondary: #b3b6bf;
-  --dsw-alias-label-tertiary: #7c808b;
-  --dsw-alias-state-business-primary: #7089ff;
-  --dsw-alias-state-business-tertiary: rgba(112, 137, 255, .15);
-  --dsw-alias-state-done-primary: #35c98a;
-  --dsw-alias-state-success-primary: #35c98a;
-  --dsw-alias-state-success-tertiary: rgba(53, 201, 138, .14);
-  --dsw-alias-state-warn-primary: #f0a43c;
-  --dsw-alias-state-warn-label: #f4b866;
-  --dsw-alias-state-warn-tertiary: rgba(240, 164, 60, .15);
+  --dsw-alias-label-primary: #e5e5e5;
+  --dsw-alias-label-primary-inverted: #353638;
+  --dsw-alias-label-secondary: #9ea3ad;
+  --dsw-alias-label-tertiary: #5f636d;
+  --dsw-alias-state-business-primary: #7aaaff;
+  --dsw-alias-state-business-tertiary: #34415b;
+  --dsw-alias-state-done-primary: #a78bfa;
+  --dsw-alias-state-success-primary: #22c55e;
+  --dsw-alias-state-success-tertiary: #233c2c;
+  --dsw-alias-state-warn-primary: #f59e0b;
+  --dsw-alias-state-warn-label: #dd8629;
+  --dsw-alias-state-warn-tertiary: #27241f;
   --dsw-alias-state-idle-primary: #5f636d;
-  --dsw-alias-state-error-primary: #ff6b6f;
+  --dsw-alias-state-error-primary: #f87171;
   --dsw-radius-sm: 6px;
   --dsw-radius-md: 10px;
 }
@@ -205,7 +207,6 @@ button { font: inherit; }
   --tkb-d1: calc(140ms * var(--tkb-speed, 1));
   --tkb-d2: calc(240ms * var(--tkb-speed, 1));
   --tkb-d3: calc(480ms * var(--tkb-speed, 1));
-  --tkb-d4: calc(1400ms * var(--tkb-speed, 1));
   --tkb-ease: cubic-bezier(.2, .8, .2, 1);
   --tkb-ease-spring: cubic-bezier(.34, 1.42, .64, 1);
   --tkb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
@@ -251,6 +252,10 @@ button { font: inherit; }
 .tkb-glyph--pending { color: var(--tkb-c-pending); }
 .tkb-glyph--in_progress { color: var(--tkb-c-active); }
 .tkb-glyph--completed { color: var(--tkb-c-done); }
+.tkb-glyph--completed circle {
+  stroke: color-mix(in srgb, var(--tkb-c-done) 60%, var(--dsw-alias-label-primary));
+  stroke-width: 0.8;
+}
 .tkb-glyph__check {
   stroke: var(--dsw-alias-bg-base);
   stroke-dasharray: 10;
@@ -333,7 +338,15 @@ button { font: inherit; }
   appearance: none;
   transition: flex-grow var(--tkb-d3) var(--tkb-ease);
 }
-.tkb-slot:focus-visible { outline: none; }
+.tkb-slot::before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  bottom: -9px;
+  left: -1px;
+  right: -1px;
+  pointer-events: auto;
+}
 .tkb-slot__bar {
   position: relative;
   width: 100%;
@@ -361,7 +374,9 @@ button { font: inherit; }
 }
 .tkb-slot[data-s="done"] .tkb-slot__bar {
   background-color: var(--tkb-c-done);
-  box-shadow: 0 0 4px color-mix(in srgb, var(--tkb-c-done) 30%, transparent);
+}
+.tkb-slot[data-s="done"]:hover .tkb-slot__bar {
+  box-shadow: 0 0 4px color-mix(in srgb, var(--tkb-c-done) 40%, transparent);
 }
 
 /* =====================================================================
@@ -446,7 +461,7 @@ button { font: inherit; }
 .tkb-mate[data-lead] {
   border-radius: 7px;
   background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, var(--dsw-alias-bg-layer-2));
-  color: var(--dsw-alias-state-business-primary);
+  color: color-mix(in srgb, var(--dsw-alias-state-business-primary) 70%, var(--dsw-alias-label-primary));
 }
 .tkb-mate[data-running] {
   box-shadow: 0 0 0 2px var(--dsw-alias-bg-base), 0 0 0 3px color-mix(in srgb, var(--tkb-c-active) 65%, transparent);
@@ -761,29 +776,29 @@ button { font: inherit; }
 .tkb-card__detail { grid-area: detail; position: relative; z-index: 1; pointer-events: auto; cursor: auto; }
 
 /* ---------------------------------------------------------------------
-   状态 1：待处理（Pending）—— 阻塞暗哑 vs 就绪亮泽
+   状态 1：待处理（Pending）—— 阻塞暗哑 vs 就绪轻盈
    --------------------------------------------------------------------- */
 .tkb-card[data-status="pending"][data-ready="false"] {
   background: color-mix(in srgb, var(--dsw-alias-card-fill) 60%, transparent);
   border-style: dashed;
-  border-color: var(--dsw-alias-border-l3);
+  border-color: var(--dsw-alias-border-l2);
   box-shadow: none;
 }
 .tkb-card[data-status="pending"][data-ready="false"]:hover {
   background: var(--dsw-alias-interactive-bg-hover);
-  border-color: var(--dsw-alias-border-l2);
+  border-color: var(--dsw-alias-border-l3);
 }
 .tkb-card[data-status="pending"][data-ready="false"] .tkb-card__title {
   color: var(--dsw-alias-label-secondary);
 }
 
-/* 就绪卡片：边框通透，带有微光浮起 */
+/* 就绪卡片：DSH 科技蓝微边框与轻微提升 */
 .tkb-card[data-status="pending"][data-ready="true"] {
-  border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary) 32%, var(--dsw-alias-border-l1));
+  border-color: color-mix(in srgb, var(--tkb-c-active) 28%, var(--dsw-alias-border-l1));
 }
 .tkb-card[data-status="pending"][data-ready="true"]:hover {
-  box-shadow: 0 8px 22px -3px color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent),
-              0 2px 6px color-mix(in srgb, var(--dsw-alias-state-business-primary) 6%, transparent);
+  border-color: color-mix(in srgb, var(--tkb-c-active) 45%, var(--dsw-alias-border-l2));
+  box-shadow: 0 3px 10px -2px color-mix(in srgb, var(--tkb-c-active) 12%, transparent);
 }
 
 /* ---------------------------------------------------------------------
@@ -824,7 +839,7 @@ button { font: inherit; }
   position: absolute;
   left: 0; right: 0; top: 0; height: 60%;
   opacity: 0;
-  background: linear-gradient(to bottom, transparent, var(--dsw-alias-label-primary-inverted, #fff) 50%, transparent);
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--tkb-c-active) 35%, white) 50%, transparent);
   transform: translateY(-100%);
   transition: opacity var(--tkb-d3) var(--tkb-ease);
 }
@@ -842,26 +857,23 @@ button { font: inherit; }
     "glyph id title owner"
     "detail detail detail detail";
   padding: 6px 9px 6px 11px;
-  background: color-mix(in srgb, var(--dsw-alias-card-fill) 65%, transparent);
-  border-color: color-mix(in srgb, var(--dsw-alias-border-l1) 60%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-card-fill) 50%, transparent);
+  border-color: color-mix(in srgb, var(--dsw-alias-border-l1) 45%, transparent);
   box-shadow: none;
-  opacity: .80;
   position: relative;
 }
 .tkb-card[data-status="completed"]:hover {
   background: var(--dsw-alias-card-fill-hover);
   border-color: var(--dsw-alias-border-l2);
   transform: translateY(-1px);
-  opacity: 1;
 }
 .tkb-card[data-status="completed"][data-expanded] {
   background: var(--dsw-alias-bg-layer-1);
   border-color: var(--dsw-alias-border-l2);
-  opacity: 1;
 }
 .tkb-card[data-status="completed"] .tkb-card__glyph { display: block; }
 .tkb-card[data-status="completed"] .tkb-glyph--completed {
-  color: var(--tkb-c-active);
+  color: var(--tkb-c-done);
 }
 
 .tkb-card[data-status="completed"] .tkb-card__deps,
@@ -871,18 +883,17 @@ button { font: inherit; }
   margin-top: 0;
   font-size: 12.5px;
   font-weight: 400;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--dsw-alias-label-secondary);
   -webkit-line-clamp: 1;
 }
 .tkb-card[data-status="completed"][data-expanded] .tkb-card__title {
   -webkit-line-clamp: unset;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--dsw-alias-label-primary);
 }
 .tkb-card[data-status="completed"] .tkb-card__owner .tkb-mate {
   width: 18px;
   height: 18px;
   font-size: 9.5px;
-  opacity: .7;
 }
 
 /* =====================================================================
@@ -901,12 +912,12 @@ button { font: inherit; }
   transition: transform var(--tkb-d1), box-shadow var(--tkb-d2);
 }
 .tkb-badge[data-kind="ready"] {
-  color: var(--tkb-c-active);
+  color: color-mix(in srgb, var(--tkb-c-active) 75%, var(--dsw-alias-label-primary));
   background: var(--dsw-alias-state-business-tertiary);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-active) 24%, transparent);
 }
 .tkb-badge[data-kind="blocked"] {
-  color: var(--dsw-alias-state-warn-label);
+  color: color-mix(in srgb, var(--dsw-alias-state-warn-label) 60%, var(--dsw-alias-label-primary));
   background: var(--dsw-alias-state-warn-tertiary);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-warn) 20%, transparent);
 }
@@ -923,7 +934,7 @@ button { font: inherit; }
   font-size: 10.5px;
   cursor: pointer;
   white-space: nowrap;
-  color: var(--dsw-alias-state-warn-label);
+  color: color-mix(in srgb, var(--dsw-alias-state-warn-label) 60%, var(--dsw-alias-label-primary));
   background: var(--dsw-alias-state-warn-tertiary);
   transition: transform var(--tkb-d1), background-color var(--tkb-d1);
 }
@@ -1176,8 +1187,7 @@ button { font: inherit; }
     transition-delay: 0ms !important;
   }
   .tkb-card__rail::after,
-  .tkb-mate[data-running]::after,
-  .tkb-mate::before { opacity: 0 !important; }
+  .tkb-mate[data-running]::after { opacity: 0 !important; }
 }
 
 /* =====================================================================
@@ -1253,7 +1263,7 @@ button { font: inherit; }
 .tkb-title__track { fill: none; stroke: var(--dsw-alias-border-l3); stroke-width: 1.8; }
 .tkb-title__arc {
   fill: none;
-  stroke: var(--dsw-alias-state-done-primary);
+  stroke: var(--tkb-c-done);
   stroke-width: 1.8;
   stroke-linecap: round;
   transform: rotate(-90deg);
@@ -1262,7 +1272,7 @@ button { font: inherit; }
 }
 .tkb-title__check {
   fill: none;
-  stroke: var(--dsw-alias-state-done-primary);
+  stroke: var(--tkb-c-done);
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -1299,7 +1309,6 @@ button { font: inherit; }
     <button class="pt-btn" data-act="clear">清空</button>
     <button class="pt-btn" data-act="team" id="ptTeam" aria-pressed="true">团队模式</button>
     <button class="pt-btn" data-act="failure" id="ptFailure" aria-pressed="false">投影异常</button>
-    <button class="pt-btn" data-act="celebrate">✨ 极光庆典</button>
   </div>
   <span class="pt-sep"></span>
   <div class="pt-group">
@@ -1669,6 +1678,7 @@ function createBoard(mount) {
       : [].concat(next.done.map(t => ['done', t]), next.active.map(t => ['active', t]), next.ready.map(t => ['ready', t]), next.blocked.map(t => ['blocked', t]));
     while (strip.childElementCount < data.length) {
       const s = h('span', 'tkb-slot');
+      s.append(h('span', 'tkb-slot__bar'));
       s.setAttribute('data-tip', '');
       s._tip = () => slotTip(s);
       strip.append(s);
@@ -1688,14 +1698,6 @@ function createBoard(mount) {
     const allDone = total > 0 && counts.completed === total;
     if (allDone && !root.hasAttribute('data-alldone')) {
       root.setAttribute('data-alldone', '');
-      if (animate && !reduced()) {
-        later(() => {
-          root.removeAttribute('data-celebrate');
-          void root.offsetWidth;
-          root.setAttribute('data-celebrate', '');
-          setTimeout(() => root.removeAttribute('data-celebrate'), ms(1700));
-        }, landing + ms(120));
-      }
     } else if (!allDone) root.removeAttribute('data-alldone');
   }
   function togglePin(id) {
@@ -2636,17 +2638,6 @@ const ACTIONS = {
   failure() {
     state.failure = state.failure ? undefined : 'agent-team.jsonl:42 · Unexpected token } in JSON at position 1187';
     logCall('projection', state.failure ? 'agentTeam · failure' : 'agentTeam · recovered');
-    return true;
-  },
-  celebrate() {
-    if (host.board && host.board.el) {
-      host.board.el.setAttribute('data-celebrate', '');
-      host.board.el.setAttribute('data-alldone', '');
-      setTimeout(() => {
-        if (!state.tasks.every(t => t.status === 'completed')) host.board.el.removeAttribute('data-alldone');
-        host.board.el.removeAttribute('data-celebrate');
-      }, 3600);
-    }
     return true;
   },
 };

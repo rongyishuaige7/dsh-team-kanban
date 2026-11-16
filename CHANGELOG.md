@@ -2,6 +2,36 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.3] - 2026-11-16
+
+修复 0.5.2 语义色塌缩、对比度不达标、进度条热区过小与原型偏差问题，补齐 CSS 静态测试保护。
+
+### Fixed
+
+- **语义色恢复与完成态对齐**：
+  - 进度条完成段（`[data-s="done"]`）恢复为 `--tkb-c-done` 翠绿填充，扫视一眼即可清晰辨识完成比例，不再与 active 蓝段混淆。
+  - 完成卡勾选图标恢复 `--tkb-c-done`，并为小圆圈补充 `color-mix(done 60%, label-primary)` 边界描边，确保在浅色背景下非文本图形对比度 ≥ 3:1。
+  - 标签页标题内嵌进度环（`TeamKanbanTitle` 的 `.tkb-title__arc` 与 `.tkb-title__check`）改用 `--tkb-c-done`，彻底清除残留的紫罗兰色 `--dsw-alias-state-done-primary`。
+- **浅色主题对比度达标（WCAG AA 4.5:1）**：
+  - 完成卡片移除整卡 `opacity: .80`，改为仅弱化背景与边框，标题使用 `label-secondary`，实测对比度从 2.65:1 升至 5.5:1。
+  - 就绪徽章（`[data-kind="ready"]`）文本改用 `color-mix(active 75%, label-primary)`，在浅蓝底色上对比度从 3.6:1 升至 5.01:1。
+  - 阻塞徽章（`[data-kind="blocked"]`）与依赖链接（`.tkb-dep`）文本改用 `color-mix(warn-label 60%, label-primary)`，在浅橙底色上对比度从 2.58:1 升至 5.21:1。
+  - 队长头像首字母改用 `color-mix(business 70%, label-primary)`，对比度从 3.67:1 升至 5.5:1。
+- **进度条交互热区达标（WCAG 2.5.8）**：
+  - 通过 `.tkb-slot::before` 透明热区将垂直可点击/hover 高度扩展至 24px，视觉上保持 10px 微型胶囊不变，兼顾紧凑美观与点击可用性。
+- **高光与 Token 纯净度**：
+  - 能量轨流光改用 `color-mix(in srgb, var(--tkb-c-active) 35%, white)`，暗色主题下保持高亮微光，消除使用 `label-primary-inverted` 导致的“暗缝”语义翻转。
+  - 移除所有裸 `#fff` 回退值，生产 CSS 实现零裸色值。
+  - 移除声明未使用的 `--tkb-d4` 与无效选择器。
+- **原型与真实环境完全对齐**：
+  - 补全原型进度条中缺失的 `.tkb-slot__bar` 生成逻辑，使进度条在原型中立即可见。
+  - 原型 mock token 全面对齐 DSH 宿主真实设计系统数值。
+  - 同步 14 项卡片与状态样式规则，移除已废弃的「✨ 极光庆典」按钮。
+
+### Added
+
+- **CSS 静态测试保护**：在 `test/render.test.mjs` 中新增静态代码保护断言（包含 `--dsw-alias-*` 宿主白名单检查、裸色值检测、完成段颜色防塌缩校验、零孤儿 `@keyframes` 校验），测试套件增至 36 项。
+
 ## [0.5.2] - 2026-11-15
 
 重构看板视觉设计系统，全面切入 DeepSeek Harness 客户端官方默认科技蓝与原生微物理质感。

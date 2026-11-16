@@ -322,7 +322,7 @@ const isRunning = (id) => (statuses.get(id)?.running ?? summaries[id]?.running) 
   - `--dsw-alias-label-tertiary`（辅助信息/计数/标签）
 - **语义状态色**：
   - 运行中 / 进行中：`--dsw-alias-state-business-primary`、`--dsw-alias-state-business-tertiary`
-  - 已完成：`--dsw-alias-state-done-primary`（或 `--dsw-alias-state-success-primary` / `--dsw-alias-state-success-tertiary`）
+  - 已完成：`--dsw-alias-state-success-primary`（翠绿填充与成功勾选，彻底废除宿主突兀的紫色 `done-primary`）、`--dsw-alias-state-success-tertiary`（浅绿底色）
   - 阻塞 / 警告：`--dsw-alias-state-warn-primary`、`--dsw-alias-state-warn-label`、`--dsw-alias-state-warn-tertiary`
   - 空闲：`--dsw-alias-state-idle-primary`
   - 错误：`--dsw-alias-state-error-primary`

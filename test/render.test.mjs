@@ -384,3 +384,60 @@ test('watcher marks a host without the Team projection and stops discovering', a
     console.warn = warn;
   }
 });
+
+test('CSS adheres to host token whitelist and maintains semantic color protection', () => {
+  const cssMatch = SOURCE.match(/const CSS = String\.raw`([\s\S]*?)`;/);
+  assert.ok(cssMatch, 'CSS constant must exist');
+  const css = cssMatch[1];
+
+  // 1. DSW tokens whitelist
+  const ALLOWED_DSW_TOKENS = new Set([
+    '--dsw-alias-bg-base',
+    '--dsw-alias-bg-layer-1',
+    '--dsw-alias-bg-layer-2',
+    '--dsw-alias-card-fill',
+    '--dsw-alias-card-fill-hover',
+    '--dsw-alias-border-l1',
+    '--dsw-alias-border-l2',
+    '--dsw-alias-border-l3',
+    '--dsw-alias-label-primary',
+    '--dsw-alias-label-primary-inverted',
+    '--dsw-alias-label-secondary',
+    '--dsw-alias-label-tertiary',
+    '--dsw-alias-interactive-bg-hover',
+    '--dsw-alias-interactive-bg-active',
+    '--dsw-alias-state-business-primary',
+    '--dsw-alias-state-business-tertiary',
+    '--dsw-alias-state-success-primary',
+    '--dsw-alias-state-warn-primary',
+    '--dsw-alias-state-warn-label',
+    '--dsw-alias-state-warn-tertiary',
+    '--dsw-alias-state-idle-primary',
+    '--dsw-alias-state-error-primary',
+    '--dsw-radius-sm',
+    '--dsw-radius-md',
+  ]);
+
+  const usedTokens = [...new Set([...css.matchAll(/--dsw-[a-z0-9-]+/g)].map((m) => m[0]))];
+  for (const token of usedTokens) {
+    assert.ok(ALLOWED_DSW_TOKENS.has(token), `token ${token} must be in DSW whitelist`);
+  }
+
+  // 2. No naked hex color codes
+  const hexColors = [...css.matchAll(/#([0-9a-fA-F]{3,8})\b/g)].map((m) => m[0]);
+  assert.deepEqual(hexColors, [], 'CSS must contain zero naked hex color codes');
+
+  // 3. [data-s="done"] slot bar does not collapse into [data-s="active"] color
+  const doneSlotRule = css.match(/\.tkb-slot\[data-s="done"\]\s+\.tkb-slot__bar\s*\{([^}]+)\}/);
+  assert.ok(doneSlotRule, 'done slot bar rule must be present');
+  assert.match(doneSlotRule[1], /--tkb-c-done/, 'done slot bar must use --tkb-c-done');
+  assert.doesNotMatch(doneSlotRule[1], /--tkb-c-active/, 'done slot bar must not use --tkb-c-active');
+
+  // 4. No orphaned keyframes
+  const keyframesDefs = [...css.matchAll(/@keyframes\s+([a-z0-9-]+)/g)].map((m) => m[1]);
+  assert.ok(keyframesDefs.length > 0, 'keyframes definitions should exist');
+  for (const name of keyframesDefs) {
+    const usages = [...css.matchAll(new RegExp(`\\b${name}\\b`, 'g'))];
+    assert.ok(usages.length >= 2, `keyframe ${name} must be referenced outside its definition`);
+  }
+});
