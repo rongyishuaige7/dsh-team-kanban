@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.5.1';
+    const CLIENT_REV = '0.5.2';
     const TAB_ID = PKG;
     /* Namespaced on purpose: the host turns a kind into the opaque page
        address `sidebar://<kind>`, and a bare `team-board` would be the first
@@ -1901,7 +1901,7 @@ window.__ModuleLoader__.load({
   --tkb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   --tkb-c-pending: var(--dsw-alias-state-idle-primary);
   --tkb-c-active: var(--dsw-alias-state-business-primary);
-  --tkb-c-done: var(--dsw-alias-state-done-primary);
+  --tkb-c-done: var(--dsw-alias-state-success-primary);
   --tkb-c-warn: var(--dsw-alias-state-warn-primary);
   --tkb-c-error: var(--dsw-alias-state-error-primary);
 }
@@ -1970,11 +1970,11 @@ window.__ModuleLoader__.load({
   cursor: default;
 }
 .tkb-score__done {
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 700;
   letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
-  animation: tkb-num-in 300ms var(--tkb-ease-spring) both;
+  animation: tkb-num-in 240ms var(--tkb-ease-spring) both;
   transition: color var(--tkb-d3) var(--tkb-ease);
 }
 .tkb-score__total {
@@ -1985,24 +1985,22 @@ window.__ModuleLoader__.load({
   font-variant-numeric: tabular-nums;
 }
 .tkb-root[data-alldone] .tkb-score__done {
-  color: var(--tkb-c-done);
-  text-shadow: 0 0 16px color-mix(in srgb, var(--tkb-c-done) 60%, transparent);
+  color: var(--tkb-c-active);
 }
 
-/* 量子能量进度槽 (Quantum Lumen Strip) */
+/* 顶部进度条（DSH 原生胶囊风格） */
 .tkb-strip {
   position: relative;
   flex: 1 1 auto;
   min-width: 48px;
-  height: 20px;
+  height: 10px;
   display: flex;
   align-items: center;
-  gap: 2.5px;
-  padding: 2px 3px;
-  border-radius: 6px;
+  gap: 2px;
+  padding: 1px 2px;
+  border-radius: 5px;
   background: var(--dsw-alias-bg-layer-1);
-  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l1) 60%, transparent);
-  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
+  border: 1px solid var(--dsw-alias-border-l1);
 }
 .tkb-slot {
   position: relative;
@@ -2015,7 +2013,7 @@ window.__ModuleLoader__.load({
   align-items: center;
   background: transparent;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 3px;
   appearance: none;
   transition: flex-grow var(--tkb-d3) var(--tkb-ease);
 }
@@ -2023,67 +2021,30 @@ window.__ModuleLoader__.load({
 .tkb-slot__bar {
   position: relative;
   width: 100%;
-  height: 8px;
-  border-radius: 3px;
+  height: 6px;
+  border-radius: 2px;
   overflow: hidden;
-  background-color: color-mix(in srgb, var(--tkb-c-pending) 30%, transparent);
+  background-color: var(--dsw-alias-border-l1);
   transition: background-color var(--tkb-d3) var(--tkb-ease),
               transform var(--tkb-d1) var(--tkb-ease),
               box-shadow var(--tkb-d2) var(--tkb-ease);
 }
 .tkb-slot:hover .tkb-slot__bar {
-  transform: scaleY(1.5);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--tkb-c-active) 40%, transparent);
+  transform: scaleY(1.3);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--tkb-c-active) 35%, transparent);
 }
 .tkb-slot[data-s="blocked"] .tkb-slot__bar {
-  background-color: color-mix(in srgb, var(--tkb-c-pending) 12%, transparent);
-}
-.tkb-slot[data-s="blocked"] .tkb-slot__bar::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(135deg,
-    color-mix(in srgb, var(--tkb-c-pending) 70%, transparent) 0 2px,
-    transparent 2px 5px);
+  background-color: color-mix(in srgb, var(--tkb-c-warn) 20%, transparent);
 }
 .tkb-slot[data-s="ready"] .tkb-slot__bar {
-  background-color: color-mix(in srgb, var(--tkb-c-pending) 68%, transparent);
+  background-color: color-mix(in srgb, var(--tkb-c-active) 20%, var(--dsw-alias-border-l2));
 }
 .tkb-slot[data-s="active"] .tkb-slot__bar {
-  background: linear-gradient(90deg,
-    var(--tkb-c-active) 0%,
-    color-mix(in srgb, var(--tkb-c-active) 65%, var(--dsw-alias-label-primary)) 50%,
-    var(--tkb-c-active) 100%);
-  background-size: 200% 100%;
-  animation: tkb-shimmer calc(2200ms) linear infinite;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--tkb-c-active) 55%, transparent);
+  background: var(--tkb-c-active);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--tkb-c-active) 40%, transparent);
 }
 .tkb-slot[data-s="done"] .tkb-slot__bar {
-  background-color: var(--tkb-c-done);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--tkb-c-done) 35%, transparent);
-}
-
-/* 全达成极光庆典 (单次扫光，平息后留存微光，不无限死循环) */
-.tkb-root[data-alldone] .tkb-head::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 90% 100% at 20% 0%,
-    color-mix(in srgb, var(--tkb-c-done) 16%, transparent) 0%,
-    transparent 70%);
-  pointer-events: none;
-}
-.tkb-root[data-alldone] .tkb-head::after {
-  content: "";
-  position: absolute;
-  top: 0; left: -100%; width: 50%; height: 100%;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tkb-c-done) 24%, transparent) 50%,
-    transparent 100%);
-  transform: skewX(-20deg);
-  animation: tkb-aurora-sweep calc(2600ms) ease-out 1 forwards;
-  pointer-events: none;
+  background-color: var(--tkb-c-active);
 }
 
 /* =====================================================================
@@ -2274,31 +2235,11 @@ window.__ModuleLoader__.load({
 }
 .tkb-mate[data-lead] {
   border-radius: 7px;
-  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, var(--dsw-alias-bg-layer-2));
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, var(--dsw-alias-bg-layer-2));
+  color: var(--dsw-alias-state-business-primary);
 }
-/* 纯 GPU 合成层旋转极光环 (transform: rotate，零 Repaint) */
-.tkb-mate::before {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: inherit;
-  padding: 1.5px;
-  pointer-events: none;
-  background: conic-gradient(
-    transparent 0deg 110deg,
-    color-mix(in srgb, var(--tkb-c-active) 35%, transparent) 200deg,
-    var(--tkb-c-active) 330deg,
-    transparent 360deg);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0;
-  transition: opacity var(--tkb-d3) var(--tkb-ease);
-}
-.tkb-mate[data-lead]::before { border-radius: 10px; }
-.tkb-mate[data-running]::before {
-  opacity: 1;
-  animation: tkb-spin calc(2200ms) linear infinite;
+.tkb-mate[data-running] {
+  box-shadow: 0 0 0 2px var(--dsw-alias-bg-base), 0 0 0 3px color-mix(in srgb, var(--tkb-c-active) 65%, transparent);
 }
 .tkb-mate[data-none] {
   background: transparent;
@@ -2320,16 +2261,16 @@ window.__ModuleLoader__.load({
 }
 .tkb-mate[data-running] .tkb-mate__dot {
   background: var(--tkb-c-active);
-  box-shadow: 0 0 8px var(--tkb-c-active), 0 0 0 2px var(--dsw-alias-bg-base);
+  box-shadow: 0 0 6px var(--tkb-c-active), 0 0 0 2px var(--dsw-alias-bg-base);
   animation: tkb-blink calc(1400ms) ease-in-out infinite;
 }
-/* 智能体运行态：声呐外扩雷达波纹（收敛尺度 + 提前淡出，杜绝边缘切平） */
+/* 智能体运行态：声呐外扩雷达波纹 */
 .tkb-mate[data-running]::after {
   content: "";
   position: absolute;
-  inset: -2px;
+  inset: -3px;
   border-radius: inherit;
-  border: 1.5px solid var(--tkb-c-active);
+  border: 1px solid var(--tkb-c-active);
   pointer-events: none;
   animation: tkb-sonar-ping calc(2200ms) cubic-bezier(0, .2, .8, 1) infinite;
 }
@@ -2610,70 +2551,62 @@ window.__ModuleLoader__.load({
 .tkb-card__detail { grid-area: detail; position: relative; z-index: 1; pointer-events: auto; cursor: auto; }
 
 /* ---------------------------------------------------------------------
-   状态 1：待处理（Pending）—— 阻塞暗哑 vs 就绪亮泽
+   状态 1：待处理（Pending）—— 阻塞暗哑 vs 就绪轻盈
    --------------------------------------------------------------------- */
 .tkb-card[data-status="pending"][data-ready="false"] {
   background: color-mix(in srgb, var(--dsw-alias-card-fill) 60%, transparent);
   border-style: dashed;
-  border-color: var(--dsw-alias-border-l3);
+  border-color: var(--dsw-alias-border-l2);
   box-shadow: none;
 }
 .tkb-card[data-status="pending"][data-ready="false"]:hover {
   background: var(--dsw-alias-interactive-bg-hover);
-  border-color: var(--dsw-alias-border-l2);
+  border-color: var(--dsw-alias-border-l3);
 }
 .tkb-card[data-status="pending"][data-ready="false"] .tkb-card__title {
   color: var(--dsw-alias-label-secondary);
 }
 
-/* 就绪卡片：边框通透，带有微光浮起 */
+/* 就绪卡片：DSH 科技蓝微边框与轻微提升 */
 .tkb-card[data-status="pending"][data-ready="true"] {
-  border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary) 32%, var(--dsw-alias-border-l1));
+  border-color: color-mix(in srgb, var(--tkb-c-active) 28%, var(--dsw-alias-border-l1));
 }
 .tkb-card[data-status="pending"][data-ready="true"]:hover {
-  box-shadow: 0 8px 22px -3px color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent),
-              0 2px 6px color-mix(in srgb, var(--dsw-alias-state-business-primary) 6%, transparent);
+  border-color: color-mix(in srgb, var(--tkb-c-active) 45%, var(--dsw-alias-border-l2));
+  box-shadow: 0 3px 10px -2px color-mix(in srgb, var(--tkb-c-active) 12%, transparent);
 }
 
 /* ---------------------------------------------------------------------
-   状态 2：进行中（In Progress）—— 算力呼吸与能量流槽
+   状态 2：进行中（In Progress）—— DSH 科技蓝纯净质感
    --------------------------------------------------------------------- */
 .tkb-card[data-status="in_progress"] {
-  background: radial-gradient(130% 90% at 0% 0%,
-    color-mix(in srgb, var(--tkb-c-active) 12%, var(--dsw-alias-card-fill)) 0%,
-    var(--dsw-alias-card-fill) 90%);
-  border-color: color-mix(in srgb, var(--tkb-c-active) 32%, var(--dsw-alias-border-l1));
-  box-shadow: 0 4px 16px -2px color-mix(in srgb, var(--tkb-c-active) 15%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 18%, var(--dsw-alias-card-fill));
+  border-color: color-mix(in srgb, var(--tkb-c-active) 36%, var(--dsw-alias-border-l1));
+  box-shadow: 0 2px 8px -1px color-mix(in srgb, var(--tkb-c-active) 12%, transparent);
 }
 .tkb-card[data-status="in_progress"]:hover {
-  background: radial-gradient(130% 90% at 0% 0%,
-    color-mix(in srgb, var(--tkb-c-active) 16%, var(--dsw-alias-card-fill-hover)) 0%,
-    var(--dsw-alias-card-fill-hover) 90%);
-  box-shadow: 0 10px 24px -3px color-mix(in srgb, var(--tkb-c-active) 22%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 28%, var(--dsw-alias-card-fill-hover));
+  border-color: color-mix(in srgb, var(--tkb-c-active) 52%, var(--dsw-alias-border-l2));
+  box-shadow: 0 4px 14px -2px color-mix(in srgb, var(--tkb-c-active) 18%, transparent);
 }
 
-/* 运行中卡片算力心跳呼吸动效 */
-.tkb-card[data-status="in_progress"][data-live] {
-  animation: tkb-hearth-breathe calc(3600ms) ease-in-out infinite alternate;
-}
-
-/* 左侧能量槽与粒子流光 */
+/* 左侧能量槽与科技蓝指示 */
 .tkb-card__rail {
   position: absolute;
   left: -1px;
-  top: 9px;
-  bottom: 9px;
+  top: 8px;
+  bottom: 8px;
   width: 2.5px;
   border-radius: 0 2px 2px 0;
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
-  background: color-mix(in srgb, var(--tkb-c-active) 35%, transparent);
+  background: color-mix(in srgb, var(--tkb-c-active) 40%, transparent);
   transition: opacity var(--tkb-d3) var(--tkb-ease), background-color var(--tkb-d3) var(--tkb-ease);
 }
 .tkb-card[data-status="in_progress"] .tkb-card__rail { opacity: 1; }
 .tkb-card[data-status="in_progress"][data-live] .tkb-card__rail {
-  background: color-mix(in srgb, var(--tkb-c-active) 60%, transparent);
+  background: var(--tkb-c-active);
   box-shadow: 0 0 6px var(--tkb-c-active);
 }
 .tkb-card__rail::after {
@@ -2681,17 +2614,17 @@ window.__ModuleLoader__.load({
   position: absolute;
   left: 0; right: 0; top: 0; height: 60%;
   opacity: 0;
-  background: linear-gradient(to bottom, transparent, var(--dsw-alias-label-primary) 50%, transparent);
+  background: linear-gradient(to bottom, transparent, var(--dsw-alias-label-primary-inverted, #fff) 50%, transparent);
   transform: translateY(-100%);
   transition: opacity var(--tkb-d3) var(--tkb-ease);
 }
 .tkb-card[data-live] .tkb-card__rail::after {
-  opacity: 1;
-  animation: tkb-flow calc(1600ms) cubic-bezier(.45, 0, .55, 1) infinite;
+  opacity: 0.8;
+  animation: tkb-flow calc(1800ms) cubic-bezier(.45, 0, .55, 1) infinite;
 }
 
 /* ---------------------------------------------------------------------
-   状态 3：已完成（Completed）—— 紧凑晶体、弹性勾选与晶体扫光
+   状态 3：已完成（Completed）—— 紧凑通透，自然退入背景
    --------------------------------------------------------------------- */
 .tkb-card[data-status="completed"] {
   grid-template-columns: auto auto minmax(0, 1fr) auto;
@@ -2699,51 +2632,26 @@ window.__ModuleLoader__.load({
     "glyph id title owner"
     "detail detail detail detail";
   padding: 6px 9px 6px 11px;
-  background: color-mix(in srgb, var(--dsw-alias-card-fill) 60%, transparent);
-  border-color: color-mix(in srgb, var(--dsw-alias-border-l1) 50%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-card-fill) 65%, transparent);
+  border-color: color-mix(in srgb, var(--dsw-alias-border-l1) 60%, transparent);
   box-shadow: none;
+  opacity: .80;
   position: relative;
-  overflow: hidden;
 }
 .tkb-card[data-status="completed"]:hover {
   background: var(--dsw-alias-card-fill-hover);
   border-color: var(--dsw-alias-border-l2);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+  opacity: 1;
 }
 .tkb-card[data-status="completed"][data-expanded] {
   background: var(--dsw-alias-bg-layer-1);
   border-color: var(--dsw-alias-border-l2);
+  opacity: 1;
 }
 .tkb-card[data-status="completed"] .tkb-card__glyph { display: block; }
 .tkb-card[data-status="completed"] .tkb-glyph--completed {
-  animation: tkb-spring-pop 420ms var(--tkb-ease-spring) both;
-}
-.tkb-card[data-status="completed"] .tkb-glyph__check {
-  stroke-dasharray: 10;
-  stroke-dashoffset: 10;
-  animation: tkb-draw-check 360ms var(--tkb-ease) 80ms both;
-}
-
-/* 完成态 45° 晶体抛光横扫 (Phosphor Sweep) 真实生效 */
-.tkb-card[data-status="completed"]::after {
-  content: "";
-  position: absolute;
-  top: -50%;
-  left: -60%;
-  width: 35%;
-  height: 200%;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tkb-c-done) 30%, transparent) 50%,
-    transparent 100%);
-  transform: rotate(25deg) translateX(-150%);
-  pointer-events: none;
-  opacity: 0;
-}
-.tkb-card[data-status="completed"]:hover::after,
-.tkb-card[data-status="completed"].is-flash::after {
-  animation: tkb-glint-pass 700ms var(--tkb-ease) 1;
+  color: var(--tkb-c-active);
 }
 
 .tkb-card[data-status="completed"] .tkb-card__deps,
@@ -2783,9 +2691,9 @@ window.__ModuleLoader__.load({
   transition: transform var(--tkb-d1), box-shadow var(--tkb-d2);
 }
 .tkb-badge[data-kind="ready"] {
-  color: var(--tkb-c-done);
-  background: color-mix(in srgb, var(--tkb-c-done) 14%, var(--dsw-alias-bg-layer-1));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-done) 25%, transparent);
+  color: var(--tkb-c-active);
+  background: var(--dsw-alias-state-business-tertiary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-active) 24%, transparent);
 }
 .tkb-badge[data-kind="blocked"] {
   color: var(--dsw-alias-state-warn-label);
@@ -2942,10 +2850,10 @@ window.__ModuleLoader__.load({
 }
 .tkb-card.is-spot {
   z-index: 2;
-  transform: translateY(-2.5px) scale(1.01);
+  transform: translateY(-2px);
   border-color: var(--tkb-c-active);
-  box-shadow: 0 10px 28px -4px color-mix(in srgb, var(--tkb-c-active) 32%, transparent),
-              0 0 0 1.5px var(--tkb-c-active);
+  box-shadow: 0 4px 16px -2px color-mix(in srgb, var(--tkb-c-active) 24%, transparent),
+              0 0 0 1px var(--tkb-c-active);
 }
 
 /* 依赖血缘链路悬停 */
@@ -2956,31 +2864,25 @@ window.__ModuleLoader__.load({
 }
 .tkb-root[data-lineage] .tkb-card.is-lin {
   z-index: 2;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 22px -3px color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 14px -2px color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent);
 }
-/* 上游卡片（前置供给者）：点亮金橙色/翡翠绿能量流动 */
+/* 上游卡片（前置供给者）：警示橙微边框与浅底 / 翡翠绿完成底 */
 .tkb-root[data-lineage] .tkb-card.is-up-open {
   border-color: var(--tkb-c-warn);
-  background: radial-gradient(120% 80% at 0% 0%,
-    color-mix(in srgb, var(--tkb-c-warn) 10%, var(--dsw-alias-card-fill)) 0%,
-    var(--dsw-alias-card-fill) 100%);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--tkb-c-warn) 25%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-tertiary) 45%, var(--dsw-alias-card-fill));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--tkb-c-warn) 15%, transparent);
 }
 .tkb-root[data-lineage] .tkb-card.is-up-done {
   border-color: var(--tkb-c-done);
-  background: radial-gradient(120% 80% at 0% 0%,
-    color-mix(in srgb, var(--tkb-c-done) 10%, var(--dsw-alias-card-fill)) 0%,
-    var(--dsw-alias-card-fill) 100%);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--tkb-c-done) 25%, transparent);
+  background: color-mix(in srgb, var(--tkb-c-done) 10%, var(--dsw-alias-card-fill));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--tkb-c-done) 15%, transparent);
 }
-/* 下游卡片（后置消费端）：点亮科技蓝能量流 */
+/* 下游卡片（后置消费端）：DSH 科技蓝微边框与浅蓝底 */
 .tkb-root[data-lineage] .tkb-card.is-down {
   border-color: var(--tkb-c-active);
-  background: radial-gradient(120% 80% at 0% 0%,
-    color-mix(in srgb, var(--tkb-c-active) 10%, var(--dsw-alias-card-fill)) 0%,
-    var(--dsw-alias-card-fill) 100%);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--tkb-c-active) 25%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 45%, var(--dsw-alias-card-fill));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--tkb-c-active) 18%, transparent);
 }
 
 /* 卡片跳转高亮闪光 */
@@ -3012,10 +2914,6 @@ window.__ModuleLoader__.load({
 /* =====================================================================
    动画关键帧清单（硬件加速，零强制 Repaint）
    ===================================================================== */
-@keyframes tkb-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 @keyframes tkb-flow {
   from { transform: translateY(-100%); }
   to { transform: translateY(220%); }
@@ -3028,39 +2926,6 @@ window.__ModuleLoader__.load({
 @keyframes tkb-blink {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: .3; transform: scale(0.85); }
-}
-@keyframes tkb-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-@keyframes tkb-hearth-breathe {
-  0% {
-    box-shadow: 0 4px 14px -2px color-mix(in srgb, var(--tkb-c-active) 14%, transparent);
-    border-color: color-mix(in srgb, var(--tkb-c-active) 26%, var(--dsw-alias-border-l1));
-  }
-  100% {
-    box-shadow: 0 8px 24px -2px color-mix(in srgb, var(--tkb-c-active) 26%, transparent);
-    border-color: color-mix(in srgb, var(--tkb-c-active) 46%, var(--dsw-alias-border-l1));
-  }
-}
-@keyframes tkb-aurora-sweep {
-  0% { left: -60%; opacity: 0; }
-  25% { opacity: 0.8; }
-  60% { opacity: 0.8; }
-  100% { left: 140%; opacity: 0; }
-}
-@keyframes tkb-glint-pass {
-  0% { transform: rotate(25deg) translateX(-150%); opacity: 0; }
-  35% { opacity: 0.8; }
-  100% { transform: rotate(25deg) translateX(360%); opacity: 0; }
-}
-@keyframes tkb-spring-pop {
-  0% { transform: scale(0.6); opacity: 0; }
-  70% { transform: scale(1.18); }
-  100% { transform: scale(1); opacity: 1; }
-}
-@keyframes tkb-draw-check {
-  to { stroke-dashoffset: 0; }
 }
 @keyframes tkb-num-in {
   from { opacity: 0; transform: translateY(35%); }

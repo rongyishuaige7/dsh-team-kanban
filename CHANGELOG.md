@@ -2,6 +2,22 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.2] - 2026-11-15
+
+重构看板视觉设计系统，全面切入 DeepSeek Harness 客户端官方默认科技蓝与原生微物理质感。
+
+### Changed
+
+- **全面回归 DSH 官方科技蓝与原生质感**：
+  - 基准主色锁定为宿主官方设计系统变量 `--dsw-alias-state-business-primary`（DeepSeek 科技蓝，明亮模式 `#4176e6` / 暗色模式 `#7aaaff`），浅色状态底锁定为 `--dsw-alias-state-business-tertiary`（`#e4edfd` / `#34415b`）。
+  - 任务完成态剔除突兀的紫罗兰色（`--dsw-alias-state-done-primary`），统一采用宿主原生成功绿 `--dsw-alias-state-success-primary`（`#22c55e`），在全达成场景下计数器点亮科技蓝。
+  - 顶部进度条与卡片状态全面统一为 10px / 6px 原生微胶囊设计，槽位交互自然紧凑。
+  - 依赖就绪徽章（`data-kind="ready"`）与血缘高亮链路（`.tkb-root[data-lineage]`）全面切入科技蓝与浅色底，清除过度发光的 `radial-gradient`。
+- **动效体系降噪与第一方克制美学**：
+  - 彻底剔除全达成极光扫光庆典（`tkb-aurora-sweep`）、算力心跳呼吸（`tkb-hearth-breathe`）、头像 360° 旋转圈与卡片 45° 扫光线等过度视觉装饰，避免喧宾夺主。
+  - 完整保留具有清晰状态语义的 6px 运行中能量轨（Live Micro-rail）、声呐微脉冲、血缘链路连线与聚焦矩阵。
+- **原型同步更新**：[`prototype/team-kanban-prototype.html`](prototype/team-kanban-prototype.html) 全面同步新版科技蓝配色与动效降噪规范。
+
 ## [0.5.1] - 2026-11-15
 
 修复 0.5.0 停用团队协作在宿主上的假成功与未刷新缺陷。
