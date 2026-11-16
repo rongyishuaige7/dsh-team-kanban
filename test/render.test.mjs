@@ -404,11 +404,13 @@ test('CSS adheres to host token whitelist and maintains semantic color protectio
     '--dsw-alias-label-primary-inverted',
     '--dsw-alias-label-secondary',
     '--dsw-alias-label-tertiary',
+    '--dsw-alias-label-on-color',
     '--dsw-alias-interactive-bg-hover',
     '--dsw-alias-interactive-bg-active',
     '--dsw-alias-state-business-primary',
     '--dsw-alias-state-business-tertiary',
     '--dsw-alias-state-success-primary',
+    '--dsw-alias-state-success-tertiary',
     '--dsw-alias-state-warn-primary',
     '--dsw-alias-state-warn-label',
     '--dsw-alias-state-warn-tertiary',
@@ -423,21 +425,219 @@ test('CSS adheres to host token whitelist and maintains semantic color protectio
     assert.ok(ALLOWED_DSW_TOKENS.has(token), `token ${token} must be in DSW whitelist`);
   }
 
-  // 2. No naked hex color codes
+  // 2. Zero naked hex color codes and visual color keywords
   const hexColors = [...css.matchAll(/#([0-9a-fA-F]{3,8})\b/g)].map((m) => m[0]);
   assert.deepEqual(hexColors, [], 'CSS must contain zero naked hex color codes');
 
-  // 3. [data-s="done"] slot bar does not collapse into [data-s="active"] color
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const decls = stripped.split(';').map((s) => s.trim()).filter(Boolean);
+  const COLOR_PROPS = /^(background|background-color|color|border|border-[a-z-]+|box-shadow|stroke|fill|outline|outline-color)$/;
+
+  for (const d of decls) {
+    const parts = d.split(':');
+    if (parts.length < 2) continue;
+    const prop = parts[0].trim().toLowerCase();
+    const val = parts.slice(1).join(':').trim();
+    if (COLOR_PROPS.test(prop) || val.includes('color-mix')) {
+      const naked = val.match(/\b(white|black|red|green|blue)\b/gi);
+      assert.ok(!naked, `Naked color keyword "${naked}" found in ${prop}: ${val}`);
+      const rgbHsl = val.match(/\b(rgba?|hsla?)\s*\(/gi);
+      assert.ok(!rgbHsl, `Naked rgb/hsl function found in ${prop}: ${val}`);
+    }
+  }
+
+  // 3. [data-s="done"] slot bar does not collapse into active and maintains non-color channel distinction
   const doneSlotRule = css.match(/\.tkb-slot\[data-s="done"\]\s+\.tkb-slot__bar\s*\{([^}]+)\}/);
   assert.ok(doneSlotRule, 'done slot bar rule must be present');
   assert.match(doneSlotRule[1], /--tkb-c-done/, 'done slot bar must use --tkb-c-done');
+  assert.match(doneSlotRule[1], /inset 0 0 0 1px/, 'done slot bar must have non-color channel inset highlight');
   assert.doesNotMatch(doneSlotRule[1], /--tkb-c-active/, 'done slot bar must not use --tkb-c-active');
 
-  // 4. No orphaned keyframes
+  // 4. Completed checkmark glyph contrast protection (>= 3:1)
+  const completedGlyphRule = css.match(/\.tkb-glyph--completed\s*\{([^}]+)\}/);
+  assert.ok(completedGlyphRule, 'completed glyph rule must exist');
+  assert.match(
+    completedGlyphRule[1],
+    /color-mix\(in srgb, var\(--tkb-c-done\) 80%, var\(--dsw-alias-label-primary\)\)/,
+    'completed glyph must darken green for >= 3:1 contrast against white background and checkmark'
+  );
+
+  // 5. Tab title arc semantic progression (active blue in progress, success green on 100% complete)
+  const titleArcRule = css.match(/\.tkb-title__arc\s*\{([^}]+)\}/);
+  assert.ok(titleArcRule, 'title arc rule must exist');
+  assert.match(titleArcRule[1], /stroke:\s*var\(--tkb-c-active\)/, 'title arc must default to tech-blue during progress');
+  const titleDoneArcRule = css.match(/\.tkb-title\[data-done\]\s+\.tkb-title__arc\s*\{([^}]+)\}/);
+  assert.ok(titleDoneArcRule, 'title data-done arc rule must exist');
+  assert.match(titleDoneArcRule[1], /stroke:\s*var\(--tkb-c-done\)/, 'title arc must switch to green when fully done');
+
+  // 6. Danger button high-contrast protection (> 4.5:1 on red in both light and dark)
+  const dangerRule = css.match(/\}\s*\.tkb-team__danger\s*\{([^}]+)\}/);
+  assert.ok(dangerRule, 'danger disarm button rule must exist');
+  assert.match(dangerRule[1], /color:\s*var\(--dsw-alias-label-on-color\)/, 'danger button must use label-on-color');
+
+  // 7. Completed card background & border readability
+  const completedCardRule = css.match(/\.tkb-card\[data-status="completed"\]\s*\{([^}]+)\}/);
+  assert.ok(completedCardRule, 'completed card rule must exist');
+  assert.match(completedCardRule[1], /var\(--dsw-alias-border-l2\)\s*40%/, 'completed card must use border-l2 40% for subtle boundary');
+
+  // 8. No orphaned keyframes
   const keyframesDefs = [...css.matchAll(/@keyframes\s+([a-z0-9-]+)/g)].map((m) => m[1]);
   assert.ok(keyframesDefs.length > 0, 'keyframes definitions should exist');
   for (const name of keyframesDefs) {
     const usages = [...css.matchAll(new RegExp(`\\b${name}\\b`, 'g'))];
     assert.ok(usages.length >= 2, `keyframe ${name} must be referenced outside its definition`);
   }
+});
+
+test('prototype mock tokens adhere strictly to host design-platform fixture (anti-drift)', () => {
+  const PROTO = readFileSync(new URL('../prototype/team-kanban-prototype.html', import.meta.url), 'utf8');
+
+  const HOST_FIXTURE = {
+    light: {
+      '--dsw-alias-bg-base': '#ffffff',
+      '--dsw-alias-bg-layer-1': '#ffffff',
+      '--dsw-alias-bg-layer-2': '#ffffff',
+      '--dsw-alias-card-fill': '#fafafa',
+      '--dsw-alias-card-fill-hover': '#f5f5f5',
+      '--dsw-alias-interactive-bg-hover': 'rgba(38, 49, 72, 0.06)',
+      '--dsw-alias-interactive-bg-active': 'rgba(38, 49, 72, 0.1)',
+      '--dsw-alias-border-l1': 'rgba(0, 0, 0, 0.04)',
+      '--dsw-alias-border-l2': 'rgba(0, 0, 0, 0.1)',
+      '--dsw-alias-border-l3': 'rgba(0, 0, 0, 0.12)',
+      '--dsw-alias-label-primary': '#0f1115',
+      '--dsw-alias-label-primary-inverted': '#ffffff',
+      '--dsw-alias-label-secondary': '#61666b',
+      '--dsw-alias-label-tertiary': '#81858c',
+      '--dsw-alias-label-on-color': '#ffffff',
+      '--dsw-alias-state-business-primary': '#4176e6',
+      '--dsw-alias-state-business-tertiary': '#e4edfd',
+      '--dsw-alias-state-success-primary': '#22c55e',
+      '--dsw-alias-state-success-tertiary': '#e6faed',
+      '--dsw-alias-state-warn-primary': '#f59e0b',
+      '--dsw-alias-state-warn-label': '#dd8629',
+      '--dsw-alias-state-warn-tertiary': '#fef5e7',
+      '--dsw-alias-state-idle-primary': '#d4d4d4',
+      '--dsw-alias-state-error-primary': '#ec1313',
+    },
+    dark: {
+      '--dsw-alias-bg-base': '#151517',
+      '--dsw-alias-bg-layer-1': '#232324',
+      '--dsw-alias-bg-layer-2': '#2c2c2e',
+      '--dsw-alias-card-fill': '#212123',
+      '--dsw-alias-card-fill-hover': '#292929',
+      '--dsw-alias-interactive-bg-hover': 'rgba(255, 255, 255, 0.08)',
+      '--dsw-alias-interactive-bg-active': 'rgba(255, 255, 255, 0.14)',
+      '--dsw-alias-border-l1': 'rgba(255, 255, 255, 0.06)',
+      '--dsw-alias-border-l2': 'rgba(255, 255, 255, 0.12)',
+      '--dsw-alias-border-l3': 'rgba(255, 255, 255, 0.16)',
+      '--dsw-alias-label-primary': '#f9fafb',
+      '--dsw-alias-label-primary-inverted': '#353638',
+      '--dsw-alias-label-secondary': '#cfd3d6',
+      '--dsw-alias-label-tertiary': '#adb2b8',
+      '--dsw-alias-label-on-color': '#ffffff',
+      '--dsw-alias-state-business-primary': '#7aaaff',
+      '--dsw-alias-state-business-tertiary': '#34415b',
+      '--dsw-alias-state-success-primary': '#22c55e',
+      '--dsw-alias-state-success-tertiary': '#233c2c',
+      '--dsw-alias-state-warn-primary': '#f59e0b',
+      '--dsw-alias-state-warn-label': '#dd8629',
+      '--dsw-alias-state-warn-tertiary': '#27241f',
+      '--dsw-alias-state-idle-primary': '#545557',
+      '--dsw-alias-state-error-primary': '#f25a5a',
+    },
+  };
+
+  function parseThemeBlock(css, selector) {
+    const match = css.match(new RegExp(selector + '\\s*\\{([^}]+)\\}'));
+    assert.ok(match, `theme block ${selector} must exist in prototype`);
+    const map = {};
+    for (const line of match[1].split(';')) {
+      const parts = line.split(':');
+      if (parts.length === 2 && parts[0].trim().startsWith('--dsw-alias-')) {
+        map[parts[0].trim()] = parts[1].trim();
+      }
+    }
+    return map;
+  }
+
+  const protoLight = parseThemeBlock(PROTO, 'body\\[data-theme="light"\\]');
+  const protoDark = parseThemeBlock(PROTO, 'body\\[data-theme="dark"\\]');
+
+  for (const [token, expected] of Object.entries(HOST_FIXTURE.light)) {
+    assert.equal(protoLight[token], expected, `light token ${token} must match host fixture`);
+  }
+  for (const [token, expected] of Object.entries(HOST_FIXTURE.dark)) {
+    assert.equal(protoDark[token], expected, `dark token ${token} must match host fixture`);
+  }
+
+  // Ensure deprecated purple token is absent everywhere
+  assert.ok(!PROTO.includes('--dsw-alias-state-done-primary'), 'prototype must not contain --dsw-alias-state-done-primary');
+  assert.ok(!SOURCE.includes('--dsw-alias-state-done-primary'), 'client.js must not contain --dsw-alias-state-done-primary');
+});
+
+test('prototype and client.js .tkb-* rules maintain strict structural parity', () => {
+  const PROTO = readFileSync(new URL('../prototype/team-kanban-prototype.html', import.meta.url), 'utf8');
+  const cssMatch = SOURCE.match(/const CSS = String\.raw`([\s\S]*?)`;/);
+  assert.ok(cssMatch, 'CSS constant must exist');
+  const clientCss = cssMatch[1];
+
+  function extractTkbRules(cssText) {
+    const clean = cssText.replace(/\/\*[\s\S]*?\*\//g, '');
+    const rules = new Map();
+    let depth = 0;
+    let selector = '';
+    let body = '';
+    let inAtRule = false;
+
+    let i = 0;
+    while (i < clean.length) {
+      const ch = clean[i];
+      if (ch === '{') {
+        depth++;
+        if (depth === 1) {
+          const textBefore = clean.slice(clean.lastIndexOf('}', i - 1) + 1, i).trim();
+          if (textBefore.startsWith('@')) {
+            inAtRule = true;
+          } else {
+            selector = textBefore;
+          }
+        }
+      } else if (ch === '}') {
+        depth--;
+        if (depth === 0) {
+          if (!inAtRule && selector.includes('.tkb-')) {
+            const normSel = selector.replace(/\s+/g, ' ').trim();
+            const normBody = body.replace(/\s+/g, ' ').trim();
+            rules.set(normSel, normBody);
+          }
+          selector = '';
+          body = '';
+          inAtRule = false;
+        }
+      } else {
+        if (depth === 1 && !inAtRule) {
+          body += ch;
+        }
+      }
+      i++;
+    }
+    return rules;
+  }
+
+  const clientRules = extractTkbRules(clientCss);
+  const protoRules = extractTkbRules(PROTO);
+
+  assert.ok(clientRules.size > 150, 'client should have extensive .tkb-* rules');
+  assert.ok(protoRules.size > 150, 'prototype should have extensive .tkb-* rules');
+
+  let checked = 0;
+  for (const [sel, cBody] of clientRules) {
+    if (protoRules.has(sel)) {
+      const pBody = protoRules.get(sel);
+      const pNorm = pBody.replace(/\s*\*\s*var\(--tkb-speed,\s*1\)/g, '');
+      assert.equal(pNorm, cBody, `rule for "${sel}" must be identical between prototype and client.js`);
+      checked++;
+    }
+  }
+  assert.ok(checked >= 155, `expected at least 155 shared rules to be validated, checked ${checked}`);
 });

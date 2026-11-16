@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.5.3';
+    const CLIENT_REV = '0.5.4';
     const TAB_ID = PKG;
     /* Namespaced on purpose: the host turns a kind into the opaque page
        address `sidebar://<kind>`, and a bare `team-board` would be the first
@@ -1939,7 +1939,7 @@ window.__ModuleLoader__.load({
 .tkb-glyph { width: 12px; height: 12px; }
 .tkb-glyph--pending { color: var(--tkb-c-pending); }
 .tkb-glyph--in_progress { color: var(--tkb-c-active); }
-.tkb-glyph--completed { color: var(--tkb-c-done); }
+.tkb-glyph--completed { color: color-mix(in srgb, var(--tkb-c-done) 80%, var(--dsw-alias-label-primary)); }
 .tkb-glyph--completed circle {
   stroke: color-mix(in srgb, var(--tkb-c-done) 60%, var(--dsw-alias-label-primary));
   stroke-width: 0.8;
@@ -2056,9 +2056,11 @@ window.__ModuleLoader__.load({
 }
 .tkb-slot[data-s="done"] .tkb-slot__bar {
   background-color: var(--tkb-c-done);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dsw-alias-label-on-color) 35%, transparent);
 }
 .tkb-slot[data-s="done"]:hover .tkb-slot__bar {
-  box-shadow: 0 0 4px color-mix(in srgb, var(--tkb-c-done) 40%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dsw-alias-label-on-color) 50%, transparent),
+              0 0 4px color-mix(in srgb, var(--tkb-c-done) 40%, transparent);
 }
 
 /* =====================================================================
@@ -2173,7 +2175,7 @@ window.__ModuleLoader__.load({
 .tkb-team__danger {
   border: 1px solid transparent;
   background: var(--dsw-alias-state-error-primary);
-  color: var(--dsw-alias-label-primary-inverted);
+  color: var(--dsw-alias-label-on-color);
 }
 .tkb-team__ghost:disabled,
 .tkb-team__danger:disabled { opacity: .55; cursor: default; }
@@ -2628,7 +2630,7 @@ window.__ModuleLoader__.load({
   position: absolute;
   left: 0; right: 0; top: 0; height: 60%;
   opacity: 0;
-  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--tkb-c-active) 35%, white) 50%, transparent);
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--tkb-c-active) 35%, var(--dsw-alias-label-on-color)) 50%, transparent);
   transform: translateY(-100%);
   transition: opacity var(--tkb-d3) var(--tkb-ease);
 }
@@ -2646,8 +2648,8 @@ window.__ModuleLoader__.load({
     "glyph id title owner"
     "detail detail detail detail";
   padding: 6px 9px 6px 11px;
-  background: color-mix(in srgb, var(--dsw-alias-card-fill) 50%, transparent);
-  border-color: color-mix(in srgb, var(--dsw-alias-border-l1) 45%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-card-fill) 60%, transparent);
+  border-color: color-mix(in srgb, var(--dsw-alias-border-l2) 40%, transparent);
   box-shadow: none;
   position: relative;
 }
@@ -2662,7 +2664,7 @@ window.__ModuleLoader__.load({
 }
 .tkb-card[data-status="completed"] .tkb-card__glyph { display: block; }
 .tkb-card[data-status="completed"] .tkb-glyph--completed {
-  color: var(--tkb-c-done);
+  color: color-mix(in srgb, var(--tkb-c-done) 80%, var(--dsw-alias-label-primary));
 }
 
 .tkb-card[data-status="completed"] .tkb-card__deps,
@@ -3052,12 +3054,15 @@ window.__ModuleLoader__.load({
 .tkb-title__track { fill: none; stroke: var(--dsw-alias-border-l3); stroke-width: 1.8; }
 .tkb-title__arc {
   fill: none;
-  stroke: var(--tkb-c-done);
+  stroke: var(--tkb-c-active);
   stroke-width: 1.8;
   stroke-linecap: round;
   transform: rotate(-90deg);
   transform-origin: 8px 8px;
-  transition: stroke-dashoffset 620ms var(--tkb-ease);
+  transition: stroke-dashoffset 620ms var(--tkb-ease), stroke var(--tkb-d2) var(--tkb-ease);
+}
+.tkb-title[data-done] .tkb-title__arc {
+  stroke: var(--tkb-c-done);
 }
 .tkb-title__check {
   fill: none;

@@ -2,6 +2,31 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.4] - 2026-11-16
+
+彻底对齐 DSH 宿主真实设计系统变量，加固防漂移测试体系，补齐暗色模式与色觉障碍非颜色通道区分，消除所有裸色关键字。
+
+### Fixed
+
+- **宿主 Alias Token 彻底对齐与防漂移守护**：
+  - 从 DeepSeek Harness 官方安装包直接提取 24 项核心 `--dsw-alias-*` token 静态真值，作为 `HOST_FIXTURE` 固化于测试套件。
+  - 原型 mock token 全面修正 26 处与宿主不一致的值（浅色 `bg-layer-1/2` 纯白、暗色三级文本与 idle 修正、浅暗模式边框透明度精准对齐）。
+  - 彻底清除原型 mock 终端中残留的旧版紫罗兰色 `--dsw-alias-state-done-primary`。
+- **暗色模式与色觉障碍非颜色通道区分**：
+  - 针对暗色下 `#22c55e`（完成段）与 `#7aaaff`（进行中段）明度通道重叠（1.45:1）的问题，为完成段 `.tkb-slot[data-s="done"] .tkb-slot__bar` 新增 `inset 0 0 0 1px` 内描边高光微质感，不依赖纯色调即可在任何色觉条件下即时分辨。
+- **浅色模式关键图形对比度达标（≥ 3:1）**：
+  - 完成卡勾选图标（`.tkb-glyph--completed`）圆底压深为 `color-mix(in srgb, var(--tkb-c-done) 80%, var(--dsw-alias-label-primary))`（`#1ea14f`），内层白勾与圆底达到 3.35:1，外层圆底对白底达到 3.27:1，双向越过 3:1 门槛。
+  - 标签页进度环（`.tkb-title__arc`）进度阶段默认采用科技蓝 `--tkb-c-active`（对底对比度超 4.5:1），仅在全部任务达成（`data-done`）时平滑过渡为成功绿 `--tkb-c-done`，解决未完成时 1.8px 细绿弧低对比度与语义早熟。
+- **消除裸色关键字与高危暗色按钮对比度**：
+  - 能量轨流光渐变移除裸 `white` 关键字，改用宿主高对比语义 token `var(--dsw-alias-label-on-color)`。
+  - 停用团队协作危险确认按钮（`.tkb-team__danger`）文本从 `label-primary-inverted`（暗色下仅 3.68:1）切换至 `var(--dsw-alias-label-on-color)`，暗色下对红底保持 4.54:1，光亮模式下保持 4.79:1（均达 WCAG AA 文本标准）。
+  - 完成卡（`.tkb-card[data-status="completed"]`）浅色边界强化：背景填充微调为 60%，边框切入 `color-mix(in srgb, var(--dsw-alias-border-l2) 40%, transparent)`，避免在纯白宿主底色上边界隐形。
+
+### Added
+
+- **宿主 Fixture 一致性测试**：在 `test/render.test.mjs` 中新增断言，强制验证原型浅暗双模 mock token 与宿主真实 fixture 100% 吻合，杜绝人工同步漂移。
+- **原型 ≡ client 规则体深度同构校验**：基于 AST 深度块解析引擎，校验并断言所有 160+ 项共享 `.tkb-*` 规则体完全一致，并在测试中加固裸色/裸函数（`#hex`, `rgba()`, `hsla()`, `white/black`）与语义防塌缩守卫。测试套件增至 38 项。
+
 ## [0.5.3] - 2026-11-16
 
 修复 0.5.2 语义色塌缩、对比度不达标、进度条热区过小与原型偏差问题，补齐 CSS 静态测试保护。
