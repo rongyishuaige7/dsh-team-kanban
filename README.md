@@ -35,9 +35,18 @@ A living three-column kanban board for [DeepSeek Harness](https://github.com/dee
 
 ## 视觉预览
 
-![任务板：右侧栏三列看板](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/board.png)
+![任务板：右侧栏三列活体看板动态流转演示](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/kanban-preview-v2.webp)
 
-*真实截图：DSH `0.2.2-rc.3` 桌面端早期版本，右侧栏拉宽后的三列布局。自 0.5.2 起已重构升级为官方科技蓝与绿色完成语义，去除紫色与过度动效。*
+*1:1 真实运行动效（v0.5.6 · 官方科技蓝主题）：涵盖多智能体任务分发、依赖阻塞解锁、FLIP 物理换列、能量流光及标签页环形角标打勾。完整 1080P 运行录屏见 [`docs/assets/runtime-demo-v2.mp4`](docs/assets/runtime-demo-v2.mp4)。*
+
+<details>
+<summary><b>查看最新深浅双色实机截帧</b></summary>
+
+| 深色模式（Dark Mode） | 浅色模式（Light Mode） |
+| :---: | :---: |
+| ![深色模式](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/board-v2.png) | ![浅色模式](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/board-light-v2.png) |
+
+</details>
 
 仓库里的 [`prototype/team-kanban-prototype.html`](prototype/team-kanban-prototype.html) 是一个零依赖的离线原型（假数据 + 真实动效），直接用浏览器打开即可看到看板形态与动效，不需要安装插件。
 
