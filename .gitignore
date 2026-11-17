@@ -6,3 +6,6 @@ dist/
 
 # Local harness hooks carry absolute machine paths; never publish them.
 .agents/
+
+# Frame capture cache (reproduced via tools/capture/)
+/capture/

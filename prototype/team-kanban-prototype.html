@@ -1476,6 +1476,59 @@ const $ = (s, r = document) => r.querySelector(s);
 const h = (tag, cls, text) => { const el = document.createElement(tag); if (cls) el.className = cls; if (text != null) el.textContent = text; return el; };
 const SVGNS = 'http://www.w3.org/2000/svg';
 const env = { speed: 1, reducedToggle: false };
+/* ================= 0.1 采集用 URL 参数与探针 ================= */
+const PARAMS = new URLSearchParams(location.search);
+const TKB_BEATS = [];
+if (PARAMS.get('embed') === '1') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const ptBar = document.getElementById('ptBar');
+    if (ptBar) ptBar.style.display = 'none';
+    const stage = document.querySelector('.pt-stage');
+    if (stage) stage.style.padding = '0';
+    const conv = document.querySelector('.conv');
+    if (conv) conv.style.display = 'none';
+    const side = document.getElementById('side');
+    if (side) {
+      side.style.width = '100%';
+      side.style.setProperty('--side-w', '100%');
+      side.style.borderLeft = 'none';
+    }
+    const app = document.getElementById('app');
+    if (app) {
+      app.style.border = 'none';
+      app.style.borderRadius = '0';
+    }
+  });
+}
+const spParam = PARAMS.get('speed');
+if (spParam) {
+  const v = +spParam;
+  env.speed = v;
+  document.body.style.setProperty('--tkb-speed', String(v));
+}
+const thParam = PARAMS.get('theme');
+if (thParam === 'light' || thParam === 'dark') {
+  document.body.dataset.theme = thParam;
+}
+if (PARAMS.get('gaze') === '1') {
+  window.__TKB = {
+    get state() { return state; },
+    get play() { return play; },
+    get totalSteps() { return typeof activeScript !== 'undefined' ? activeScript.length : 17; },
+    get done() { return typeof activeScript !== 'undefined' ? (play.step >= activeScript.length && !play.on) : (play.step >= 17 && !play.on); },
+    get speed() { return env.speed; },
+    get reduced() { return reduced(); },
+    get beats() { return TKB_BEATS; },
+    get host() { return host; },
+    startPlay() { if (typeof startPlay === 'function') startPlay(); },
+    resetAll() { if (typeof resetAll === 'function') resetAll(); },
+  };
+}
+if (PARAMS.get('play') === '1') {
+  window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => { if (typeof startPlay === 'function') startPlay(); }, 120);
+  });
+}
 const mq = matchMedia('(prefers-reduced-motion: reduce)');
 const reduced = () => env.reducedToggle || mq.matches;
 const ms = n => n * env.speed;
@@ -1791,7 +1844,9 @@ function createBoard(mount) {
 
   const wires = document.createElementNS(SVGNS, 'svg');
   wires.setAttribute('class', 'tkb-wires');
+  Object.assign(wires.style, { position: 'absolute', inset: '0', pointerEvents: 'none', zIndex: '5' });
   const flights = h('div', 'tkb-flights');
+  Object.assign(flights.style, { position: 'absolute', inset: '0', pointerEvents: 'none', zIndex: '10', overflow: 'hidden' });
   const tip = h('div', 'tkb-tip');
   const tipT = h('b');
   const tipS = h('span');
@@ -2119,15 +2174,24 @@ function createBoard(mount) {
     return g;
   }
   /* 跨列飞行：外层裁切盒负责位移与尺寸，内部新旧两张快照交叉淡化 */
-  function flyCard(el, gOld, from, to, status, F) {
+  function flyCard(el, gOld, from, to, status, F, delay = 0) {
     const tok = el._ft = (el._ft || 0) + 1;
     const gNew = ghostOf(el);
     el.style.visibility = 'hidden';
     const w = h('div', 'tkb-flight');
     w.dataset.to = status;
-    Object.assign(w.style, { left: from.x + 'px', top: from.y + 'px', width: from.w + 'px', height: from.h + 'px' });
-    Object.assign(gOld.style, { width: from.w + 'px', height: from.h + 'px' });
-    Object.assign(gNew.style, { width: to.w + 'px', height: to.h + 'px' });
+    Object.assign(w.style, {
+      position: 'absolute',
+      pointerEvents: 'none',
+      zIndex: '10',
+      left: from.x + 'px',
+      top: from.y + 'px',
+      width: from.w + 'px',
+      height: from.h + 'px',
+      overflow: 'hidden'
+    });
+    Object.assign(gOld.style, { position: 'absolute', inset: '0', width: from.w + 'px', height: from.h + 'px' });
+    Object.assign(gNew.style, { position: 'absolute', inset: '0', width: to.w + 'px', height: to.h + 'px' });
     w.append(gOld, gNew);
     flights.append(w);
     const dx = to.x - from.x, dy = to.y - from.y, dist = Math.hypot(dx, dy) || 1;
@@ -2138,18 +2202,27 @@ function createBoard(mount) {
       { transform: 'translate(0px,0px) scale(1)', width: from.w + 'px', height: from.h + 'px' },
       { transform: `translate(${dx * .5 + px * lift}px,${dy * .5 + py * lift}px) scale(1.035)`, offset: .45 },
       { transform: `translate(${dx}px,${dy}px) scale(1)`, width: to.w + 'px', height: to.h + 'px' },
-    ], { duration: F, easing: 'cubic-bezier(.5,.05,.2,1)', fill: 'forwards' });
-    anim(gOld, [{ opacity: 1 }, { opacity: 1, offset: .25 }, { opacity: 0, offset: .7 }, { opacity: 0 }], { duration: F, fill: 'forwards' });
-    anim(gNew, [{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1, offset: .8 }, { opacity: 1 }], { duration: F, fill: 'forwards' });
+    ], { duration: F, delay, easing: 'cubic-bezier(.5,.05,.2,1)', fill: 'forwards' });
+    anim(gOld, [{ opacity: 1 }, { opacity: 1, offset: .25 }, { opacity: 0, offset: .7 }, { opacity: 0 }], { duration: F, delay, fill: 'forwards' });
+    anim(gNew, [{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1, offset: .8 }, { opacity: 1 }], { duration: F, delay, fill: 'forwards' });
     later(() => {
       w.remove();
       if (el._ft === tok) { el.style.visibility = ''; pulse(el, 'is-landed', 800); }
-    }, F);
+    }, F + delay);
   }
   function vanish(g, b, rm) {
     const w = h('div', 'tkb-flight tkb-flight--vanish');
-    Object.assign(w.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });
-    Object.assign(g.style, { width: b.w + 'px', height: b.h + 'px' });
+    Object.assign(w.style, {
+      position: 'absolute',
+      pointerEvents: 'none',
+      zIndex: '10',
+      left: b.x + 'px',
+      top: b.y + 'px',
+      width: b.w + 'px',
+      height: b.h + 'px',
+      overflow: 'hidden'
+    });
+    Object.assign(g.style, { position: 'absolute', inset: '0', width: b.w + 'px', height: b.h + 'px' });
     w.append(g);
     flights.append(w);
     const D = ms(rm ? 150 : 280);
@@ -2169,18 +2242,52 @@ function createBoard(mount) {
     const after = lastRects;
     const doneNow = new Set(ev.moved.filter(m => m.to === 'completed').map(m => m.id));
     const moved = new Map(ev.moved.map(m => [m.id, m]));
+    const movedIndex = new Map(ev.moved.map((m, i) => [m.id, i]));
     /* 因果编排：被「刚完成的任务」解锁的卡片，等上游落地后再解锁 */
     const hold = new Map();
     if (!rm && !crowd) {
-      ev.unlocked.forEach(id => { if (next.map.get(id).blockedBy.some(b => doneNow.has(b))) hold.set(id, F + ms(160)); });
+      const maxF = F + ms(Math.min(ev.moved.length, 6) * 30);
+      ev.unlocked.forEach(id => { if (next.map.get(id).blockedBy.some(b => doneNow.has(b))) hold.set(id, maxF + ms(160)); });
     }
     cards.forEach((el, id) => {
       const b = before.get(id), a = after.get(id);
       if (!b || !a) return;
       const g = ghosts.get(id);
       if (g) {
-        if (rm || crowd) { anim(el, [{ opacity: 0 }, { opacity: 1 }], { duration: ms(rm ? 150 : 240), easing: EASE }); pulse(el, 'is-landed', 800); }
-        else flyCard(el, g, b, a, moved.get(id).to, F);
+        if (rm || crowd) {
+          anim(el, [{ opacity: 0 }, { opacity: 1 }], { duration: ms(rm ? 150 : 240), easing: EASE });
+          pulse(el, 'is-landed', 800);
+        } else {
+          const mInfo = moved.get(id);
+          const lane = lanes[mInfo.to];
+          if (lane && lane.body) {
+            const rr = root.getBoundingClientRect();
+            const lbr = lane.body.getBoundingClientRect();
+            const lbrRel = {
+              top: lbr.top - rr.top,
+              bottom: lbr.bottom - rr.top,
+              left: lbr.left - rr.left,
+              right: lbr.right - rr.left,
+            };
+            if (!(a.y + a.h <= lbrRel.bottom + 2 && a.x >= lbrRel.left - 1)) {
+              const errData = {
+                id,
+                to: a,
+                lane: mInfo.to,
+                laneBody: lbrRel,
+                time: performance.now(),
+                step: typeof play !== 'undefined' ? play.step : -1
+              };
+              if (typeof window !== 'undefined') {
+                window.__FLIGHT_FAIL = errData;
+              }
+              console.error('[FLIP assertion fail]', errData);
+            }
+          }
+          const idx = movedIndex.get(id) || 0;
+          const stagger = Math.min(idx * ms(30), ms(180));
+          flyCard(el, g, b, a, mInfo.to, F, stagger);
+        }
         return;
       }
       if (rm) return;
@@ -2231,10 +2338,10 @@ function createBoard(mount) {
     const ev = diff(prev, next);
     const animate = !first && canAnimate();
     const rm = reduced();
-    const crowd = ev.moved.length > 6;
+    const crowd = ev.moved.length > 12;
     const F = ms(460);
     const flying = animate && !rm && !crowd;
-    const landing = flying && ev.moved.some(m => m.to === 'completed') ? F : 0;
+    const landing = flying && ev.moved.some(m => m.to === 'completed') ? F + ms(Math.min(ev.moved.length, 6) * 30) : 0;
     const before = new Map(), ghosts = new Map();
     if (animate) {
       const rr = root.getBoundingClientRect();
@@ -2537,6 +2644,8 @@ function createBoard(mount) {
     markBack,
     toggleTeamPop,
     isTeamPopOpen: () => !teamPop.hidden,
+    showLineage,
+    clearLineage,
     setReduced(on) { if (on) root.dataset.motion = 'reduced'; else root.removeAttribute('data-motion'); },
     resync() {
       root.querySelectorAll('[data-running]').forEach(el => el.style.setProperty('--tkb-phase', phase(2400)));
@@ -2744,7 +2853,15 @@ function setRunning(id, on) {
   if (on) state.running.add(id); else state.running.delete(id);
   logCall('agent_status', `${mateLabel(id)} · ${on ? tx('card.running') : tx('card.idle')}`);
 }
-function commit(fn) { fn(); recomputeReady(); sync(); refreshUI(); }
+function commit(fn) {
+  fn();
+  recomputeReady();
+  sync();
+  if (PARAMS.get('gaze') === '1') {
+    TKB_BEATS.push({ t_ms: performance.now(), step: play.step });
+  }
+  refreshUI();
+}
 
 /* ================= 6. 剧本：一次完整的多智能体协作 ================= */
 const M = MATE_DEFS;
@@ -2774,15 +2891,52 @@ const SCRIPT = [
   { wait: 2200, run() { spawn('reviewer'); claimT(T(6), M.reviewer.id); } },
   { wait: 2600, run() { completeT(T(6)); } },
 ];
+const SCRIPT_LOOP = [
+  { wait: 600, run() {
+    mkTask(5, '实现 TeamKanbanBoard 三列视图与任务卡片', '三列分组、卡片展开、依赖高亮、飞行层动效。', [2], ['client.js#board']);
+  } },
+  { wait: 700, run() {
+    mkTask(6, '联调验收 T1–T6 场景', '安装到 desktop profile，逐项验证。', [], ['acceptance.md']);
+  } },
+  { wait: 700, run() {
+    if (host.board) host.board.showLineage('task-1');
+  } },
+  { wait: 800, run() {
+    if (host.board) host.board.clearLineage();
+    completeT(T(2));
+  } },
+  { wait: 1000, run() {
+    claimT(T(1), M.designer.id);
+  } },
+  { wait: 1000, run() {
+    claimT(T(5), M.builder.id);
+  } },
+  { wait: 800, run() {
+    completeT(T(1));
+  } },
+  { wait: 800, run() {
+    claimT(T(6), M.reviewer.id);
+  } },
+  { wait: 700, run() {
+    completeT(T(5));
+  } },
+  { wait: 500, run() {
+    completeT(T(6));
+  } },
+  { wait: 400, run() {
+    // Hold final 6/6 complete state (0.4s)
+  } },
+];
+const activeScript = PARAMS.get('script') === 'loop' ? SCRIPT_LOOP : SCRIPT;
 const play = { step: 0, on: false, timer: 0 };
 function tick() {
   if (!play.on) return;
-  if (play.step >= SCRIPT.length) { play.on = false; refreshUI(); return; }
-  const s = SCRIPT[play.step++];
+  if (play.step >= activeScript.length) { play.on = false; refreshUI(); return; }
+  const s = activeScript[play.step++];
   commit(() => s.run());
   play.timer = setTimeout(tick, ms(s.wait));
 }
-function startPlay() { if (play.step >= SCRIPT.length) resetAll(); play.on = true; refreshUI(); tick(); }
+function startPlay() { if (play.step >= activeScript.length) resetAll(); play.on = true; refreshUI(); tick(); }
 function pausePlay() { play.on = false; clearTimeout(play.timer); refreshUI(); }
 function resetAll() {
   pausePlay();
@@ -2790,6 +2944,20 @@ function resetAll() {
   play.step = 0;
   while (convBody.childElementCount > 2) convBody.lastElementChild.remove();
   host.dismissed = false;
+  if (PARAMS.get('script') === 'loop') {
+    spawn('builder'); spawn('designer'); spawn('reviewer');
+    mkTask(1, '设计看板主题 token 映射与容器断点', '只使用 --dsw-alias-* 变量；540 / 820 两档容器查询；Light / Dark 对比度自检。', [2], ['client.js#styles']);
+    mkTask(2, '实现 TeamKanbanWatcher 自动开闭状态机', '挂载在 conversation.session.header.actions，按 agentTeam 投影开闭标签页。', [], ['client.js#watcher']);
+    mkTask(3, '梳理 sidebar-right 标签页注册契约', '核对 tab-registry.ts 与 contract/slots.ts。', [], ['docs/contract-notes.md']);
+    mkTask(4, '实现多智能体动态流转与异常投影', '解析 agentTeam 字段，处理失败提示与恢复。', [], ['client.js#stream']);
+    recomputeReady();
+    claimT(T(2), M.builder.id);
+    claimT(T(3), M.reviewer.id);
+    completeT(T(3));
+    claimT(T(4), M.designer.id);
+    completeT(T(4));
+    recomputeReady();
+  }
   sync();
   refreshUI();
 }

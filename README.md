@@ -35,16 +35,16 @@ A living three-column kanban board for [DeepSeek Harness](https://github.com/dee
 
 ## 视觉预览
 
-![任务板：右侧栏三列活体看板动态流转演示](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/kanban-preview-v2.webp)
+![任务板：右侧栏三列活体看板动态流转演示](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/kanban-loop-v3.webp)
 
-*1:1 真实运行动效（v0.5.6 · 官方科技蓝主题）：涵盖多智能体任务分发、依赖阻塞解锁、FLIP 物理换列、能量流光及标签页环形角标打勾。完整 1080P 运行录屏见 [`docs/assets/runtime-demo-v2.mp4`](docs/assets/runtime-demo-v2.mp4)。*
+*1:1 真实运行动效（v0.5.6 · 官方浅色高对比度）：涵盖多智能体任务分发、依赖阻塞解锁、FLIP 物理换列、能量流光及标签页环形角标打勾。完整 1080P@60fps 宣传发布片见 [`docs/assets/kanban-launch-v3.mp4`](docs/assets/kanban-launch-v3.mp4)（附纯净无音轨版 [`kanban-launch-v3-nobgm.mp4`](docs/assets/kanban-launch-v3-nobgm.mp4)）。*
 
 <details>
-<summary><b>查看最新深浅双色实机截帧</b></summary>
+<summary><b>查看最新深浅双色实机截帧（1:1 像素）</b></summary>
 
 | 深色模式（Dark Mode） | 浅色模式（Light Mode） |
 | :---: | :---: |
-| ![深色模式](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/board-v2.png) | ![浅色模式](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/board-light-v2.png) |
+| ![深色模式](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/board-v3-dark.png) | ![浅色模式](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/board-v3-light.png) |
 
 </details>
 
