@@ -3140,7 +3140,8 @@ relabelChips();
 updateTabs();
 refreshUI();
 sync();
-setTimeout(startPlay, 900);
+/* 录屏/自动化用 ?play=1 自行掌握起点；此处若无条件启动会与它形成两条并行时间线，把脚本推进成双倍速 */
+if (PARAMS.get('play') !== '1') setTimeout(startPlay, 900);
 })();
 </script>
 </body>

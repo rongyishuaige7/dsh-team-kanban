@@ -9,3 +9,8 @@ dist/
 
 # Frame capture cache (reproduced via tools/capture/)
 /capture/
+
+# launch-v4 采集帧与切段缓存（体积大，可由 tools/ 重新生成）
+media/launch-v4/capture/
+media/launch-v4/public/footage/
+media/launch-v4/out/

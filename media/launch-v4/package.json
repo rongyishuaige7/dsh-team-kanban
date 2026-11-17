@@ -1,0 +1,24 @@
+{
+  "name": "kanban-launch-v4",
+  "private": true,
+  "version": "4.0.0",
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Launch out/kanban-launch-v4.mp4 --crf=20",
+    "still": "remotion still src/index.ts Launch",
+    "capture:light": "node tools/capture-master.mjs light 45",
+    "capture:dark": "node tools/capture-master.mjs dark 45",
+    "capture:hero": "node tools/capture-hero.mjs",
+    "capture:cursor": "node tools/capture-cursor.mjs"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.484",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "remotion": "4.0.484"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.65.1"
+  }
+}
