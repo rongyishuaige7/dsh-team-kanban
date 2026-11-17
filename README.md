@@ -37,7 +37,7 @@ A living three-column kanban board for [DeepSeek Harness](https://github.com/dee
 
 ![任务板：右侧栏三列活体看板动态流转演示](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/kanban-loop-v3.webp)
 
-*1:1 真实运行动效（v0.5.6 · 官方浅色高对比度）：涵盖多智能体任务分发、依赖阻塞解锁、FLIP 物理换列及标签页环形角标打勾。20 秒 1080P@60fps 发布片见 [`docs/assets/kanban-launch-v4.mp4`](docs/assets/kanban-launch-v4.mp4)——真实 60fps 运行素材、跨列飞行慢放、深浅同帧对照、停用团队的真实点击；源码与采集链路在 [`media/launch-v4/`](media/launch-v4/)。*
+*1:1 真实运行动效（v0.5.6 · 官方浅色高对比度）：涵盖多智能体任务分发、依赖阻塞解锁、FLIP 物理换列及标签页环形角标打勾。20 秒 1080P@60fps 发布片见 [`docs/assets/kanban-launch-v4.mp4`](docs/assets/kanban-launch-v4.mp4)（[纯音效版](docs/assets/kanban-launch-v4-nobgm.mp4)）——真实 60fps 运行素材、跨列飞行慢放、深浅同帧对照、停用团队的真实点击；源码与采集链路在 [`media/launch-v4/`](media/launch-v4/)。*
 
 <details>
 <summary><b>查看最新深浅双色实机截帧（1:1 像素）</b></summary>

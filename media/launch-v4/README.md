@@ -60,3 +60,16 @@ npm run render
 ## 验收
 
 `docs/records/` 里有当次实测数据。关键指标是**稳像后残差**：用 `vidstabdetect → vidstabtransform` 把镜头运动完全抵消后再算帧间差异——静态图推镜会掉到 0，真动效不会。
+
+## 验收
+
+```bash
+node tools/audit/media-metrics.mjs docs/assets/kanban-launch-v4.mp4 \
+  --manifest=media/launch-v4/timeline.json
+```
+
+门槛分两层：
+- **出处清单**（主判据）：`timeline.json` 逐镜声明 `kind: live|still`，要求 live 片长 ≥50%（本片 83.3%）
+- **像素指标**（辅助）：重复帧、单帧 ΔLuma、最低帧亮度、体积
+
+只靠像素指标拦不住「静态图 + 运镜」——所以清单是必须的。这条教训写在 `docs/records/2026-11-17-media-v4.md`。

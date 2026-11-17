@@ -1,0 +1,30 @@
+{
+  "id": "kanban-launch-v4",
+  "fps": 60,
+  "size": [1920, 1080],
+  "durationInFrames": 1237,
+  "durationSeconds": 20.62,
+  "engine": "remotion@4.0.484",
+  "capture": {
+    "viewport": [1440, 760],
+    "deviceScaleFactor": 1.5,
+    "masterSpeedFactor": 5,
+    "heroSpeedFactor": 20,
+    "format": "jpeg q95",
+    "technique": "页面时钟放慢 + 定时截图 + 按帧时间戳重采样到 60fps"
+  },
+  "shots": [
+    { "id": "s1", "from": 0, "dur": 211, "kind": "live", "source": "capture/light 16.2-19.7s", "rate": 1, "zoom": [1.40, 1.16] },
+    { "id": "s2", "from": 211, "dur": 193, "kind": "live", "source": "capture/light 9.55-12.75s", "rate": 1, "zoom": [1.80, 1.96] },
+    { "id": "s3", "from": 404, "dur": 128, "kind": "live", "source": "capture/hero 1.90-2.96s", "rate": 0.5, "zoom": [1.26, 1.36], "note": "20x 慢放采集，148 帧/秒有效" },
+    { "id": "s4", "from": 532, "dur": 209, "kind": "live", "source": "capture/light 37.15-40.62s", "rate": 1, "zoom": [1.58, 1.74], "transition": { "type": "dissolve", "frames": 8 } },
+    { "id": "s5", "from": 733, "dur": 180, "kind": "live", "source": "capture/light + capture/dark 20.15-23.15s", "rate": 1, "zoom": [1.26, 1.42], "transition": { "type": "dissolve", "frames": 8 } },
+    { "id": "s6", "from": 905, "dur": 130, "kind": "live", "source": "capture/cursor 0-3.98s", "rate": 1, "zoom": [1.58, 1.66], "note": "真实鼠标操作 + 轨迹重绘", "transition": { "type": "dissolve", "frames": 8 } },
+    { "id": "s7", "from": 1027, "dur": 210, "kind": "still", "source": "assets/board-final.png", "note": "品牌卡" }
+  ],
+  "audio": {
+    "lufs": -14.49,
+    "truePeakDbtp": -1.25,
+    "cues": 10
+  }
+}
