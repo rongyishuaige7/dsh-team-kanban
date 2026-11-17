@@ -6,7 +6,7 @@
 
 A living three-column kanban board for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) agent teams. It renders the native `agentTeam` session projection inside the right sidebar — dependency-aware cards, teammate liveness, tab progress badge — and stays invisible when there is no team to show.
 
-![status](https://img.shields.io/badge/DSH-0.2.2--rc.3-4b6bfb) ![license](https://img.shields.io/badge/license-MIT-green)
+![status](https://img.shields.io/badge/DSH-0.2.2--rc.3-4b6bfb) ![npm](https://img.shields.io/npm/v/dsh-team-kanban?color=blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -55,14 +55,14 @@ A living three-column kanban board for [DeepSeek Harness](https://github.com/dee
 要求：DeepSeek Harness **0.2.2-rc.x 桌面端**（`desktop` profile）。
 
 ```bash
-# 本地目录（开发中）
-dsh plugin --profile desktop add /path/to/dsh-team-kanban
-
-# npm（尚未发布，发布后可用）
+# npm（推荐）
 dsh plugin --profile desktop add dsh-team-kanban
 
 # git
 dsh plugin --profile desktop add github:rongyishuaige7/dsh-team-kanban
+
+# 本地目录（开发中）
+dsh plugin --profile desktop add /path/to/dsh-team-kanban
 ```
 
 也可以在 DSH 的插件管理里用 `install_bundle` 指向仓库目录。安装后重启桌面端，控制台里 `window.__teamKanbanRev` 应等于当前版本号。
