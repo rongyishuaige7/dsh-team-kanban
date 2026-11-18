@@ -1,171 +1,133 @@
-# dsh-team-kanban
+# 📋 dsh-team-kanban
 
-> 给 DeepSeek Harness 的多智能体团队，在右侧栏放一块会呼吸的活体任务看板。
+> **给 DeepSeek Harness 的多智能体团队，在右侧栏放一块会呼吸的活体任务看板。**
+>
+> Native three-column agent-team kanban for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — live `blockedBy` DAG lineage, cross-lane FLIP motion, and tab progress ring right inside the sidebar.
 
-三列流转、依赖血缘、负责人运行态、标签页进度角标，全部直接读宿主原生的 `agentTeam` 会话投影（`team_task_*` 写出的那份 DAG），不做二次同步、不落盘、不调外部服务。团队没开或没有任务时，它完全不出现。
-
-A living three-column kanban board for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) agent teams. It renders the native `agentTeam` session projection inside the right sidebar — dependency-aware cards, teammate liveness, tab progress badge — and stays invisible when there is no team to show.
-
-![status](https://img.shields.io/badge/DSH-0.2.2--rc.3-4b6bfb) ![npm](https://img.shields.io/npm/v/dsh-team-kanban?color=blue) ![license](https://img.shields.io/badge/license-MIT-green)
-
----
-
-## 它不是又一个外部看板
-
-生态里已有的 Kanban 插件大多解决「人怎么给 Agent 派活」：卡片存在插件自己的 SQLite 里，靠自定义的 `kanban_*` 工具维护。这个插件解决的是另一件事——**一个复杂任务里，多个智能体如何认领、阻塞、解锁**：
-
-| | 外部项目管理型看板 | dsh-team-kanban |
-|---|---|---|
-| 数据来源 | 插件自建存储 + 自定义工具 | 宿主 `agentTeam` 投影，唯一事实源 |
-| 卡片粒度 | 一次派发 = 一个独立会话 | 会话内 Lead + Workers 的共享任务 |
-| 依赖关系 | 通常没有 | 原生 `blockedBy` DAG，实时算就绪/阻塞 |
-| 生命周期 | 常驻，需要手动管理 | 有团队任务才出现，清空即消失 |
-| 写入 | 自己写库 | 不写任务；唯一写操作是停用团队协作 |
-
-## 功能
-
-- **自动显隐**：根会话开启团队协作且出现任务时，自动在右侧栏打开；任务清空或关闭团队时自动关闭，不留空标签、不占位。
-- **三列流转**：待处理 / 进行中 / 已完成，卡片随投影实时 FLIP 换列与补位；`pending` 列区分「就绪」与「被依赖阻塞」，非空泳道支持点击折叠，窄栏下空泳道自动静默收敛。
-- **依赖血缘与冲突预警**：卡面直接外露 `blockedBy` 前置依赖、`↘ N` 下游解锁瓶颈计数与并发写范围冲突告警；宽屏悬停卡片实时绘制 SVG 贝塞尔上下游血缘连线。
-- **顶部概览**：凹槽完成进度条 + 分类统计 + 队友视窗（支持同首字智能体自动消歧、`phase` 异常/启动态透出、窄屏点击锁定展开姓名胶囊）。
-- **标签角标**：标签页标题内嵌完成度圆环与计数，停留在文件树或浏览器标签时也能看到进度。
-- **几何与主题**：`@container` 响应式适配 360px 窄栏 / 分栏 / 全屏 / 浮动窗；只用宿主 `--dsw-alias-*` token，Light / Dark 自动跟随；中英双语。
-- **一键停用团队**：header 上的「团队」按钮可以直接停用本会话的团队协作（带确认），不用回模型菜单；任务会保留，看板随团队关闭而收起。
-- **手动关闭防打扰**：你亲手关掉的看板不会因为下一次状态流转又弹回来。
-
-## 视觉预览
+![DSH](https://img.shields.io/badge/DeepSeek_Harness-0.2.2--rc.x-4176e6) ![npm](https://img.shields.io/npm/v/dsh-team-kanban?color=blue) ![license](https://img.shields.io/badge/license-MIT-22c55e)
 
 ![任务板：右侧栏三列活体看板动态流转演示](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/kanban-loop-v4.webp)
 
-*1:1 真实运行动效（v0.5.7 · 官方浅色高对比度）：涵盖顶栏内嵌「团队」开关、依赖瓶颈 `↘ N` 与写冲突 `⚠` 徽章、FLIP 物理换列及标签页环形角标打勾。37 秒 1080P 产品发布宣传片见 [`docs/assets/kanban-launch-v5.mp4`](docs/assets/kanban-launch-v5.mp4)（[纯音效无 BGM 版](docs/assets/kanban-launch-v5-nobgm.mp4) · [English International Cut](https://github.com/rongyishuaige7/dsh-team-kanban/releases/download/v0.5.7/kanban-launch-v5-en.mp4) · [9:16 竖屏短视频版](https://github.com/rongyishuaige7/dsh-team-kanban/releases/download/v0.5.7/kanban-launch-v5-vertical-9x16.mp4)）；Remotion 源码、剪映草稿导出器与可编辑工作台清单在 [`media/launch-v5/`](media/launch-v5/)。*
+🎬 **观看 37 秒完整产品宣传片（1080P）**：[中文主版](docs/assets/kanban-launch-v5.mp4) · [纯音效无 BGM 版](docs/assets/kanban-launch-v5-nobgm.mp4) · [English Cut](https://github.com/rongyishuaige7/dsh-team-kanban/releases/download/v0.5.7/kanban-launch-v5-en.mp4) · [9:16 竖屏短视频版](https://github.com/rongyishuaige7/dsh-team-kanban/releases/download/v0.5.7/kanban-launch-v5-vertical-9x16.mp4)
+
+💡 想先免安装上手把玩？直接用浏览器打开仓库内的零依赖交互原型 [`prototype/team-kanban-prototype.html`](prototype/team-kanban-prototype.html)，即可体验完整流转、血缘连线、深浅换肤与窄栏缩放。
 
 <details>
-<summary><b>查看最新深浅双色实机截帧（1:1 像素）</b></summary>
+<summary>🖼️ <b>查看深色 / 浅色 1:1 实机截帧</b></summary>
 
-| 深色模式（Dark Mode） | 浅色模式（Light Mode） |
+| 🌙 深色模式（Dark Mode） | ☀️ 浅色模式（Light Mode） |
 | :---: | :---: |
 | ![深色模式](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/board-v3-dark.png) | ![浅色模式](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/board-v3-light.png) |
 
 </details>
 
-仓库里的 [`prototype/team-kanban-prototype.html`](prototype/team-kanban-prototype.html) 是一个零依赖的离线原型（假数据 + 真实动效），直接用浏览器打开即可看到看板形态与动效，不需要安装插件。
+---
 
-## 安装
+## 🚀 快速安装
 
-要求：DeepSeek Harness **0.2.2-rc.x 桌面端**（`desktop` profile）。
+环境要求：DeepSeek Harness **0.2.2-rc.x 桌面端**（`desktop` profile）。
 
 ```bash
-# npm（推荐）
+# 通过 npm 安装（推荐）
 dsh plugin --profile desktop add dsh-team-kanban
 
-# git
+# 或通过 GitHub 安装
 dsh plugin --profile desktop add github:rongyishuaige7/dsh-team-kanban
 
-# 本地目录（开发中）
+# 本地开发目录安装
 dsh plugin --profile desktop add /path/to/dsh-team-kanban
 ```
 
-也可以在 DSH 的插件管理里用 `install_bundle` 指向仓库目录。安装后重启桌面端，控制台里 `window.__teamKanbanRev` 应等于当前版本号。
+安装后完全重启桌面端即可生效——当根会话开启团队协作并创建任务时，右侧栏会自动弹出「任务板」。
 
-### 从旧名迁移（0.4.0）
+<details>
+<summary>📦 <b>从 0.4.0 之前的早期本地包（<code>@local/dsh-client-ui-team-kanban</code>）升级？</b></summary>
 
-0.4.0 之前的包名是本地占位 `@local/dsh-client-ui-team-kanban`，标签类型是 `team-board`。升级时**先移除旧插件再装新包**——旧插件卸载时会顺手清掉已保存布局里残留的旧标签：
+升级前请先移除旧占位包，再安装正式包：
 
 ```bash
 dsh plugin --profile desktop remove @local/dsh-client-ui-team-kanban
-dsh plugin --profile desktop add /path/to/dsh-team-kanban
+dsh plugin --profile desktop add dsh-team-kanban
 ```
 
-`dsh plugin` 只转发给 pnpm，**不会**清理 profile 自己的配置。装完请核对两处，否则同一份 `client.js` 会被注册两次，第二次注册会撞上宿主「tab type id already registered」并中断该实例的 watcher：
+若 `~/.dsh/profiles/desktop/package.json` 或 `~/.dsh/profiles/desktop/cordis.patch.yml` 中仍残留 `@local/dsh-client-ui-team-kanban` 条目，顺手删掉后按 `⌘Q` 完全重启 DSH 即可避免重复注册。
 
-- `~/.dsh/profiles/desktop/package.json`
-  - `dependencies` 与 `dsh.profile.bundles` 里都不应再有 `@local/dsh-client-ui-team-kanban`
-- `~/.dsh/profiles/desktop/cordis.patch.yml`
-  - 删掉 `# >>> 智能体任务板 (@local/dsh-client-ui-team-kanban) >>>` 到 `# <<< 智能体任务板 <<<` 那几行
+</details>
 
-然后 ⌘Q 完全退出 DSH（不是关窗口）再打开，确认 `window.__teamKanbanRev`。0.4.1 起，注册撞车会在控制台留下 `[team-kanban] could not register the sidebar tab type` 的警告，不再静默。
+---
 
-## 兼容性
+## ✨ 核心体验
 
-| 宿主版本 | 状态 |
-|---|---|
-| `0.2.2-rc.3`（desktop） | 已验证：T3（清空自动关闭）、T4（流转与角标同步）；0.5.0 的停用按钮、T1/T2/T5/T6 待补 |
-| `0.2.1-alpha.4` 的 Team 结构（隐式根团队、名册、无 `ownerId`） | 读取路径已兼容（`normalizeTeam`），未实机验证 |
-| 其他版本 | 未验证 |
+- 🪄 **随需自动显隐**：团队开启且有任务时自动挂载到右侧栏；任务清空或关闭团队后自动收起，平时安静隐身不占地。
+- 🌊 **三列丝滑 FLIP 流转**：「待处理 / 进行中 / 已完成」实时跟随任务推进物理换列与补位；待处理列自动区分**就绪**与**依赖阻塞**，点击卡片展开 `0fr → 1fr` 详情抽屉。
+- 🧬 **依赖血缘与写冲突一眼看穿**：卡片正面直出前置依赖、`↘ N` 下游解锁瓶颈计数与 `⚠` 并发写入范围冲突预警；宽屏悬停卡片实时绘制 SVG 贝塞尔上下游血缘连线。
+- 👥 **队友运行视窗**：顶部凹槽进度条 + 实时统计 + 智能体头像胶囊（支持同首字自动消歧、异常/启动态高亮提示，窄屏点击可锁定展开完整名称）。
+- 🎯 **标签页环形进度角标**：即便切去文件树或终端标签页，顶栏胶囊上的进度环与打勾角标也能让你随时掌握团队收口进度。
+- 🎨 **全尺寸自适应与原生换肤**：`@container` 响应式适配 `360px` 窄侧栏（空列自动静默折叠为单行摘要）、分栏、全屏与浮动窗；100% 遵循宿主 `--dsw-alias-*` 令牌，深浅双色与中英双语无缝跟随。
+- ⏹️ **一键停用团队协作**：顶栏内嵌「团队」快捷开关（默认聚焦取消防误触），无需返回模型菜单即可随时收尾当前团队模式并保留历史任务记录；手动关掉面板后也不会在后续流转中反复弹回打扰。
 
-`package.json` 声明 `engines.dsh: ">=0.2.2-rc.1 <0.3.0"`，并在 `dsh.compatibility` 里记录已验收的宿主版本。宿主侧目前有一个已上报的缺陷会让桌面端收不到投影帧（[discussion #13416](https://github.com/deepseek-ai/deepseek-harness/discussions/13416)），排查过程见 [`docs/issues/`](docs/issues/)。
+---
 
-## 工作原理
+## 💡 为什么做原生投影看板？
 
-```text
-index.js                Host 侧空实现：不提供服务、不注册工具、不持久化
-client.js               Client 侧 bundle：注册标签类型 team kind、标题、正文与观察器
-  ├─ TeamKanbanWatcher  挂在 conversation.session.header.actions，按投影开/关标签
-  ├─ TeamKanbanTitle    标签胶囊：图标 + 标题 + 完成度角标
-  └─ TeamKanbanBoard    三列看板：概览、队友条、卡片、展开详情
-```
+市面上常见的 Kanban 插件大多面向「人给多个独立会话派单」，需要维护一套外部数据库与自定义工具；`dsh-team-kanban` 专注解决**同一个复杂会话内，Lead 与多个 Teammate 如何围绕共享 DAG 拆解、阻塞与接力**：
 
-- **数据**：`useProjection('agentTeam')` 是唯一事实源；队友名册与运行态来自 `agentTeam.members` / `subagentCatalog` / `useSessionStatus`。
-- **统一入口**：三条来源（投影 face、会话列表快照、兜底拉取）都经 `newestTeam` → `normalizeTeam` 汇聚成一个值，看板与角标读同一份，不会互相落后。
-- **兜底拉取**：因为上面那个宿主缺陷，watcher 按 `pullPlan` 有节奏地补拉——有人干活时 2.5s，有未完成任务但没人在跑时 10s。空闲或子会话不做周期轮询，但挂载和每轮结束时各做三次有界探测（0 / 1.2 / 3.6 秒），兜住「回合最后一秒才建出第一个任务、而投影帧根本没送到」的情况；宿主没装团队功能时探测一次就停。
-- **样式**：`ctx.effect` 注入 `<style data-plugin="dsh-team-kanban">`，卸载时移除；所有类名走 `.tkb-*` 前缀，语言包走独立命名空间 `teamKanban`。
+| 维度 | 传统外部项目看板 | `dsh-team-kanban` |
+|---|---|---|
+| **数据源** | 插件自建 SQLite + 自定义工具同步 | 直接读取宿主 `agentTeam` 原生投影 |
+| **协作粒度** | 一张卡片对应一个独立会话 | 同一会话内多智能体共享任务流 |
+| **依赖表达** | 需手动维护列状态 | 原生 `blockedBy` DAG，自动推导就绪/阻塞与下游瓶颈 |
+| **面板生命周期** | 常驻面板，需手动开闭与清理 | 有团队任务自动出现，收口自动退场 |
 
-## 隐私与边界
+---
 
-- 不写会话、不调 `team_task_*`、不改任务状态。**唯一的写操作是停用团队协作**（`agentTeams.setEnabled(sessionId, false)`），且必须由你在看板里确认。
-- 不读 `~/.dsh/sessions`，不发任何网络请求。宿主 RPC 只有两个：只读的 `ctx.remote.session.projections({ sessionId })`，以及停用按钮触发的 `ctx.remote.agentTeams.setEnabled(...)`。
-- 不 require 宿主的内部 UI 包（`dsh-client-ui-primitives`、`dsh-client-ui-agent-team` 等），只依赖公开的 slot / projection / locale / sidebarRight 契约。
-- 唯一写入是浏览器内的 UI 状态（卡片展开、手动关闭标记）以及一条排障记录 `localStorage['team-kanban:diag.v1']`；两者都不含对话内容，也不离开本机。
+## 🔒 轻量与零侵入设计
 
-## 开发
+- **零外部存储、零配置**：不建本地数据库、不发任何外部网络请求，装上即跟随宿主 `team_task_*` 工具流实时渲染。
+- **职责边界清晰**：看板专注可视化观察，不篡改会话或任务内容；唯一写入口是由你手动二次确认的「停用团队协作」。
+- **纯净自包含**：零第三方运行时依赖，样式隔离在 `.tkb-*` 命名空间下，卸载插件即干净移除。
 
-Node ≥ 20，无第三方依赖，无构建步骤——`client.js` 是手写的 `__ModuleLoader__` bundle。
+---
 
-```bash
-npm run check   # node --check 两个入口
-npm test        # node:test，43 项：纯函数、双结构渲染冒烟、清单一致性、旧标签清理、空闲探测、诊断记录、团队开关、WCAG 对比度与双向规则同构
-```
+## 🛠️ 架构与本地开发
 
-测试用假的 `__ModuleLoader__` 加载 `client.js`，用 hook 形状的 React 替身走完渲染路径，不需要浏览器或宿主。
+项目要求 Node ≥ 20，无构建打包步骤，`client.js` 直接作为宿主浏览器侧模块运行：
 
 ```text
 dsh-team-kanban/
-├── client.js            # 浏览器侧全部实现（UI + watcher + 拉取兜底）
-├── index.js             # Host 侧空实现
-├── cordis.patch.yml     # 向 profile 注入插件行
-├── locale/{zh,en}.json  # 插件市场元数据
-├── test/                # node:test
-├── prototype/           # 离线视觉原型
-├── PRD.md / DESIGN.md   # 需求与技术设计（含宿主契约核实记录）
-└── docs/                # 排查记录与宿主缺陷报告
+├── client.js            # 客户端核心实现：Watcher 状态机 + 标签角标 + 三列看板与动效
+├── index.js             # Host 侧轻量入口
+├── cordis.patch.yml     # Desktop profile 注入声明
+├── locale/{zh,en}.json  # 中英文双语词典
+├── prototype/           # 零依赖离线交互原型
+├── media/launch-v5/     # Remotion 产品宣传片工程与工作台清单
+└── test/                # 43 项自动化单测（状态机、渲染、WCAG 对比度与双向样式同构）
 ```
 
-## 排障
+```bash
+npm run check   # 语法与入口静态检查
+npm test        # 运行全部 43 项单元测试
+```
 
-看板不出现时，先看 `localStorage['team-kanban:diag.v1']`（DevTools → Application → Local Storage，或插件报障时附上这一条）：
+<details>
+<summary>🔍 <b>排障小贴士（看板未自动弹出时）</b></summary>
 
-| `phase` | 含义 |
+可在宿主 DevTools → Application → Local Storage 查看 `localStorage['team-kanban:diag.v1']` 快速定位当前阶段：
+
+| `phase` 值 | 含义 |
 |---|---|
-| 键不存在 | 客户端半根本没执行：宿主图里的行 id 与 `client.js` 注册的 id 不一致（常见于改名后旧包条目没清干净） |
-| `apply` | 客户端模块跑起来了，但停在标签类型注册之前 |
-| `registered` | 标签类型注册成功；看 `kind` 是否等于 `dsh-team-kanban.board` |
-| `register-failed` | 宿主拒绝注册，`error` 通常含 `already registered`（同一份代码被注册两次） |
-| `watch` | watcher 已在跑，`tasks` / `running` 是它当时的判断；`tasks: -1` 表示投影还没到 |
-| `opened` / `open-failed` | 打开成功 / 9 秒内重试都失败，`error` 是最后一次的原因 |
-| `pull-failed` / `unsupported` | 拉投影失败 / 宿主没有 `agentTeam` 投影 |
+| `registered` | 标签类型 `dsh-team-kanban.board` 注册就绪，等待团队任务出现 |
+| `watch` | 观察器运行中（可查看字段内 `tasks` 与 `running` 计数） |
+| `opened` | 已成功在右侧栏打开任务板 |
+| `register-failed` | 重复注册冲突（通常见于旧版 `@local/` 条目未清理干净） |
+| `unsupported` | 当前宿主版本尚未提供 `agentTeam` 会话投影 |
 
-## 已知限制
+更多技术细节与宿主契约设计可参阅 [`PRD.md`](PRD.md) 与 [`DESIGN.md`](DESIGN.md)。
 
-- 桌面端投影帧不推送（宿主缺陷），实时性靠有界拉取兜底：回合中新建的任务最坏要等一个 10 秒慢周期，回合结束后建立的约 1–4 秒内出现。
-- 只读：不能在界面里建任务、认领、改状态——这些仍走 `team_task_*` 与对话。
-- 只在根会话显示，与官方顶部 `TeamBoard` 的范围一致。
+</details>
 
-## 路线图
+---
 
-- 等宿主修复投影推送后，删掉拉取兜底，回到纯事件驱动。
-- 在只读看板稳定后，评估认领 / 完成等最小写操作。
-- 补齐 T1 / T2 / T5 / T6 的实机验收矩阵。
-
-## License
+## 📄 License
 
 [MIT](LICENSE) © 2026 rongyishuaige7
