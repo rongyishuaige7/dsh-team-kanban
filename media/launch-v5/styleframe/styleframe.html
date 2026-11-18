@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>dsh-team-kanban v0.5.7 — Visual Direction Styleframe</title>
+  <style>
+    :root {
+      --stage-top: #f5f8fd;
+      --stage-mid: #edf2fb;
+      --stage-btm: #e3ebf7;
+      --surface-page: #ffffff;
+      --surface-recessed: #f4f6fa;
+      --surface-dark: #151517;
+      --surface-dark-2: #212123;
+      --border-l1: rgba(15, 17, 21, 0.08);
+      --border-dark: rgba(255, 255, 255, 0.09);
+      --ink-1: #0f1115;
+      --ink-2: #61666b;
+      --ink-3: #81858c;
+      --brand: #4176e6;
+      --brand-dark: #7aaaff;
+      --brand-soft: #e4edfd;
+      --emerald: #22c55e;
+      --emerald-ink: #15803d;
+      --amber: #dd8629;
+      --crimson: #ec1313;
+      --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "SF Pro Display", "Helvetica Neue", sans-serif;
+      --mono: "SF Mono", ui-monospace, Menlo, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      font-family: var(--sans);
+      color: var(--ink-1);
+      background:
+        radial-gradient(ellipse 62% 65% at 32% 10%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 70%),
+        radial-gradient(ellipse 50% 48% at 86% 88%, rgba(65,118,230,0.08) 0%, rgba(65,118,230,0) 72%),
+        linear-gradient(180deg, var(--stage-top) 0%, var(--stage-mid) 52%, var(--stage-btm) 100%);
+      position: relative;
+    }
+    .grid-dots {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(15, 17, 21, 0.09) 1.5px, transparent 2px);
+      background-size: 36px 36px;
+      -webkit-mask-image: radial-gradient(ellipse 68% 64% at 50% 48%, #000 35%, transparent 88%);
+      pointer-events: none;
+    }
+    .layout {
+      position: absolute;
+      inset: 72px 88px;
+      display: grid;
+      grid-template-columns: 820px 1fr;
+      gap: 56px;
+      align-items: center;
+    }
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font: 600 26px/1 var(--mono);
+      letter-spacing: 0.1em;
+      color: var(--brand);
+      background: var(--brand-soft);
+      padding: 12px 20px;
+      border-radius: 999px;
+      border: 1px solid rgba(65, 118, 230, 0.2);
+    }
+    .kicker-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--brand);
+      box-shadow: 0 0 0 4px rgba(65, 118, 230, 0.2);
+    }
+    h1 {
+      margin-top: 28px;
+      font-size: 92px;
+      font-weight: 760;
+      line-height: 1.06;
+      letter-spacing: -0.035em;
+      color: var(--ink-1);
+    }
+    h1 .accent {
+      color: var(--brand);
+    }
+    .sub {
+      margin-top: 24px;
+      font-size: 36px;
+      font-weight: 500;
+      line-height: 1.42;
+      color: var(--ink-2);
+    }
+    .cli {
+      margin-top: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 24px;
+      border-radius: 12px;
+      background: var(--surface-page);
+      border: 1px solid var(--border-l1);
+      box-shadow: inset 0 1px 0 #fff, 0 12px 30px -12px rgba(15, 25, 50, 0.14);
+      font: 550 28px/1.2 var(--mono);
+      white-space: nowrap;
+      color: var(--ink-1);
+    }
+    .cli .prompt { color: var(--brand); font-weight: 700; }
+    .swatches {
+      margin-top: 38px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+    .swatch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.82);
+      border: 1px solid var(--border-l1);
+      font: 600 22px/1 var(--mono);
+      color: var(--ink-2);
+    }
+    .dot { width: 18px; height: 18px; border-radius: 5px; }
+
+    /* Right Specimen Stack */
+    .stage-cards {
+      position: relative;
+      height: 820px;
+    }
+    .window-light {
+      position: absolute;
+      left: 0;
+      top: 24px;
+      width: 860px;
+      padding: 28px;
+      border-radius: 16px;
+      background: var(--surface-page);
+      border: 1px solid var(--border-l1);
+      box-shadow:
+        inset 0 1px 0 #ffffff,
+        0 2px 6px rgba(15, 25, 50, 0.06),
+        0 34px 76px -20px rgba(15, 25, 50, 0.18);
+    }
+    .head-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-l1);
+    }
+    .tab-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: var(--surface-recessed);
+      font-size: 24px;
+      font-weight: 650;
+    }
+    .strip {
+      flex: 1;
+      height: 12px;
+      border-radius: 999px;
+      background: #e9edf4;
+      box-shadow: inset 0 1px 2px rgba(15,17,21,0.08);
+      overflow: hidden;
+      display: flex;
+    }
+    .strip-done { width: 42%; background: var(--emerald); }
+    .strip-active { width: 29%; background: var(--brand); }
+    .mates { display: flex; gap: 8px; }
+    .mate {
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: var(--brand);
+      font: 700 20px/1 var(--mono);
+    }
+    .disarm-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-l1);
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--ink-2);
+    }
+    .hero-card {
+      margin-top: 24px;
+      padding: 24px 26px;
+      border-radius: 12px;
+      background: #ffffff;
+      border: 1.5px solid rgba(65, 118, 230, 0.35);
+      box-shadow: 0 18px 42px -16px rgba(65, 118, 230, 0.22);
+    }
+    .card-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 22px;
+    }
+    .task-id { font: 700 22px/1 var(--mono); color: var(--ink-3); }
+    .badge-warn {
+      padding: 5px 12px;
+      border-radius: 6px;
+      background: rgba(221, 134, 41, 0.13);
+      color: var(--amber);
+      font-weight: 650;
+    }
+    .badge-unlock {
+      padding: 5px 12px;
+      border-radius: 6px;
+      background: var(--brand-soft);
+      color: var(--brand);
+      font: 650 20px/1 var(--mono);
+    }
+    .badge-conflict {
+      padding: 5px 12px;
+      border-radius: 6px;
+      background: rgba(236, 19, 19, 0.1);
+      color: var(--crimson);
+      font-weight: 650;
+    }
+    .card-title {
+      margin-top: 14px;
+      font-size: 32px;
+      font-weight: 680;
+      color: var(--ink-1);
+    }
+    .card-deps {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      font: 550 22px/1 var(--mono);
+      color: var(--ink-2);
+    }
+    .dep-chip {
+      padding: 5px 11px;
+      border-radius: 6px;
+      background: var(--surface-recessed);
+      border: 1px solid var(--border-l1);
+    }
+
+    /* Dark Mode Twin Card Specimen */
+    .window-dark {
+      position: absolute;
+      right: -12px;
+      bottom: 24px;
+      width: 560px;
+      padding: 24px 26px;
+      border-radius: 14px;
+      background: var(--surface-dark);
+      color: #f5f6f8;
+      border: 1px solid var(--border-dark);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.08),
+        0 32px 70px -16px rgba(5, 8, 18, 0.52);
+    }
+    .dark-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font: 600 20px/1 var(--mono);
+      color: var(--brand-dark);
+      margin-bottom: 14px;
+    }
+    .dark-card {
+      padding: 18px 20px;
+      border-radius: 10px;
+      background: var(--surface-dark-2);
+      border: 1px solid var(--border-dark);
+    }
+    .dark-title {
+      font-size: 27px;
+      font-weight: 650;
+      margin-top: 8px;
+    }
+
+    /* Bottom Caption Bar Floor Verification (60px Q11 check) */
+    .caption-check {
+      position: absolute;
+      left: 88px;
+      bottom: 36px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .caption-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      background: var(--brand);
+    }
+    .caption-text {
+      font-size: 60px;
+      font-weight: 740;
+      letter-spacing: -0.025em;
+      color: var(--ink-1);
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-dots"></div>
+  <div class="layout">
+    <div>
+      <div class="kicker"><span class="kicker-dot"></span>DSH-TEAM-KANBAN · v0.5.7</div>
+      <h1>右侧栏里的<br /><span class="accent">活体任务看板</span></h1>
+      <p class="sub">直读原生 agentTeam 会话投影 · 依赖血缘与写冲突一眼可见 · 有团队才出现，清空即收起。</p>
+      <div class="cli"><span class="prompt">$</span> dsh plugin --profile desktop add dsh-team-kanban</div>
+      <div class="swatches">
+        <div class="swatch"><span class="dot" style="background:#4176e6"></span>#4176E6 Brand</div>
+        <div class="swatch"><span class="dot" style="background:#22c55e"></span>#22C55E Done</div>
+        <div class="swatch"><span class="dot" style="background:#dd8629"></span>#DD8629 Blocked</div>
+        <div class="swatch"><span class="dot" style="background:#151517"></span>#151517 Dark</div>
+      </div>
+    </div>
+
+    <div class="stage-cards">
+      <div class="window-light">
+        <div class="head-bar">
+          <div class="tab-pill">◎ 任务板 3/7</div>
+          <div class="strip"><div class="strip-done"></div><div class="strip-active"></div></div>
+          <div class="mates"><span class="mate">L</span><span class="mate">W1</span><span class="mate">W2</span></div>
+          <div class="disarm-btn">团队 ▾</div>
+        </div>
+        <div class="hero-card">
+          <div class="card-top">
+            <span class="task-id">#4</span>
+            <span class="badge-warn">阻塞</span>
+            <span class="badge-unlock">↘ 2 解锁</span>
+            <span class="badge-conflict">⚠ 写范围冲突</span>
+          </div>
+          <div class="card-title">校验阻塞链与并发写范围冲突徽章</div>
+          <div class="card-deps">
+            <span>↖ 前置依赖</span>
+            <span class="dep-chip">#2 契约定义</span>
+            <span class="dep-chip">#3 投影快照</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="window-dark">
+        <div class="dark-head">
+          <span>--dsw-alias-* · DARK PARITY</span>
+          <span style="color:#22c55e">● 进行中</span>
+        </div>
+        <div class="dark-card">
+          <div style="font:600 20px/1 var(--mono); color:#a1a6b0">#4 · W1 认领执行 · ↘ 2</div>
+          <div class="dark-title">前置任务完成即刻解锁换列</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="caption-check">
+    <span class="caption-dot"></span>
+    <span class="caption-text">依赖血缘与写冲突，一眼锁定瓶颈</span>
+  </div>
+</body>
+</html>

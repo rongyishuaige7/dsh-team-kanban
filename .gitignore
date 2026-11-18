@@ -10,7 +10,9 @@ dist/
 # Frame capture cache (reproduced via tools/capture/)
 /capture/
 
-# launch-v4 采集帧与切段缓存（体积大，可由 tools/ 重新生成）
-media/launch-v4/capture/
-media/launch-v4/public/footage/
-media/launch-v4/out/
+# launch-v5 采集纹理、录屏片段与渲染输出缓存（可由 media/launch-v5/tools/ 确定性复现）
+media/launch-v5/public/textures/
+media/launch-v5/public/textures-en/
+media/launch-v5/public/clips/
+media/launch-v5/public/audio/*.mp3
+media/launch-v5/out/

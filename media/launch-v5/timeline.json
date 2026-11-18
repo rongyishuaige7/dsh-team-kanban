@@ -1,0 +1,30 @@
+{
+  "id": "kanban-launch-v5",
+  "fps": 30,
+  "size": [1920, 1080],
+  "durationInFrames": 1124,
+  "durationSeconds": 37.47,
+  "engine": "remotion@4.0.484 + video-shotcraft",
+  "capture": {
+    "viewport": [1920, 1080],
+    "deviceScaleFactor": 2,
+    "heroCutoutScaleFactor": 4,
+    "liveFlowSpeedFactor": 4,
+    "format": "png @2x/@4x + jpeg q95 resampled mp4",
+    "technique": "PageCam CSS zoom 布局级高清栅格化 + 4x 慢放重采样零重复帧实机录屏 + 真实 DOM 坐标驱动交互"
+  },
+  "shots": [
+    { "id": "s1_open", "from": 0, "dur": 121, "kind": "title", "recipe": "brand-ink-open", "source": "SceneOpen.tsx" },
+    { "id": "s2_hero", "from": 121, "dur": 177, "kind": "live", "recipe": "spotlight-hero-card", "source": "textures/app-step7-light.png + card4-hero-4x.png" },
+    { "id": "c1_title", "from": 298, "dur": 59, "kind": "title", "recipe": "paper-title-card", "source": "ChapterTitleCard.tsx" },
+    { "id": "s3_flow", "from": 357, "dur": 177, "kind": "live", "recipe": "depth-layer-moves · multiplane", "source": "clips/live-flow-light.mp4" },
+    { "id": "c2_title", "from": 534, "dur": 59, "kind": "title", "recipe": "paper-title-card", "source": "ChapterTitleCard.tsx" },
+    { "id": "s4_theme", "from": 593, "dur": 177, "kind": "live", "recipe": "theme-switch-moves · theme-sweep-toggle", "source": "textures/app-step7-{light,dark}.png + narrow-360-{light,dark}.png" },
+    { "id": "s5_disarm", "from": 770, "dur": 177, "kind": "live", "recipe": "cursor-flyover", "source": "textures/app-disarm-{before,pop,closed}.png" },
+    { "id": "s6_outro", "from": 947, "dur": 177, "kind": "live", "recipe": "outro-group-photo-launch", "source": "8x @2x/@4x product cutouts" }
+  ],
+  "audio": {
+    "bgm": "house-vibez.mp3 (122.0141 BPM, Mixkit Stock Music Free License)",
+    "sfxCues": 22
+  }
+}

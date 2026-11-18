@@ -264,3 +264,33 @@ test('buildModel falls back to the subagent catalog without a roster', () => {
   assert.deepEqual(model.lanes.pending.map((task) => task.id), ['task-3']);
   assert.deepEqual(model.dependents.get('task-1'), ['task-2']);
 });
+
+test('disambiguateMonos keeps unique initials compact and resolves colliding names', () => {
+  const { disambiguateMonos } = loadClient();
+  const unique = disambiguateMonos([
+    { id: '1', label: 'Bob' },
+    { id: '2', label: 'Cara' },
+  ]);
+  assert.equal(unique.get('1'), 'B');
+  assert.equal(unique.get('2'), 'C');
+
+  const colliding = disambiguateMonos([
+    { id: 'w1', label: 'worker-1' },
+    { id: 'w2', label: 'worker-2' },
+    { id: 'sa', label: 'subagent-alpha' },
+    { id: 'sb', label: 'subagent-beta' },
+    { id: 'c1', label: '探索者甲' },
+    { id: 'c2', label: '探索者乙' },
+    { id: 'dup1', label: 'runner' },
+    { id: 'dup2', label: 'runner' },
+  ]);
+  assert.equal(colliding.get('w1'), 'W1');
+  assert.equal(colliding.get('w2'), 'W2');
+  assert.equal(colliding.get('sa'), 'SA');
+  assert.equal(colliding.get('sb'), 'SB');
+  assert.equal(colliding.get('c1'), '探甲');
+  assert.equal(colliding.get('c2'), '探乙');
+  assert.equal(colliding.get('dup1'), 'R1');
+  assert.equal(colliding.get('dup2'), 'R2');
+});
+

@@ -6,12 +6,13 @@ window.__ModuleLoader__.load({
     const React = require('react');
     const h = React.createElement;
     const { useCallback, useEffect, useMemo, useRef, useState } = React;
+    const useLayout = React.useLayoutEffect || useEffect;
 
     const PKG = 'dsh-team-kanban';
     const NS = 'teamKanban';
     /* Stamped on the board root and on `window` so a running host can be told
        apart from the repository without reading the served bundle. */
-    const CLIENT_REV = '0.5.6';
+    const CLIENT_REV = '0.5.7';
     const TAB_ID = PKG;
     /* Namespaced on purpose: the host turns a kind into the opaque page
        address `sidebar://<kind>`, and a bare `team-board` would be the first
@@ -75,7 +76,11 @@ window.__ModuleLoader__.load({
       'card.writeScopes': '写入范围',
       'card.running': '运行中',
       'card.idle': '空闲',
+      'card.provisioning': '启动中',
+      'card.failed': '启动失败',
       'card.lead': '主智能体',
+      'column.collapse': '折叠{lane}',
+      'column.expand': '展开{lane}',
       'error.title': '任务记录异常',
       'error.projection': '任务记录异常：{message}',
       'a11y.board': '智能体任务板',
@@ -118,7 +123,11 @@ window.__ModuleLoader__.load({
       'card.writeScopes': 'Write scopes',
       'card.running': 'Running',
       'card.idle': 'Idle',
+      'card.provisioning': 'Starting',
+      'card.failed': 'Failed',
       'card.lead': 'Lead agent',
+      'column.collapse': 'Collapse {lane}',
+      'column.expand': 'Expand {lane}',
       'error.title': 'Invalid task record',
       'error.projection': 'Invalid task record: {message}',
       'a11y.board': 'Agent team kanban',
@@ -164,6 +173,49 @@ window.__ModuleLoader__.load({
       if (!text) return '?';
       const first = Array.from(text)[0];
       return /[a-z]/i.test(first) ? first.toUpperCase() : first;
+    }
+
+    function upperChar(ch) {
+      return /[a-z]/i.test(ch) ? ch.toUpperCase() : ch;
+    }
+
+    function secondaryOf(value) {
+      const text = String(value == null ? '' : value).trim();
+      if (!text) return '';
+      const parts = text.split(/[-_.\s/#:]+/).filter(Boolean);
+      if (parts.length >= 2) return initialOf(parts[parts.length - 1]);
+      const chars = Array.from(text);
+      return chars.length >= 2 ? upperChar(chars[chars.length - 1]) : '';
+    }
+
+    /* Disambiguate colliding teammate initials (e.g. "worker-1"/"worker-2" -> "W1"/"W2",
+       "subagent-alpha"/"subagent-beta" -> "SA"/"SB") while keeping unique names 1-char. */
+    function disambiguateMonos(entries) {
+      const map = new Map();
+      const groups = new Map();
+      (Array.isArray(entries) ? entries : EMPTY).forEach((entry) => {
+        if (!entry || !entry.id) return;
+        const ch = initialOf(entry.label);
+        if (!groups.has(ch)) groups.set(ch, []);
+        groups.get(ch).push(entry);
+      });
+      groups.forEach((group, ch) => {
+        if (group.length === 1) {
+          map.set(group[0].id, ch);
+          return;
+        }
+        const candidates = group.map((entry) => {
+          const sec = secondaryOf(entry.label);
+          return sec ? ch + sec : ch;
+        });
+        const counts = new Map();
+        candidates.forEach((cand) => counts.set(cand, (counts.get(cand) || 0) + 1));
+        group.forEach((entry, index) => {
+          const cand = candidates[index];
+          map.set(entry.id, cand.length > 1 && counts.get(cand) === 1 ? cand : ch + (index + 1));
+        });
+      });
+      return map;
     }
 
     function reducedMotion() {
@@ -308,6 +360,21 @@ window.__ModuleLoader__.load({
       h('circle', { cx: 8, cy: 8, r: 6 }),
       h('path', { d: 'M8 5v3.5' }),
       h('path', { d: 'M8 10.8v.1' }));
+    }
+
+    function ChevronIcon({ className }) {
+      return h('svg', {
+        viewBox: '0 0 12 12',
+        className: className,
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.5,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': 'true',
+        focusable: 'false',
+      },
+      h('path', { d: 'M3 4.5 6 7.5 9 4.5' }));
     }
 
     /* ------------------------------------------------------------------ *
@@ -698,6 +765,26 @@ window.__ModuleLoader__.load({
         });
       }
 
+      const monoEntries = [];
+      const monoSeen = new Set();
+      mates.forEach((mate) => {
+        if (mate.lead || monoSeen.has(mate.id)) return;
+        monoSeen.add(mate.id);
+        monoEntries.push({ id: mate.id, label: mate.label });
+      });
+      tasks.forEach((task) => {
+        if (!task.ownerId || task.ownerId === leadId || monoSeen.has(task.ownerId)) return;
+        monoSeen.add(task.ownerId);
+        const cat = catalogById.get(task.ownerId);
+        const label = task.ownerName || (cat && (cat.label || cat.name)) || task.ownerId;
+        monoEntries.push({ id: task.ownerId, label });
+      });
+      const monoById = disambiguateMonos(monoEntries);
+      mates.forEach((mate) => {
+        mate.mono = mate.lead ? '' : (monoById.get(mate.id) || initialOf(mate.label));
+      });
+      const mateById = new Map(mates.map((mate) => [mate.id, mate]));
+
       const counts = {
         pending: ready.length + blocked.length,
         in_progress: active.length,
@@ -719,6 +806,8 @@ window.__ModuleLoader__.load({
         allDone: tasks.length > 0 && done.length === tasks.length,
         catalogById,
         mates,
+        mateById,
+        monoById,
         isRunning,
         lanes: { pending: ready.concat(blocked), in_progress: active, completed: done },
       };
@@ -732,6 +821,15 @@ window.__ModuleLoader__.load({
       const entry = model.catalogById.get(task.ownerId);
       if (entry) return entry.label || entry.name || entry.id;
       return task.ownerId;
+    }
+
+    function mateStatusText(mate, running, t) {
+      if (mate && mate.phase === 'failed') {
+        return mate.error ? t('card.failed') + ' · ' + mate.error : t('card.failed');
+      }
+      if (running) return t('card.running');
+      if (mate && mate.phase === 'provisioning') return t('card.provisioning');
+      return t('card.idle');
     }
 
     function statusText(task, t, owner) {
@@ -768,9 +866,11 @@ window.__ModuleLoader__.load({
       const tabInfo = useTabInfo();
 
       const [expandedId, setExpandedId] = useState(null);
+      const [collapsed, setCollapsed] = useState({});
       const [spot, setSpot] = useState(null);
       const [pinned, setPinned] = useState(false);
       const [lineageId, setLineageId] = useState(null);
+      const [wires, setWires] = useState(EMPTY);
       const [flashId, setFlashId] = useState(null);
       const [tip, setTip] = useState(null);
       const [entering, setEntering] = useState(true);
@@ -781,12 +881,16 @@ window.__ModuleLoader__.load({
 
       const rootRef = useRef(null);
       const gridRef = useRef(null);
+      const flightsRef = useRef(null);
+      const cardRectsRef = useRef(null);
+      const activeFlightsRef = useRef([]);
       const tipTimer = useRef(0);
       const lineageTimer = useRef(0);
       const uiTimers = useRef({});
       const previousTasks = useRef(null);
       const pinnedRef = useRef(false);
       const teamRef = useRef(null);
+      const cancelBtnRef = useRef(null);
 
       const model = useMemo(
         () => buildModel(team, catalog, statuses, summaries, sessionId),
@@ -810,6 +914,18 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         if (lineageId && !model.map.has(lineageId)) setLineageId(null);
       }, [model, lineageId]);
+
+      useEffect(() => {
+        const stale = LANES.some((key) => collapsed[key] && model.lanes[key].length === 0);
+        if (!stale) return;
+        setCollapsed((prev) => {
+          const next = Object.assign({}, prev);
+          LANES.forEach((key) => {
+            if (model.lanes[key].length === 0) delete next[key];
+          });
+          return next;
+        });
+      }, [model, collapsed]);
 
       const hideTip = useCallback(() => {
         clearTimeout(tipTimer.current);
@@ -838,6 +954,10 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         if (!teamMenu) return undefined;
+        const cancelBtn = cancelBtnRef.current;
+        if (cancelBtn && typeof cancelBtn.focus === 'function') {
+          try { cancelBtn.focus({ preventScroll: true }); } catch (error) { cancelBtn.focus(); }
+        }
         const onDown = (event) => {
           const node = teamRef.current;
           if (node && typeof node.contains === 'function' && event.target && node.contains(event.target)) return;
@@ -870,6 +990,121 @@ window.__ModuleLoader__.load({
         }, 190);
       }, []);
 
+      const cleanupFlights = useCallback(() => {
+        activeFlightsRef.current.forEach((fn) => {
+          try { fn(); } catch (error) {}
+        });
+        activeFlightsRef.current = [];
+        if (flightsRef.current && typeof flightsRef.current.replaceChildren === 'function') {
+          flightsRef.current.replaceChildren();
+        }
+      }, []);
+
+      const snapshotRects = useCallback((root) => {
+        const rects = new Map();
+        if (!root || typeof root.getBoundingClientRect !== 'function') return rects;
+        const rr = root.getBoundingClientRect();
+        if (!rr.width && !rr.height) return rects;
+        Array.from(root.querySelectorAll('.tkb-card')).forEach((el) => {
+          const id = el.getAttribute('data-task-id');
+          if (!id) return;
+          const lane = el.closest && el.closest('.tkb-lane');
+          if (lane && lane.hasAttribute('data-collapsed')) return;
+          const r = el.getBoundingClientRect();
+          if (!r.width && !r.height) return;
+          rects.set(id, {
+            x: r.left - rr.left,
+            y: r.top - rr.top,
+            w: r.width,
+            h: r.height,
+            status: el.getAttribute('data-status') || '',
+            el,
+          });
+        });
+        return rects;
+      }, []);
+
+      const motionKey = model.tasks
+        .map((task) => task.id + ':' + task.status + ':' + (task.ready ? '1' : '0'))
+        .join('|');
+
+      useLayout(() => {
+        const root = rootRef.current;
+        if (!root || typeof root.getBoundingClientRect !== 'function') return undefined;
+        cleanupFlights();
+        const nextRects = snapshotRects(root);
+        const prevRects = cardRectsRef.current;
+        if (prevRects && prevRects.size > 0 && !reducedMotion() && nextRects.size > 0) {
+          let crossCount = 0;
+          nextRects.forEach((next, id) => {
+            const prev = prevRects.get(id);
+            if (prev && prev.status !== next.status) crossCount += 1;
+          });
+          let staggerIndex = 0;
+          nextRects.forEach((next, id) => {
+            const prev = prevRects.get(id);
+            if (!prev) return;
+            const dx = prev.x - next.x;
+            const dy = prev.y - next.y;
+            if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+            const el = next.el;
+            if (prev.status !== next.status && crossCount <= 12
+              && flightsRef.current && typeof el.cloneNode === 'function' && typeof el.animate === 'function') {
+              const ghost = el.cloneNode(true);
+              ghost.removeAttribute('data-task-id');
+              ghost.setAttribute('aria-hidden', 'true');
+              ghost.className = 'tkb-card tkb-flight-card';
+              Object.assign(ghost.style, {
+                position: 'absolute',
+                left: next.x + 'px',
+                top: next.y + 'px',
+                width: next.w + 'px',
+                height: next.h + 'px',
+                margin: '0',
+                pointerEvents: 'none',
+              });
+              flightsRef.current.appendChild(ghost);
+              el.style.visibility = 'hidden';
+              const dist = Math.hypot(dx, dy) || 1;
+              const lift = Math.min(18, 5 + dist * 0.045);
+              const delay = Math.min(staggerIndex * 30, 180);
+              staggerIndex += 1;
+              const anim = ghost.animate([
+                { transform: 'translate(' + dx + 'px, ' + dy + 'px) scale(0.985)' },
+                { transform: 'translate(' + (dx * 0.48) + 'px, ' + (dy * 0.48 - lift) + 'px) scale(1.025)', offset: 0.45 },
+                { transform: 'none' },
+              ], { duration: 420, delay, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'both' });
+              let settled = false;
+              const finish = () => {
+                if (settled) return;
+                settled = true;
+                try { anim.cancel(); } catch (error) {}
+                if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
+                el.style.visibility = '';
+              };
+              activeFlightsRef.current.push(finish);
+              if (anim && anim.finished && typeof anim.finished.then === 'function') {
+                anim.finished.then(finish, finish);
+              } else {
+                const tid = setTimeout(finish, 440 + delay);
+                activeFlightsRef.current.push(() => clearTimeout(tid));
+              }
+            } else if (typeof el.animate === 'function') {
+              el.animate([
+                { transform: 'translate(' + dx + 'px, ' + dy + 'px)' },
+                { transform: 'none' },
+              ], { duration: 340, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+            }
+          });
+        }
+        const stored = new Map();
+        nextRects.forEach((val, id) => {
+          stored.set(id, { x: val.x, y: val.y, w: val.w, h: val.h, status: val.status });
+        });
+        cardRectsRef.current = stored;
+        return undefined;
+      }, [motionKey, collapsed, cleanupFlights, snapshotRects]);
+
       useEffect(() => {
         const timer = setTimeout(() => setEntering(false), 1000);
         return () => clearTimeout(timer);
@@ -878,11 +1113,12 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         const timers = uiTimers.current;
         return () => {
+          cleanupFlights();
           clearTimeout(tipTimer.current);
           clearTimeout(lineageTimer.current);
           Object.keys(timers).forEach((key) => clearTimeout(timers[key]));
         };
-      }, []);
+      }, [cleanupFlights]);
 
       useEffect(() => {
         const tab = tabInfo && tabInfo.tab;
@@ -942,7 +1178,95 @@ window.__ModuleLoader__.load({
         };
       }, [lineageId, model]);
 
-      const jumpTo = useCallback((taskId) => {
+      useEffect(() => {
+        if (!lineage) {
+          setWires(EMPTY);
+          return;
+        }
+        const root = rootRef.current;
+        if (!root || typeof root.getBoundingClientRect !== 'function') return;
+        const rr = root.getBoundingClientRect();
+        if (rr.width < 540) {
+          setWires(EMPTY);
+          return;
+        }
+        const cardMap = new Map();
+        Array.from(root.querySelectorAll('.tkb-card')).forEach((node) => {
+          const id = node.getAttribute('data-task-id');
+          if (id) cardMap.set(id, node);
+        });
+        const anchorOf = (id) => {
+          const card = cardMap.get(id);
+          if (!card || !card.parentElement) return null;
+          const lane = card.closest && card.closest('.tkb-lane');
+          if (lane && lane.hasAttribute('data-collapsed')) return null;
+          const r = card.getBoundingClientRect();
+          if (!r.width && !r.height) return null;
+          const br = card.parentElement.getBoundingClientRect();
+          let cy = (r.top - rr.top) + Math.min(r.height / 2, 20);
+          let off = false;
+          const minY = br.top - rr.top + 4;
+          const maxY = br.bottom - rr.top - 4;
+          if (cy < minY) { cy = minY; off = true; }
+          else if (cy > maxY) { cy = maxY; off = true; }
+          return {
+            l: r.left - rr.left,
+            r: r.right - rr.left,
+            cx: r.left - rr.left + r.width / 2,
+            cy,
+            off,
+          };
+        };
+        const focus = anchorOf(lineage.id);
+        if (!focus) {
+          setWires(EMPTY);
+          return;
+        }
+        const nextWires = [];
+        const pairs = [];
+        lineage.up.forEach((uid) => {
+          const ut = model.map.get(uid);
+          pairs.push([uid, ut && ut.status === 'completed' ? 'up-done' : 'up-open']);
+        });
+        lineage.down.forEach((did) => pairs.push([did, 'down']));
+        pairs.forEach(([oid, kind]) => {
+          const other = anchorOf(oid);
+          if (!other) return;
+          const start = kind === 'down' ? focus : other;
+          const end = kind === 'down' ? other : focus;
+          let x1;
+          let x2;
+          let c1x;
+          let c2x;
+          if (Math.abs(start.cx - end.cx) > 24) {
+            const dir = start.cx < end.cx ? 1 : -1;
+            x1 = dir > 0 ? start.r : start.l;
+            x2 = dir > 0 ? end.l : end.r;
+            const k = Math.max(28, Math.abs(x2 - x1) * 0.5);
+            c1x = x1 + dir * k;
+            c2x = x2 - dir * k;
+          } else {
+            x1 = start.r - 6;
+            x2 = end.r - 6;
+            const k = 26 + Math.min(40, Math.abs(end.cy - start.cy) * 0.15);
+            c1x = x1 + k;
+            c2x = x2 + k;
+          }
+          nextWires.push({
+            key: kind + ':' + oid,
+            kind,
+            off: start.off || end.off,
+            x1,
+            y1: start.cy,
+            x2,
+            y2: end.cy,
+            d: 'M' + x1 + ',' + start.cy + ' C' + c1x + ',' + start.cy + ' ' + c2x + ',' + end.cy + ' ' + x2 + ',' + end.cy,
+          });
+        });
+        setWires(nextWires.length ? nextWires : EMPTY);
+      }, [lineage, model, collapsed, expandedId]);
+
+      const focusCard = useCallback((taskId) => {
         const root = rootRef.current;
         if (!root) return;
         const card = Array.from(root.querySelectorAll('.tkb-card'))
@@ -957,6 +1281,23 @@ window.__ModuleLoader__.load({
         clearTimeout(uiTimers.current.flash);
         uiTimers.current.flash = setTimeout(() => setFlashId(null), 1100);
       }, []);
+
+      const jumpTo = useCallback((taskId) => {
+        const target = model.map.get(taskId);
+        if (target && collapsed[target.status]) {
+          setCollapsed((prev) => Object.assign({}, prev, { [target.status]: false }));
+          clearTimeout(uiTimers.current.jump);
+          uiTimers.current.jump = setTimeout(() => focusCard(taskId), 40);
+          return;
+        }
+        focusCard(taskId);
+      }, [model, collapsed, focusCard]);
+
+      const toggleLane = useCallback((key) => {
+        hideTip();
+        setLineageId(null);
+        setCollapsed((prev) => Object.assign({}, prev, { [key]: !prev[key] }));
+      }, [hideTip]);
 
       const toggleTask = useCallback((taskId) => {
         setExpandedId((current) => (current === taskId ? null : taskId));
@@ -1025,7 +1366,7 @@ window.__ModuleLoader__.load({
         const lanes = Array.from(grid.querySelectorAll('.tkb-lane'));
         const laneIndex = lane ? lanes.indexOf(lane) : -1;
         if (!lane || laneIndex < 0) return;
-        const cardsIn = (index) => (lanes[index]
+        const cardsIn = (index) => (lanes[index] && !lanes[index].hasAttribute('data-collapsed')
           ? Array.from(lanes[index].querySelectorAll('.tkb-card__hit'))
           : []);
         const current = cardsIn(laneIndex);
@@ -1057,7 +1398,15 @@ window.__ModuleLoader__.load({
         hideTip();
         clearTimeout(lineageTimer.current);
         setLineageId(null);
-      }, [hideTip]);
+        if (activeFlightsRef.current.length === 0 && rootRef.current) {
+          const fresh = snapshotRects(rootRef.current);
+          const stored = new Map();
+          fresh.forEach((val, id) => {
+            stored.set(id, { x: val.x, y: val.y, w: val.w, h: val.h, status: val.status });
+          });
+          cardRectsRef.current = stored;
+        }
+      }, [hideTip, snapshotRects]);
 
       if (!team || team.enabled !== true || model.tasks.length === 0) return null;
 
@@ -1113,7 +1462,7 @@ window.__ModuleLoader__.load({
           })),
         ];
 
-      function renderDetail(task) {
+      function renderDetail(task, expanded) {
         const blockers = Array.isArray(task.blockedBy) ? task.blockedBy : EMPTY;
         const scopes = Array.isArray(task.writeScopes) ? task.writeScopes : EMPTY;
         const warnings = Array.isArray(task.writeScopeWarnings) ? task.writeScopeWarnings : EMPTY;
@@ -1130,6 +1479,7 @@ window.__ModuleLoader__.load({
                   key: id,
                   type: 'button',
                   className: 'tkb-ref',
+                  tabIndex: expanded ? undefined : -1,
                   onClick: (event) => {
                     event.stopPropagation();
                     jumpTo(id);
@@ -1141,7 +1491,11 @@ window.__ModuleLoader__.load({
               })));
         }
 
-        return h('div', { className: 'tkb-card__detail' },
+        return h('div', {
+          className: 'tkb-card__detail',
+          'aria-hidden': expanded ? undefined : 'true',
+        },
+        h('div', { className: 'tkb-card__detail-clip' },
           h('div', { className: 'tkb-detail' },
             h('p', { className: 'tkb-detail__desc' }, task.description || '—'),
             blockers.length ? refRow('dep', t('card.blockedBy'), blockers) : null,
@@ -1160,7 +1514,7 @@ window.__ModuleLoader__.load({
               className: 'tkb-warnline',
             },
             h(WarnIcon),
-            h('span', null, warning)))));
+            h('span', null, warning))))));
       }
 
       function renderCard(task, laneIndex, cardIndex) {
@@ -1169,6 +1523,13 @@ window.__ModuleLoader__.load({
         const expanded = expandedId === task.id;
         const status = statusText(task, t, owner);
         const blockers = Array.isArray(task.blockedBy) ? task.blockedBy : EMPTY;
+        const warnings = Array.isArray(task.writeScopeWarnings) ? task.writeScopeWarnings : EMPTY;
+        const openDownstream = task.status === 'completed'
+          ? EMPTY
+          : (model.dependents.get(task.id) || EMPTY).filter((id) => {
+            const dep = model.map.get(id);
+            return dep && dep.status !== 'completed';
+          });
         const showDeps = task.status === 'pending' && !task.ready && blockers.length > 0;
         const live = task.status === 'in_progress' && running;
 
@@ -1186,43 +1547,52 @@ window.__ModuleLoader__.load({
         }
         if (flashId === task.id) className += ' is-flash';
 
-        let ownerNode = null;
+        const ownerChildren = [];
         if (task.ownerId) {
-          ownerNode = h('span', { className: 'tkb-card__owner' },
-            live ? h('span', { className: 'tkb-card__live-dot', 'aria-hidden': 'true' }) : null,
-            h('span', { className: 'tkb-card__owner-name', title: owner }, owner),
-            h('button', {
-              type: 'button',
-              className: 'tkb-mate',
-              'data-lead': task.ownerId === model.leadId ? '' : undefined,
-              'data-running': running ? '' : undefined,
-              'aria-pressed': pinned && spot === task.ownerId,
-              'aria-label': owner + ' · ' + (running ? t('card.running') : t('card.idle')),
-              onPointerEnter: (event) => {
-                hoverMate(task.ownerId);
-                queueTip(event.currentTarget, owner, running ? t('card.running') : t('card.idle'));
-              },
-              onPointerLeave: () => {
-                leaveMate();
-                hideTip();
-              },
-              onClick: (event) => {
-                event.stopPropagation();
-                togglePin(task.ownerId);
-              },
+          const isLead = task.ownerId === model.leadId;
+          const mateInfo = model.mateById.get(task.ownerId);
+          const mono = isLead
+            ? initialOf(owner)
+            : (model.monoById.get(task.ownerId) || initialOf(owner));
+          const subText = mateStatusText(mateInfo, running, t);
+          if (live) ownerChildren.push(h('span', { key: 'live', className: 'tkb-card__live-dot', 'aria-hidden': 'true' }));
+          ownerChildren.push(h('span', { key: 'name', className: 'tkb-card__owner-name', title: owner }, owner));
+          ownerChildren.push(h('button', {
+            key: 'mate',
+            type: 'button',
+            className: 'tkb-mate',
+            'data-lead': isLead ? '' : undefined,
+            'data-running': running ? '' : undefined,
+            'data-phase': mateInfo && mateInfo.phase !== 'active' ? mateInfo.phase : undefined,
+            'data-wide': mono.length > 1 ? '' : undefined,
+            'aria-pressed': pinned && spot === task.ownerId,
+            'aria-label': owner + ' · ' + subText,
+            onPointerEnter: (event) => {
+              hoverMate(task.ownerId);
+              queueTip(event.currentTarget, owner, subText);
             },
-            h('span', { className: 'tkb-mate__dot', 'aria-hidden': 'true' }),
-            initialOf(owner)));
+            onPointerLeave: () => {
+              leaveMate();
+              hideTip();
+            },
+            onClick: (event) => {
+              event.stopPropagation();
+              togglePin(task.ownerId);
+            },
+          },
+          h('span', { className: 'tkb-mate__dot', 'aria-hidden': 'true' }),
+          mono));
         } else if (task.status === 'in_progress') {
-          ownerNode = h('span', { className: 'tkb-card__owner' },
-            h('span', { className: 'tkb-card__owner-name' }, t('card.unowned')),
-            h('span', {
-              className: 'tkb-mate',
-              'data-none': '',
-              'aria-label': t('card.unowned'),
-              title: t('card.unowned'),
-            }, '?'));
+          ownerChildren.push(h('span', { key: 'name', className: 'tkb-card__owner-name' }, t('card.unowned')));
+          ownerChildren.push(h('span', {
+            key: 'none',
+            className: 'tkb-mate',
+            'data-none': '',
+            'aria-label': t('card.unowned'),
+            title: t('card.unowned'),
+          }, '?'));
         }
+        ownerChildren.push(h(ChevronIcon, { key: 'chev', className: 'tkb-card__chev' }));
 
         return h('article', {
           key: task.id,
@@ -1279,18 +1649,44 @@ window.__ModuleLoader__.load({
                 },
               }, '#' + shortId(depId));
             })
+            : null,
+          openDownstream.length > 0
+            ? h('span', {
+              className: 'tkb-unlocks',
+              onPointerEnter: (event) => queueTip(
+                event.currentTarget,
+                t('card.blocks'),
+                openDownstream.map((id) => '#' + shortId(id)).join(' · '),
+              ),
+              onPointerLeave: hideTip,
+            },
+            h(DownIcon, { className: 'tkb-unlocks__icon' }),
+            String(openDownstream.length))
+            : null,
+          task.status !== 'completed' && warnings.length > 0
+            ? h('span', {
+              className: 'tkb-conflict',
+              onPointerEnter: (event) => queueTip(
+                event.currentTarget,
+                t('card.writeScopes'),
+                warnings[0],
+              ),
+              onPointerLeave: hideTip,
+            }, h(WarnIcon, { className: 'tkb-conflict__icon' }))
             : null),
-        ownerNode,
+        h('span', { className: 'tkb-card__owner' }, ownerChildren),
         h('div', { className: 'tkb-card__title', title: task.subject }, task.subject),
         firstLine(task.description)
           ? h('div', { className: 'tkb-card__preview' }, firstLine(task.description))
           : null,
-        expanded ? renderDetail(task) : null);
+        renderDetail(task, expanded));
       }
 
       function renderLane(key, laneIndex) {
         const laneTasks = model.lanes[key];
         const isEmpty = laneTasks.length === 0;
+        const isCollapsed = !isEmpty && !!collapsed[key];
+        const laneName = t('column.' + key);
         const children = [];
         if (isEmpty) {
           children.push(h('div', { key: 'empty', className: 'tkb-empty' },
@@ -1300,7 +1696,7 @@ window.__ModuleLoader__.load({
           model.ready.forEach((task) => {
             children.push(renderCard(task, laneIndex, children.length));
           });
-          if (model.blocked.length) {
+          if (model.ready.length && model.blocked.length) {
             children.push(h('div', {
               key: 'divider',
               className: 'tkb-divider',
@@ -1324,12 +1720,30 @@ window.__ModuleLoader__.load({
           className: 'tkb-lane',
           'data-lane': key,
           'data-empty': isEmpty ? '' : undefined,
-          'aria-label': t('column.' + key),
+          'data-collapsed': isCollapsed ? '' : undefined,
+          'aria-label': laneName,
         },
-        h('div', { className: 'tkb-lane__head', style: { '--i': laneIndex } },
-          h(StatusGlyph, { status: key }),
-          h('span', { className: 'tkb-lane__name' }, t('column.' + key)),
-          h('span', { className: 'tkb-lane__count' }, String(laneTasks.length))),
+        h('div', {
+          className: 'tkb-lane__head',
+          style: { '--i': laneIndex },
+          role: isEmpty ? undefined : 'button',
+          tabIndex: isEmpty ? undefined : 0,
+          'aria-expanded': isEmpty ? undefined : !isCollapsed,
+          'aria-label': isEmpty
+            ? undefined
+            : t(isCollapsed ? 'column.expand' : 'column.collapse', { lane: laneName }),
+          onClick: isEmpty ? undefined : () => toggleLane(key),
+          onKeyDown: isEmpty ? undefined : (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              toggleLane(key);
+            }
+          },
+        },
+        h(StatusGlyph, { status: key }),
+        h('span', { className: 'tkb-lane__name' }, laneName),
+        h('span', { className: 'tkb-lane__count' }, String(laneTasks.length)),
+        !isEmpty ? h(ChevronIcon, { className: 'tkb-lane__chev' }) : null),
         h('div', { className: 'tkb-lane__body' }, children));
       }
 
@@ -1375,6 +1789,8 @@ window.__ModuleLoader__.load({
           model.mates.length
             ? model.mates.map((mate) => {
               const label = mate.lead ? t('card.lead') : mate.label;
+              const mono = mate.lead ? initialOf(label) : (mate.mono || initialOf(label));
+              const subText = mateStatusText(mate, mate.running, t);
               const active = pinned && spot === mate.id;
               return h('button', {
                 key: mate.id,
@@ -1383,10 +1799,10 @@ window.__ModuleLoader__.load({
                   + (spot === mate.id ? ' is-spot' : '')
                   + (active ? ' is-pinned' : ''),
                 'aria-pressed': active,
-                'aria-label': label + ' · ' + (mate.running ? t('card.running') : t('card.idle')),
+                'aria-label': label + ' · ' + subText,
                 onPointerEnter: (event) => {
                   hoverMate(mate.id);
-                  queueTip(event.currentTarget, label, mate.running ? t('card.running') : t('card.idle'));
+                  queueTip(event.currentTarget, label, subText);
                 },
                 onPointerLeave: () => {
                   leaveMate();
@@ -1401,21 +1817,23 @@ window.__ModuleLoader__.load({
                 className: 'tkb-mate',
                 'data-lead': mate.lead ? '' : undefined,
                 'data-running': mate.running ? '' : undefined,
+                'data-phase': mate.phase !== 'active' ? mate.phase : undefined,
+                'data-wide': mono.length > 1 ? '' : undefined,
               },
               h('span', { className: 'tkb-mate__dot', 'aria-hidden': 'true' }),
-              initialOf(label)),
+              mono),
               h('span', { className: 'tkb-mc__name' }, label));
             })
-            : h('span', { className: 'tkb-mates__empty' }, t('header.noTeammates')))),
-      h('div', {
-        className: 'tkb-team',
-        ref: teamRef,
-        onKeyDown: (event) => {
-          if (event.key !== 'Escape') return;
-          event.stopPropagation();
-          closeTeamMenu();
+            : h('span', { className: 'tkb-mates__empty' }, t('header.noTeammates'))),
+        h('div', {
+          className: 'tkb-team',
+          ref: teamRef,
+          onKeyDown: (event) => {
+            if (event.key !== 'Escape') return;
+            event.stopPropagation();
+            closeTeamMenu();
+          },
         },
-      },
         h('button', {
           type: 'button',
           className: 'tkb-team__btn',
@@ -1462,6 +1880,7 @@ window.__ModuleLoader__.load({
         teamError ? h('p', { className: 'tkb-team__err', role: 'alert' }, teamError) : null,
         h('div', { className: 'tkb-team__actions' },
           h('button', {
+            ref: cancelBtnRef,
             type: 'button',
             className: 'tkb-team__ghost',
             disabled: teamBusy || undefined,
@@ -1478,7 +1897,7 @@ window.__ModuleLoader__.load({
               event.stopPropagation();
               confirmDisarm();
             },
-          }, teamBusy ? t('team.working') : t('team.confirm')))) : null),
+          }, teamBusy ? t('team.working') : t('team.confirm')))) : null)),
       h('div', {
         className: 'tkb-banner',
         'data-open': failure !== null ? '' : undefined,
@@ -1495,6 +1914,28 @@ window.__ModuleLoader__.load({
           h('div', { className: 'tkb-banner__msg' }, failure === null ? '' : failure))))),
       h('div', { ref: gridRef, className: 'tkb-lanes', onScrollCapture: handleScroll },
         LANES.map((key, index) => renderLane(key, index))),
+      wires.length
+        ? h('svg', { className: 'tkb-wires', 'aria-hidden': 'true' },
+          wires.map((wire) => h('g', { key: wire.key },
+            h('path', {
+              d: wire.d,
+              pathLength: 100,
+              className: 'tkb-wire tkb-wire--' + wire.kind + (wire.off ? ' is-off' : ''),
+            }),
+            h('circle', {
+              cx: wire.x1,
+              cy: wire.y1,
+              r: 2.6,
+              className: 'tkb-wire-dot tkb-wire--' + wire.kind,
+            }),
+            h('circle', {
+              cx: wire.x2,
+              cy: wire.y2,
+              r: 2.6,
+              className: 'tkb-wire-dot tkb-wire--' + wire.kind,
+            }))))
+        : null,
+      h('div', { ref: flightsRef, className: 'tkb-flights', 'aria-hidden': 'true' }),
       tip
         ? h('div', {
           className: 'tkb-tip',
@@ -2002,8 +2443,8 @@ window.__ModuleLoader__.load({
   gap: 2px;
   padding: 1px 2px;
   border-radius: 5px;
-  background: var(--dsw-alias-bg-layer-1);
-  border: 1px solid var(--dsw-alias-border-l1);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, var(--dsw-alias-bg-base));
+  border: 1px solid var(--dsw-alias-border-l2);
 }
 .tkb-slot {
   position: relative;
@@ -2035,7 +2476,7 @@ window.__ModuleLoader__.load({
   height: 6px;
   border-radius: 2px;
   overflow: hidden;
-  background-color: var(--dsw-alias-border-l1);
+  background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
   transition: height var(--tkb-d2) var(--tkb-ease),
               background-color var(--tkb-d3) var(--tkb-ease),
               transform var(--tkb-d1) var(--tkb-ease),
@@ -2046,10 +2487,10 @@ window.__ModuleLoader__.load({
   box-shadow: 0 0 4px color-mix(in srgb, var(--tkb-c-active) 35%, transparent);
 }
 .tkb-slot[data-s="blocked"] .tkb-slot__bar {
-  background-color: color-mix(in srgb, var(--tkb-c-warn) 20%, transparent);
+  background-color: color-mix(in srgb, var(--tkb-c-warn) 38%, transparent);
 }
 .tkb-slot[data-s="ready"] .tkb-slot__bar {
-  background-color: color-mix(in srgb, var(--tkb-c-active) 20%, var(--dsw-alias-border-l2));
+  background-color: color-mix(in srgb, var(--tkb-c-active) 32%, var(--dsw-alias-border-l2));
 }
 .tkb-slot[data-s="active"] .tkb-slot__bar {
   background: var(--tkb-c-active);
@@ -2090,6 +2531,8 @@ window.__ModuleLoader__.load({
   flex: none;
   display: flex;
   align-items: center;
+  padding-left: 8px;
+  border-left: 1px solid var(--dsw-alias-border-l2);
 }
 .tkb-team__btn {
   display: inline-flex;
@@ -2187,9 +2630,12 @@ window.__ModuleLoader__.load({
   to { opacity: 1; transform: none; }
 }
 @container tkb (max-width: 520px) {
+  .tkb-head { gap: 8px; padding: 10px 12px 9px; }
+  .tkb-team { padding-left: 6px; }
   .tkb-team__label { display: none; }
   .tkb-team__btn { padding: 0 6px; }
-  .tkb-mates { max-width: calc(100% - 180px); }
+  .tkb-mates { max-width: calc(100% - 156px); }
+  .tkb-mc + .tkb-mc { margin-left: 5px; }
 }
 .tkb-mc {
   position: relative;
@@ -2207,7 +2653,7 @@ window.__ModuleLoader__.load({
               background-color var(--tkb-d2) var(--tkb-ease),
               transform var(--tkb-d1) var(--tkb-ease);
 }
-.tkb-mc + .tkb-mc { margin-left: 7px; }
+.tkb-mc + .tkb-mc { margin-left: 8px; }
 .tkb-mc:hover { z-index: 3; }
 .tkb-mc:hover .tkb-mate {
   transform: translateY(-2px) scale(1.06);
@@ -2223,6 +2669,16 @@ window.__ModuleLoader__.load({
   white-space: nowrap;
 }
 .tkb-root[data-spot] .tkb-mc:not(.is-spot) { opacity: .35; filter: saturate(0.6); }
+.tkb-mc.is-pinned {
+  padding: 2px 8px 2px 2px;
+  background: color-mix(in srgb, var(--tkb-c-active) 10%, var(--dsw-alias-bg-base));
+}
+.tkb-mc.is-pinned .tkb-mc__name {
+  display: inline;
+  max-width: 9ch;
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+}
 .tkb-mc.is-pinned .tkb-mate {
   background: color-mix(in srgb, var(--tkb-c-active) 25%, var(--dsw-alias-bg-layer-2));
   color: var(--tkb-c-active);
@@ -2241,7 +2697,7 @@ window.__ModuleLoader__.load({
   font-size: 11px;
   font-weight: 700;
   color: var(--dsw-alias-label-secondary);
-  background: var(--dsw-alias-bg-layer-2);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, var(--dsw-alias-bg-base));
   box-shadow: 0 0 0 2px var(--dsw-alias-bg-base);
   border: 0;
   padding: 0;
@@ -2252,6 +2708,7 @@ window.__ModuleLoader__.load({
               color var(--tkb-d2),
               box-shadow var(--tkb-d2);
 }
+.tkb-mate[data-wide] { font-size: 9.5px; letter-spacing: -.04em; }
 .tkb-mate[data-lead] {
   border-radius: 7px;
   background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, var(--dsw-alias-bg-layer-2));
@@ -2259,6 +2716,10 @@ window.__ModuleLoader__.load({
 }
 .tkb-mate[data-running] {
   box-shadow: 0 0 0 2px var(--dsw-alias-bg-base), 0 0 0 3px color-mix(in srgb, var(--tkb-c-active) 65%, transparent);
+}
+.tkb-mate[data-phase="failed"] {
+  box-shadow: 0 0 0 2px var(--dsw-alias-bg-base), 0 0 0 3px color-mix(in srgb, var(--tkb-c-error) 55%, transparent);
+  color: color-mix(in srgb, var(--tkb-c-error) 80%, var(--dsw-alias-label-primary));
 }
 .tkb-mate[data-none] {
   background: transparent;
@@ -2281,6 +2742,13 @@ window.__ModuleLoader__.load({
 .tkb-mate[data-running] .tkb-mate__dot {
   background: var(--tkb-c-active);
   box-shadow: 0 0 6px var(--tkb-c-active), 0 0 0 2px var(--dsw-alias-bg-base);
+  animation: tkb-blink calc(1400ms) ease-in-out infinite;
+}
+.tkb-mate[data-phase="failed"] .tkb-mate__dot {
+  background: var(--tkb-c-error);
+}
+.tkb-mate[data-phase="provisioning"] .tkb-mate__dot {
+  background: var(--tkb-c-warn);
   animation: tkb-blink calc(1400ms) ease-in-out infinite;
 }
 /* 智能体运行态：声呐外扩雷达波纹 */
@@ -2358,6 +2826,13 @@ window.__ModuleLoader__.load({
   -webkit-backdrop-filter: blur(12px) saturate(1.5);
   backdrop-filter: blur(12px) saturate(1.5);
   border-bottom: 1px solid color-mix(in srgb, var(--dsw-alias-border-l1) 40%, transparent);
+  transition: color var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-lane__head[role="button"] { cursor: pointer; user-select: none; }
+.tkb-lane__head[role="button"]:hover { color: var(--dsw-alias-label-primary); }
+.tkb-lane__head:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tkb-c-active) 60%, transparent);
+  outline-offset: -2px;
 }
 .tkb-lane__name { white-space: nowrap; }
 .tkb-lane__count {
@@ -2371,13 +2846,24 @@ window.__ModuleLoader__.load({
   justify-content: center;
   font-size: 11px;
   font-weight: 600;
-  color: var(--dsw-alias-label-tertiary);
-  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, var(--dsw-alias-bg-base));
+  box-shadow: inset 0 0 0 1px var(--dsw-alias-border-l1);
   font-variant-numeric: tabular-nums;
   transition: color var(--tkb-d2);
 }
-.tkb-lane[data-empty] .tkb-lane__head { color: var(--dsw-alias-label-tertiary); }
+.tkb-lane__chev {
+  width: 12px;
+  height: 12px;
+  color: var(--dsw-alias-label-tertiary);
+  transition: transform var(--tkb-d2) var(--tkb-ease), color var(--tkb-d1);
+}
+.tkb-lane__head:hover .tkb-lane__chev { color: var(--dsw-alias-label-secondary); }
+.tkb-lane[data-collapsed] .tkb-lane__chev { transform: rotate(-90deg); }
+.tkb-lane[data-collapsed] .tkb-lane__body { display: none !important; }
+.tkb-lane[data-empty] .tkb-lane__head { height: 30px; color: var(--dsw-alias-label-tertiary); }
 .tkb-lane[data-empty] .tkb-lane__count { opacity: .55; }
+.tkb-lane[data-empty] .tkb-lane__body { display: none; }
 .tkb-lane__body {
   display: flex;
   flex-direction: column;
@@ -2528,8 +3014,19 @@ window.__ModuleLoader__.load({
   font-size: 10px;
   box-shadow: none;
 }
+.tkb-card__owner .tkb-mate[data-wide] { font-size: 8.5px; }
 .tkb-card__owner .tkb-mate[data-lead] { border-radius: 6px; }
 .tkb-card__owner .tkb-mate__dot { right: -2px; bottom: -2px; width: 6px; height: 6px; box-shadow: none; }
+.tkb-card__chev {
+  width: 11px;
+  height: 11px;
+  color: var(--dsw-alias-label-tertiary);
+  opacity: 0;
+  transition: opacity var(--tkb-d1) var(--tkb-ease), transform var(--tkb-d2) var(--tkb-ease);
+}
+.tkb-card:hover .tkb-card__chev,
+.tkb-card:focus-within .tkb-card__chev { opacity: .55; }
+.tkb-card[data-expanded] .tkb-card__chev { opacity: .8; transform: rotate(180deg); }
 
 /* 活跃运行脉冲指示器 */
 .tkb-card__live-dot {
@@ -2567,7 +3064,29 @@ window.__ModuleLoader__.load({
 }
 .tkb-card[data-expanded] .tkb-card__title { -webkit-line-clamp: unset; }
 .tkb-card__preview { grid-area: preview; display: none; }
-.tkb-card__detail { grid-area: detail; position: relative; z-index: 1; pointer-events: auto; cursor: auto; }
+.tkb-card__detail {
+  grid-area: detail;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: 0fr;
+  pointer-events: auto;
+  cursor: auto;
+  transition: grid-template-rows var(--tkb-d2) var(--tkb-ease);
+}
+.tkb-card[data-expanded] .tkb-card__detail { grid-template-rows: 1fr; }
+.tkb-card__detail-clip {
+  min-height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--tkb-d1) var(--tkb-ease), visibility 0ms var(--tkb-d2);
+}
+.tkb-card[data-expanded] .tkb-card__detail-clip {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity var(--tkb-d2) var(--tkb-ease), visibility 0ms;
+}
 
 /* ---------------------------------------------------------------------
    状态 1：待处理（Pending）—— 阻塞暗哑 vs 就绪轻盈
@@ -2753,6 +3272,36 @@ window.__ModuleLoader__.load({
 .tkb-dep[data-done]:hover {
   background: var(--dsw-alias-interactive-bg-hover);
 }
+.tkb-unlocks {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  pointer-events: auto;
+  font-family: var(--tkb-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, var(--dsw-alias-bg-base));
+}
+.tkb-unlocks__icon { width: 10px; height: 10px; opacity: .8; }
+.tkb-conflict {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  pointer-events: auto;
+  color: color-mix(in srgb, var(--dsw-alias-state-warn-label) 60%, var(--dsw-alias-label-primary));
+  background: var(--dsw-alias-state-warn-tertiary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-warn) 22%, transparent);
+}
+.tkb-conflict__icon { width: 11px; height: 11px; }
 
 /* =====================================================================
    展开抽屉（Drawer Physics）
@@ -2764,7 +3313,6 @@ window.__ModuleLoader__.load({
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--dsw-alias-border-l1);
-  animation: tkb-detail-in var(--tkb-d2) var(--tkb-ease) both;
 }
 .tkb-detail__desc {
   margin: 0;
@@ -2799,9 +3347,9 @@ window.__ModuleLoader__.load({
   max-width: 100%;
   height: 22px;
   padding: 0 8px 0 6px;
-  border: 0;
+  border: 1px solid var(--dsw-alias-border-l1);
   border-radius: 6px;
-  background: var(--dsw-alias-bg-layer-1);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 4.5%, var(--dsw-alias-bg-base));
   color: var(--dsw-alias-label-secondary);
   font-family: inherit;
   font-size: 11.5px;
@@ -2900,8 +3448,50 @@ window.__ModuleLoader__.load({
   box-shadow: 0 2px 8px color-mix(in srgb, var(--tkb-c-active) 18%, transparent);
 }
 
-/* 卡片跳转高亮闪光 */
+/* 卡片跳转高亮闪光与贝塞尔血缘连线 / 飞行层 */
 .tkb-card.is-flash { animation: tkb-flash 1100ms var(--tkb-ease) 1; }
+.tkb-wires {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+  overflow: visible;
+}
+.tkb-wire {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  animation: tkb-wire-draw var(--tkb-d2) var(--tkb-ease) both;
+}
+.tkb-wire.is-off {
+  stroke-dasharray: 3 3;
+  opacity: .55;
+  animation: none;
+}
+.tkb-wire--up-open { stroke: var(--tkb-c-warn); }
+.tkb-wire--up-done { stroke: var(--tkb-c-done); }
+.tkb-wire--down { stroke: var(--tkb-c-active); }
+.tkb-wire-dot {
+  stroke: var(--dsw-alias-bg-base);
+  stroke-width: 1.5;
+}
+.tkb-wire-dot.tkb-wire--up-open { fill: var(--tkb-c-warn); }
+.tkb-wire-dot.tkb-wire--up-done { fill: var(--tkb-c-done); }
+.tkb-wire-dot.tkb-wire--down { fill: var(--tkb-c-active); }
+.tkb-flights {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  overflow: hidden;
+}
+.tkb-flight-card {
+  box-shadow: 0 10px 26px -4px color-mix(in srgb, var(--dsw-alias-label-primary) 16%, transparent);
+}
 
 /* 提示气泡 */
 .tkb-tip {
@@ -2946,9 +3536,9 @@ window.__ModuleLoader__.load({
   from { opacity: 0; transform: translateY(35%); }
   to { opacity: 1; transform: none; }
 }
-@keyframes tkb-detail-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: none; }
+@keyframes tkb-wire-draw {
+  from { stroke-dashoffset: 100; opacity: .2; }
+  to { stroke-dashoffset: 0; opacity: .9; }
 }
 @keyframes tkb-flash {
   0%, 40% {
@@ -3006,6 +3596,7 @@ window.__ModuleLoader__.load({
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
+  .tkb-lane[data-empty] .tkb-lane__head { height: 38px; }
   .tkb-lane__body {
     display: flex;
     flex: 1;
@@ -3018,6 +3609,7 @@ window.__ModuleLoader__.load({
     -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 18px), transparent 100%);
     mask-image: linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 18px), transparent 100%);
   }
+  .tkb-lane[data-empty] .tkb-lane__body { display: flex; }
   .tkb-empty { min-height: 52px; }
 }
 
@@ -3033,6 +3625,7 @@ window.__ModuleLoader__.load({
   .tkb-mc .tkb-mate { box-shadow: none; }
   .tkb-mc .tkb-mate__dot { box-shadow: 0 0 0 2px var(--dsw-alias-bg-layer-1); }
   .tkb-lane__head { height: 42px; padding: 0 16px; }
+  .tkb-lane[data-empty] .tkb-lane__head { height: 42px; }
   .tkb-lane__body { gap: 8px; padding: 6px 12px 22px; }
   .tkb-lane[data-lane="completed"] .tkb-lane__body { gap: 2px; }
   .tkb-card { padding: 11px 12px 12px 14px; }
@@ -3239,6 +3832,7 @@ window.__ModuleLoader__.load({
         unsupportedSessions,
         pullPlan,
         buildModel,
+        disambiguateMonos,
         ownerDisplay,
         disableTeam,
         requestSettle,

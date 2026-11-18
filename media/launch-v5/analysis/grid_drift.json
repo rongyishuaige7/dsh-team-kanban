@@ -1,0 +1,46 @@
+{
+  "track": "house-vibez.mp3",
+  "winner": "1x",
+  "reason": "1x (122.00 BPM) achieves >=98% transient match, <3ms mean alignment error, <3ms cumulative drift over 42s, valid beat 0 attack on first kick (0.0608s), and kick energy concentrated 2.3x higher on integer beats (0.477) vs half-beats (0.204), eliminating 0.5x/2x ambiguity.",
+  "candidates": [
+    {
+      "label": "0.5x",
+      "bpm": 61.007,
+      "t0": 0.061121,
+      "T": 0.983493,
+      "match": 100.0,
+      "mean_abs_ms": 1.69,
+      "drift_ms": 0.51,
+      "beat0_valid": true,
+      "beat0_err_ms": 11.78,
+      "mean_kick_int": 0.207,
+      "mean_kick_half": 0.226
+    },
+    {
+      "label": "1x",
+      "bpm": 122.0141,
+      "t0": 0.061121,
+      "T": 0.491747,
+      "match": 100.0,
+      "mean_abs_ms": 1.59,
+      "drift_ms": 0.81,
+      "beat0_valid": true,
+      "beat0_err_ms": 11.78,
+      "mean_kick_int": 0.216,
+      "mean_kick_half": 0.088
+    },
+    {
+      "label": "2x",
+      "bpm": 244.0282,
+      "t0": 0.061121,
+      "T": 0.245873,
+      "match": 98.83,
+      "mean_abs_ms": 2.83,
+      "drift_ms": 0.53,
+      "beat0_valid": true,
+      "beat0_err_ms": 11.78,
+      "mean_kick_int": 0.153,
+      "mean_kick_half": 0.072
+    }
+  ]
+}

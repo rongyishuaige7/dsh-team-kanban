@@ -167,7 +167,7 @@ button { font: inherit; }
 .chip[aria-selected="true"] { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
 .chip > svg { width: 14px; height: 14px; flex: none; }
 .chip[hidden] { display: none; }
-.chip__x { width: 16px; height: 16px; margin-right: -4px; border-radius: 4px; display: grid; place-items: center; opacity: 0; transition: opacity .12s, background-color .12s; }
+.chip__x { flex: none; width: 16px; height: 16px; margin-left: 2px; margin-right: -3px; border-radius: 4px; display: grid; place-items: center; opacity: 0; transition: opacity .12s, background-color .12s; }
 .chip__x svg { width: 10px; height: 10px; }
 .chip:hover .chip__x, .chip[aria-selected="true"] .chip__x { opacity: .65; }
 .chip__x:hover { opacity: 1 !important; background: var(--dsw-alias-interactive-bg-active); }
@@ -263,8 +263,8 @@ button { font: inherit; }
 }
 
 /* 原型专属数字逐位滚动定位约束 */
-.tkb-roll { display: inline-flex; font-variant-numeric: tabular-nums; }
-.tkb-roll__c { position: relative; display: inline-block; overflow: hidden; line-height: 1.15; vertical-align: top; }
+.tkb-roll { display: inline-flex; align-items: center; font-variant-numeric: tabular-nums; }
+.tkb-roll__c { position: relative; display: inline-block; height: 1.15em; overflow: hidden; line-height: 1.15em; vertical-align: top; }
 .tkb-roll__in { display: inline-block; }
 .tkb-roll__out { position: absolute; left: 0; top: 0; }
 
@@ -320,8 +320,8 @@ button { font: inherit; }
   gap: 2px;
   padding: 1px 2px;
   border-radius: 5px;
-  background: var(--dsw-alias-bg-layer-1);
-  border: 1px solid var(--dsw-alias-border-l1);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, var(--dsw-alias-bg-base));
+  border: 1px solid var(--dsw-alias-border-l2);
 }
 .tkb-slot {
   position: relative;
@@ -353,7 +353,7 @@ button { font: inherit; }
   height: 6px;
   border-radius: 2px;
   overflow: hidden;
-  background-color: var(--dsw-alias-border-l1);
+  background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
   transition: height var(--tkb-d2) var(--tkb-ease),
               background-color var(--tkb-d3) var(--tkb-ease),
               transform var(--tkb-d1) var(--tkb-ease),
@@ -364,10 +364,10 @@ button { font: inherit; }
   box-shadow: 0 0 4px color-mix(in srgb, var(--tkb-c-active) 35%, transparent);
 }
 .tkb-slot[data-s="blocked"] .tkb-slot__bar {
-  background-color: color-mix(in srgb, var(--tkb-c-warn) 20%, transparent);
+  background-color: color-mix(in srgb, var(--tkb-c-warn) 38%, transparent);
 }
 .tkb-slot[data-s="ready"] .tkb-slot__bar {
-  background-color: color-mix(in srgb, var(--tkb-c-active) 20%, var(--dsw-alias-border-l2));
+  background-color: color-mix(in srgb, var(--tkb-c-active) 32%, var(--dsw-alias-border-l2));
 }
 .tkb-slot[data-s="active"] .tkb-slot__bar {
   background: var(--tkb-c-active);
@@ -408,6 +408,8 @@ button { font: inherit; }
   flex: none;
   display: flex;
   align-items: center;
+  padding-left: 8px;
+  border-left: 1px solid var(--dsw-alias-border-l2);
 }
 .tkb-team__btn {
   display: inline-flex;
@@ -505,9 +507,12 @@ button { font: inherit; }
   to { opacity: 1; transform: none; }
 }
 @container tkb (max-width: 520px) {
+  .tkb-head { gap: 8px; padding: 10px 12px 9px; }
+  .tkb-team { padding-left: 6px; }
   .tkb-team__label { display: none; }
   .tkb-team__btn { padding: 0 6px; }
-  .tkb-mates { max-width: calc(100% - 180px); }
+  .tkb-mates { max-width: calc(100% - 156px); }
+  .tkb-mc + .tkb-mc { margin-left: 5px; }
 }
 
 .tkb-mc {
@@ -526,7 +531,7 @@ button { font: inherit; }
               background-color var(--tkb-d2) var(--tkb-ease),
               transform var(--tkb-d1) var(--tkb-ease);
 }
-.tkb-mc + .tkb-mc { margin-left: 7px; }
+.tkb-mc + .tkb-mc { margin-left: 8px; }
 .tkb-mc:hover { z-index: 3; }
 .tkb-mc:hover .tkb-mate {
   transform: translateY(-2px) scale(1.06);
@@ -542,6 +547,16 @@ button { font: inherit; }
   white-space: nowrap;
 }
 .tkb-root[data-spot] .tkb-mc:not(.is-spot) { opacity: .35; filter: saturate(0.6); }
+.tkb-mc.is-pinned {
+  padding: 2px 8px 2px 2px;
+  background: color-mix(in srgb, var(--tkb-c-active) 10%, var(--dsw-alias-bg-base));
+}
+.tkb-mc.is-pinned .tkb-mc__name {
+  display: inline;
+  max-width: 9ch;
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+}
 .tkb-mc.is-pinned .tkb-mate {
   background: color-mix(in srgb, var(--tkb-c-active) 25%, var(--dsw-alias-bg-layer-2));
   color: var(--tkb-c-active);
@@ -560,7 +575,7 @@ button { font: inherit; }
   font-size: 11px;
   font-weight: 700;
   color: var(--dsw-alias-label-secondary);
-  background: var(--dsw-alias-bg-layer-2);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, var(--dsw-alias-bg-base));
   box-shadow: 0 0 0 2px var(--dsw-alias-bg-base);
   border: 0;
   padding: 0;
@@ -571,6 +586,7 @@ button { font: inherit; }
               color var(--tkb-d2),
               box-shadow var(--tkb-d2);
 }
+.tkb-mate[data-wide] { font-size: 9.5px; letter-spacing: -.04em; }
 .tkb-mate[data-lead] {
   border-radius: 7px;
   background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, var(--dsw-alias-bg-layer-2));
@@ -578,6 +594,10 @@ button { font: inherit; }
 }
 .tkb-mate[data-running] {
   box-shadow: 0 0 0 2px var(--dsw-alias-bg-base), 0 0 0 3px color-mix(in srgb, var(--tkb-c-active) 65%, transparent);
+}
+.tkb-mate[data-phase="failed"] {
+  box-shadow: 0 0 0 2px var(--dsw-alias-bg-base), 0 0 0 3px color-mix(in srgb, var(--tkb-c-error) 55%, transparent);
+  color: color-mix(in srgb, var(--tkb-c-error) 80%, var(--dsw-alias-label-primary));
 }
 .tkb-mate[data-none] {
   background: transparent;
@@ -600,6 +620,13 @@ button { font: inherit; }
 .tkb-mate[data-running] .tkb-mate__dot {
   background: var(--tkb-c-active);
   box-shadow: 0 0 6px var(--tkb-c-active), 0 0 0 2px var(--dsw-alias-bg-base);
+  animation: tkb-blink calc(1400ms * var(--tkb-speed, 1)) ease-in-out infinite;
+}
+.tkb-mate[data-phase="failed"] .tkb-mate__dot {
+  background: var(--tkb-c-error);
+}
+.tkb-mate[data-phase="provisioning"] .tkb-mate__dot {
+  background: var(--tkb-c-warn);
   animation: tkb-blink calc(1400ms * var(--tkb-speed, 1)) ease-in-out infinite;
 }
 /* 智能体运行态：声呐外扩雷达波纹 */
@@ -677,6 +704,13 @@ button { font: inherit; }
   -webkit-backdrop-filter: blur(12px) saturate(1.5);
   backdrop-filter: blur(12px) saturate(1.5);
   border-bottom: 1px solid color-mix(in srgb, var(--dsw-alias-border-l1) 40%, transparent);
+  transition: color var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-lane__head[role="button"] { cursor: pointer; user-select: none; }
+.tkb-lane__head[role="button"]:hover { color: var(--dsw-alias-label-primary); }
+.tkb-lane__head:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tkb-c-active) 60%, transparent);
+  outline-offset: -2px;
 }
 .tkb-lane__name { white-space: nowrap; }
 .tkb-lane__count {
@@ -690,13 +724,24 @@ button { font: inherit; }
   justify-content: center;
   font-size: 11px;
   font-weight: 600;
-  color: var(--dsw-alias-label-tertiary);
-  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, var(--dsw-alias-bg-base));
+  box-shadow: inset 0 0 0 1px var(--dsw-alias-border-l1);
   font-variant-numeric: tabular-nums;
   transition: color var(--tkb-d2);
 }
-.tkb-lane[data-empty] .tkb-lane__head { color: var(--dsw-alias-label-tertiary); }
+.tkb-lane__chev {
+  width: 12px;
+  height: 12px;
+  color: var(--dsw-alias-label-tertiary);
+  transition: transform var(--tkb-d2) var(--tkb-ease), color var(--tkb-d1);
+}
+.tkb-lane__head:hover .tkb-lane__chev { color: var(--dsw-alias-label-secondary); }
+.tkb-lane[data-collapsed] .tkb-lane__chev { transform: rotate(-90deg); }
+.tkb-lane[data-collapsed] .tkb-lane__body { display: none !important; }
+.tkb-lane[data-empty] .tkb-lane__head { height: 30px; color: var(--dsw-alias-label-tertiary); }
 .tkb-lane[data-empty] .tkb-lane__count { opacity: .55; }
+.tkb-lane[data-empty] .tkb-lane__body { display: none; }
 .tkb-lane__body {
   display: flex;
   flex-direction: column;
@@ -847,8 +892,19 @@ button { font: inherit; }
   font-size: 10px;
   box-shadow: none;
 }
+.tkb-card__owner .tkb-mate[data-wide] { font-size: 8.5px; }
 .tkb-card__owner .tkb-mate[data-lead] { border-radius: 6px; }
 .tkb-card__owner .tkb-mate__dot { right: -2px; bottom: -2px; width: 6px; height: 6px; box-shadow: none; }
+.tkb-card__chev {
+  width: 11px;
+  height: 11px;
+  color: var(--dsw-alias-label-tertiary);
+  opacity: 0;
+  transition: opacity var(--tkb-d1) var(--tkb-ease), transform var(--tkb-d2) var(--tkb-ease);
+}
+.tkb-card:hover .tkb-card__chev,
+.tkb-card:focus-within .tkb-card__chev { opacity: .55; }
+.tkb-card[data-expanded] .tkb-card__chev { opacity: .8; transform: rotate(180deg); }
 
 /* 活跃运行脉冲指示器 */
 .tkb-card__live-dot {
@@ -886,7 +942,29 @@ button { font: inherit; }
 }
 .tkb-card[data-expanded] .tkb-card__title { -webkit-line-clamp: unset; }
 .tkb-card__preview { grid-area: preview; display: none; }
-.tkb-card__detail { grid-area: detail; position: relative; z-index: 1; pointer-events: auto; cursor: auto; }
+.tkb-card__detail {
+  grid-area: detail;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: 0fr;
+  pointer-events: auto;
+  cursor: auto;
+  transition: grid-template-rows var(--tkb-d2) var(--tkb-ease);
+}
+.tkb-card[data-expanded] .tkb-card__detail { grid-template-rows: 1fr; }
+.tkb-card__detail-clip {
+  min-height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--tkb-d1) var(--tkb-ease), visibility 0ms var(--tkb-d2);
+}
+.tkb-card[data-expanded] .tkb-card__detail-clip {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity var(--tkb-d2) var(--tkb-ease), visibility 0ms;
+}
 
 /* ---------------------------------------------------------------------
    状态 1：待处理（Pending）—— 阻塞暗哑 vs 就绪轻盈
@@ -1072,6 +1150,36 @@ button { font: inherit; }
 .tkb-dep[data-done]:hover {
   background: var(--dsw-alias-interactive-bg-hover);
 }
+.tkb-unlocks {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  pointer-events: auto;
+  font-family: var(--tkb-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, var(--dsw-alias-bg-base));
+}
+.tkb-unlocks__icon { width: 10px; height: 10px; opacity: .8; }
+.tkb-conflict {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  pointer-events: auto;
+  color: color-mix(in srgb, var(--dsw-alias-state-warn-label) 60%, var(--dsw-alias-label-primary));
+  background: var(--dsw-alias-state-warn-tertiary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-warn) 22%, transparent);
+}
+.tkb-conflict__icon { width: 11px; height: 11px; }
 
 /* =====================================================================
    展开抽屉（Drawer Physics）
@@ -1083,7 +1191,6 @@ button { font: inherit; }
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--dsw-alias-border-l1);
-  animation: tkb-detail-in var(--tkb-d2) var(--tkb-ease) both;
 }
 .tkb-detail__desc {
   margin: 0;
@@ -1118,9 +1225,9 @@ button { font: inherit; }
   max-width: 100%;
   height: 22px;
   padding: 0 8px 0 6px;
-  border: 0;
+  border: 1px solid var(--dsw-alias-border-l1);
   border-radius: 6px;
-  background: var(--dsw-alias-bg-layer-1);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 4.5%, var(--dsw-alias-bg-base));
   color: var(--dsw-alias-label-secondary);
   font-family: inherit;
   font-size: 11.5px;
@@ -1219,8 +1326,50 @@ button { font: inherit; }
   box-shadow: 0 2px 8px color-mix(in srgb, var(--tkb-c-active) 18%, transparent);
 }
 
-/* 卡片跳转高亮闪光 */
+/* 卡片跳转高亮闪光与贝塞尔血缘连线 / 飞行层 */
 .tkb-card.is-flash { animation: tkb-flash 1100ms var(--tkb-ease) 1; }
+.tkb-wires {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+  overflow: visible;
+}
+.tkb-wire {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  animation: tkb-wire-draw var(--tkb-d2) var(--tkb-ease) both;
+}
+.tkb-wire.is-off {
+  stroke-dasharray: 3 3;
+  opacity: .55;
+  animation: none;
+}
+.tkb-wire--up-open { stroke: var(--tkb-c-warn); }
+.tkb-wire--up-done { stroke: var(--tkb-c-done); }
+.tkb-wire--down { stroke: var(--tkb-c-active); }
+.tkb-wire-dot {
+  stroke: var(--dsw-alias-bg-base);
+  stroke-width: 1.5;
+}
+.tkb-wire-dot.tkb-wire--up-open { fill: var(--tkb-c-warn); }
+.tkb-wire-dot.tkb-wire--up-done { fill: var(--tkb-c-done); }
+.tkb-wire-dot.tkb-wire--down { fill: var(--tkb-c-active); }
+.tkb-flights {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  overflow: hidden;
+}
+.tkb-flight-card {
+  box-shadow: 0 10px 26px -4px color-mix(in srgb, var(--dsw-alias-label-primary) 16%, transparent);
+}
 
 /* 提示气泡 */
 .tkb-tip {
@@ -1265,9 +1414,9 @@ button { font: inherit; }
   from { opacity: 0; transform: translateY(35%); }
   to { opacity: 1; transform: none; }
 }
-@keyframes tkb-detail-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: none; }
+@keyframes tkb-wire-draw {
+  from { stroke-dashoffset: 100; opacity: .2; }
+  to { stroke-dashoffset: 0; opacity: .9; }
 }
 @keyframes tkb-flash {
   0%, 40% {
@@ -1325,6 +1474,7 @@ button { font: inherit; }
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
+  .tkb-lane[data-empty] .tkb-lane__head { height: 38px; }
   .tkb-lane__body {
     display: flex;
     flex: 1;
@@ -1337,6 +1487,7 @@ button { font: inherit; }
     -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 18px), transparent 100%);
     mask-image: linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 18px), transparent 100%);
   }
+  .tkb-lane[data-empty] .tkb-lane__body { display: flex; }
   .tkb-empty { min-height: 52px; }
 }
 
@@ -1352,6 +1503,7 @@ button { font: inherit; }
   .tkb-mc .tkb-mate { box-shadow: none; }
   .tkb-mc .tkb-mate__dot { box-shadow: 0 0 0 2px var(--dsw-alias-bg-layer-1); }
   .tkb-lane__head { height: 42px; padding: 0 16px; }
+  .tkb-lane[data-empty] .tkb-lane__head { height: 42px; }
   .tkb-lane__body { gap: 8px; padding: 6px 12px 22px; }
   .tkb-lane[data-lane="completed"] .tkb-lane__body { gap: 2px; }
   .tkb-card { padding: 11px 12px 12px 14px; }
@@ -1551,6 +1703,7 @@ const ICON = {
   scope: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5z"/></svg>',
   warn: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5 14 13H2z"/><path d="M8 6.5v3"/><path d="M8 11.4v.1"/></svg>',
   error: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5"/><path d="M8 10.8v.1"/></svg>',
+  chev: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5 6 7.5 9 4.5"/></svg>',
   files: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5z"/></svg>',
   file: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/></svg>',
   terminal: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="m5 7 2 1.5L5 10"/><path d="M8.5 10.5H11"/></svg>',
@@ -1571,8 +1724,9 @@ function icon(name, cls) {
 const DICT = {
   zh: {
     'tab.title': '任务板', 'column.pending': '待处理', 'column.in_progress': '进行中', 'column.completed': '已完成', 'column.empty': '暂无任务',
-    'card.unowned': '未分配', 'card.ready': '就绪', 'card.blocked': '被依赖阻塞', 'card.blockedBy': '依赖', 'card.blocks': '解锁后续',
-    'card.writeScopes': '写入范围', 'card.running': '运行中', 'card.idle': '空闲', 'card.lead': '主智能体',
+    'column.collapse': '折叠{lane}', 'column.expand': '展开{lane}',
+    'card.unowned': '未分配', 'card.ready': '就绪', 'card.blocked': '被依赖阻塞', 'card.blockedShort': '阻塞', 'card.blockedBy': '依赖', 'card.blocks': '解锁后续',
+    'card.writeScopes': '写入范围', 'card.running': '运行中', 'card.idle': '空闲', 'card.provisioning': '启动中', 'card.failed': '启动失败', 'card.lead': '主智能体',
     'team.label': '团队', 'team.disable': '停用智能体团队协作', 'team.confirmTitle': '停用智能体团队协作？',
     'team.confirmBody': '本会话将不再使用共享任务工具；已有任务会保留，看板会关闭。', 'team.confirm': '停用', 'team.cancel': '取消',
     'error.title': '任务记录异常',
@@ -1582,8 +1736,9 @@ const DICT = {
   },
   en: {
     'tab.title': 'Task board', 'column.pending': 'Pending', 'column.in_progress': 'In progress', 'column.completed': 'Completed', 'column.empty': 'No tasks',
-    'card.unowned': 'Unowned', 'card.ready': 'Ready', 'card.blocked': 'Blocked', 'card.blockedBy': 'Blocked by', 'card.blocks': 'Unblocks',
-    'card.writeScopes': 'Write scopes', 'card.running': 'Running', 'card.idle': 'Idle', 'card.lead': 'Lead agent',
+    'column.collapse': 'Collapse {lane}', 'column.expand': 'Expand {lane}',
+    'card.unowned': 'Unowned', 'card.ready': 'Ready', 'card.blocked': 'Blocked', 'card.blockedShort': 'Blocked', 'card.blockedBy': 'Blocked by', 'card.blocks': 'Unblocks',
+    'card.writeScopes': 'Write scopes', 'card.running': 'Running', 'card.idle': 'Idle', 'card.provisioning': 'Starting', 'card.failed': 'Failed', 'card.lead': 'Lead agent',
     'team.label': 'Team', 'team.disable': 'Disable agent teamwork', 'team.confirmTitle': 'Disable agent teamwork?',
     'team.confirmBody': 'This session stops using shared task tools. Existing tasks are kept and the board closes.', 'team.confirm': 'Disable', 'team.cancel': 'Cancel',
     'error.title': 'Invalid task record',
@@ -1820,13 +1975,46 @@ function createBoard(mount) {
 
   const lanesEl = h('div', 'tkb-lanes');
   const lanes = {};
+  const collapsed = new Set();
+  function toggleLane(key) {
+    const L = lanes[key];
+    if (!L || L.el.hasAttribute('data-empty')) return;
+    hideTip();
+    clearLineage();
+    if (collapsed.has(key)) collapsed.delete(key); else collapsed.add(key);
+    syncLaneHead(key);
+  }
+  function syncLaneHead(key) {
+    const L = lanes[key];
+    const empty = L.el.hasAttribute('data-empty');
+    if (empty) collapsed.delete(key);
+    const col = !empty && collapsed.has(key);
+    L.el.toggleAttribute('data-collapsed', col);
+    L.chev.hidden = empty;
+    if (empty) {
+      L.hd.removeAttribute('role');
+      L.hd.removeAttribute('tabindex');
+      L.hd.removeAttribute('aria-expanded');
+      L.hd.removeAttribute('aria-label');
+    } else {
+      L.hd.setAttribute('role', 'button');
+      L.hd.tabIndex = 0;
+      L.hd.setAttribute('aria-expanded', String(!col));
+      L.hd.setAttribute('aria-label', tx(col ? 'column.expand' : 'column.collapse', { lane: tx('column.' + key) }));
+    }
+  }
   LANES.forEach(key => {
     const el = h('section', 'tkb-lane');
     el.dataset.lane = key;
     const hd = h('div', 'tkb-lane__head');
     const name = h('span', 'tkb-lane__name');
     const count = h('span', 'tkb-lane__count tkb-roll');
-    hd.append(icon(key), name, count);
+    const chev = icon('chev', 'tkb-lane__chev');
+    hd.append(icon(key), name, count, chev);
+    hd.addEventListener('click', () => toggleLane(key));
+    hd.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleLane(key); }
+    });
     const body = h('div', 'tkb-lane__body');
     const empty = h('div', 'tkb-empty');
     empty.append(icon(key));
@@ -1834,7 +2022,7 @@ function createBoard(mount) {
     empty._tip = () => [tx('column.empty'), ''];
     el.append(hd, body);
     lanesEl.append(el);
-    lanes[key] = { el, hd, name, count, body, empty };
+    lanes[key] = { el, hd, name, count, chev, body, empty };
   });
   const divider = h('div', 'tkb-divider');
   divider.append(icon('chain'));
@@ -1844,9 +2032,7 @@ function createBoard(mount) {
 
   const wires = document.createElementNS(SVGNS, 'svg');
   wires.setAttribute('class', 'tkb-wires');
-  Object.assign(wires.style, { position: 'absolute', inset: '0', pointerEvents: 'none', zIndex: '5' });
   const flights = h('div', 'tkb-flights');
-  Object.assign(flights.style, { position: 'absolute', inset: '0', pointerEvents: 'none', zIndex: '10', overflow: 'hidden' });
   const tip = h('div', 'tkb-tip');
   const tipT = h('b');
   const tipS = h('span');
@@ -1972,6 +2158,11 @@ function createBoard(mount) {
     c._id = m.id;
     const av = h('span', 'tkb-mate');
     if (m.lead) av.setAttribute('data-lead', '');
+    const dot = h('span', 'tkb-mate__dot');
+    dot.setAttribute('aria-hidden', 'true');
+    const txt = document.createTextNode('');
+    av.append(dot, txt);
+    av._txt = txt;
     const nm = h('span', 'tkb-mc__name');
     c.append(av, nm);
     c._av = av;
@@ -1990,7 +2181,9 @@ function createBoard(mount) {
       let c = ex.get(m.id);
       if (!c) { c = mkMateChip(m); if (animate) pulse(c, 'is-new', 520); }
       ex.delete(m.id);
-      c._av.textContent = mateMono(m.id);
+      const mono = mateMono(m.id);
+      c._av._txt.nodeValue = mono;
+      c._av.toggleAttribute('data-wide', mono.length > 1);
       c._nm.textContent = mateLabel(m.id);
       setLive(c._av, 'data-running', m.running, 2400);
       if (matesEl.children[i] !== c) matesEl.insertBefore(c, matesEl.children[i] || null);
@@ -2020,7 +2213,7 @@ function createBoard(mount) {
       title: h('div', 'tkb-card__title'),
       preview: h('div', 'tkb-card__preview'),
       detail: h('div', 'tkb-card__detail'),
-      inner: h('div', 'tkb-card__detail-inner'),
+      inner: h('div', 'tkb-card__detail-clip'),
     };
     p.glyph.append(icon('completed'));
     p.detail.append(p.inner);
@@ -2030,70 +2223,107 @@ function createBoard(mount) {
   }
   function patchCard(el, t, next, unlocking) {
     const p = el._p;
+    const exp = expandedId === t.id;
+    const isLive = t.status === 'in_progress' && !!t.ownerId && next.isRunning(t.ownerId);
     el._owner = t.ownerId || null;
     el.dataset.status = t.status;
     el.dataset.ready = t.ready ? 'true' : 'false';
-    setLive(el, 'data-live', t.status === 'in_progress' && !!t.ownerId && next.isRunning(t.ownerId), 1800);
+    el.toggleAttribute('data-expanded', exp);
+    p.detail.toggleAttribute('aria-hidden', !exp);
+    setLive(el, 'data-live', isLive, 1800);
     const idText = '#' + shortId(t.id);
     if (p.id.textContent !== idText) p.id.textContent = idText;
     if (p.title.textContent !== t.subject) p.title.textContent = t.subject;
     const pv = (t.description || '').split('\n')[0];
     if (p.preview.textContent !== pv) p.preview.textContent = pv;
-    renderOwner(p.owner, t);
-    const showDeps = t.status === 'pending' && (!t.ready || unlocking);
-    renderDeps(p.deps, showDeps ? t.blockedBy : [], next);
+    renderOwner(p.owner, t, next);
+    renderDeps(p.deps, t, next, unlocking);
     renderDetail(p.inner, t, next);
-    el.setAttribute('aria-expanded', expandedId === t.id ? 'true' : 'false');
+    el.setAttribute('aria-expanded', exp ? 'true' : 'false');
     el.setAttribute('aria-label', `#${shortId(t.id)} ${t.subject}，${statusText(t)}`);
   }
-  function renderOwner(box, t) {
+  function renderOwner(box, t, next) {
     const key = t.ownerId || (t.status === 'in_progress' ? '-' : '');
-    const k2 = key + '|' + LANG;
+    const running = !!(t.ownerId && next.isRunning(t.ownerId));
+    const isLive = t.status === 'in_progress' && running;
+    const k2 = [key, running ? 1 : 0, isLive ? 1 : 0, LANG].join('|');
     if (box._k === k2) return;
     const changed = box._k !== undefined && box._k.split('|')[0] !== key;
     box._k = k2;
     box.replaceChildren();
-    if (!key) return;
-    const ownerId = t.ownerId;
-    const nm = h('span', 'tkb-card__owner-name', key === '-' ? tx('card.unowned') : mateLabel(ownerId));
-    const av = h('span', 'tkb-mate');
-    av.setAttribute('data-tip', '');
-    if (key === '-') {
-      av.setAttribute('data-none', '');
-      av._tip = () => [tx('card.unowned'), ''];
-    } else {
-      av.textContent = mateMono(ownerId);
-      if (ownerId === ROOT_ID) av.setAttribute('data-lead', '');
-      av._tip = () => [mateLabel(ownerId), vm && vm.isRunning(ownerId) ? tx('card.running') : tx('card.idle')];
-      av.addEventListener('click', e => { e.stopPropagation(); togglePin(ownerId); });
-    }
-    box.append(nm, av);
-    if (changed && key !== '-') pulse(av, 'is-pop', 480);
-  }
-  function renderDeps(box, ids, next) {
-    if (!ids.length) { if (box.firstChild) box.replaceChildren(); box.style.opacity = ''; return; }
-    box._tok = (box._tok || 0) + 1;
-    box.style.opacity = '';
-    if (!box._arrow) box._arrow = icon('dep', 'tkb-card__deps-arrow');
-    if (box.firstChild !== box._arrow) box.prepend(box._arrow);
-    const ex = new Map();
-    box.querySelectorAll('.tkb-dep').forEach(c => ex.set(c._id, c));
-    ids.forEach((id, i) => {
-      let c = ex.get(id);
-      if (!c) {
-        c = h('span', 'tkb-dep', '#' + shortId(id));
-        c._id = id;
-        c.setAttribute('data-tip', '');
-        c._tip = () => { const d = vm && vm.map.get(id); return d ? [`#${shortId(id)} ${d.subject}`, statusText(d)] : [`#${shortId(id)}`, '']; };
-        c.addEventListener('click', e => { e.stopPropagation(); jumpTo(id); });
+    if (key) {
+      const ownerId = t.ownerId;
+      if (isLive) {
+        const ld = h('span', 'tkb-card__live-dot');
+        ld.setAttribute('aria-hidden', 'true');
+        box.append(ld);
       }
-      ex.delete(id);
-      const d = next.map.get(id);
-      c.style.removeProperty('--tkb-dd');
-      c.toggleAttribute('data-done', !!d && d.status === 'completed');
-      if (box.children[i + 1] !== c) box.insertBefore(c, box.children[i + 1] || null);
+      const nm = h('span', 'tkb-card__owner-name', key === '-' ? tx('card.unowned') : mateLabel(ownerId));
+      const av = h('span', 'tkb-mate');
+      av.setAttribute('data-tip', '');
+      if (key === '-') {
+        av.setAttribute('data-none', '');
+        av.textContent = '?';
+        av._tip = () => [tx('card.unowned'), ''];
+      } else {
+        const dot = h('span', 'tkb-mate__dot');
+        dot.setAttribute('aria-hidden', 'true');
+        const mono = mateMono(ownerId);
+        av.append(dot, document.createTextNode(mono));
+        av.toggleAttribute('data-wide', mono.length > 1);
+        if (ownerId === ROOT_ID) av.setAttribute('data-lead', '');
+        if (running) av.setAttribute('data-running', '');
+        av._tip = () => [mateLabel(ownerId), vm && vm.isRunning(ownerId) ? tx('card.running') : tx('card.idle')];
+        av.addEventListener('click', e => { e.stopPropagation(); togglePin(ownerId); });
+      }
+      box.append(nm, av);
+      if (changed && key !== '-') pulse(av, 'is-pop', 480);
+    }
+    box.append(icon('chev', 'tkb-card__chev'));
+  }
+  function renderDeps(box, t, next, unlocking) {
+    box.replaceChildren();
+    box.style.opacity = '';
+    if (t.status === 'completed') return;
+    box._tok = (box._tok || 0) + 1;
+    if (t.status === 'pending') {
+      const badge = h('span', 'tkb-badge', t.ready ? tx('card.ready') : tx('card.blockedShort'));
+      badge.dataset.kind = t.ready ? 'ready' : 'blocked';
+      badge.title = t.ready ? tx('card.ready') : tx('card.blocked');
+      box.append(badge);
+    }
+    const showDeps = t.status === 'pending' && (!t.ready || unlocking) && t.blockedBy.length > 0;
+    if (showDeps) {
+      box.append(icon('dep', 'tkb-card__deps-arrow'));
+      t.blockedBy.forEach(id => {
+        const c = h('span', 'tkb-dep', '#' + shortId(id));
+        c._id = id;
+        const d = next.map.get(id);
+        c.toggleAttribute('data-done', !!d && d.status === 'completed');
+        c.setAttribute('data-tip', '');
+        c._tip = () => { const cur = vm && vm.map.get(id); return cur ? [`#${shortId(id)} ${cur.subject}`, statusText(cur)] : [`#${shortId(id)}`, '']; };
+        c.addEventListener('click', e => { e.stopPropagation(); jumpTo(id); });
+        box.append(c);
+      });
+    }
+    const openDown = (next.dependents.get(t.id) || []).filter(id => {
+      const dep = next.map.get(id);
+      return dep && dep.status !== 'completed';
     });
-    ex.forEach(c => c.remove());
+    if (openDown.length > 0) {
+      const u = h('span', 'tkb-unlocks');
+      u.append(icon('down', 'tkb-unlocks__icon'), document.createTextNode(String(openDown.length)));
+      u.setAttribute('data-tip', '');
+      u._tip = () => [tx('card.blocks'), openDown.map(id => '#' + shortId(id)).join(' · ')];
+      box.append(u);
+    }
+    if (t.writeScopeWarnings && t.writeScopeWarnings.length > 0) {
+      const w = h('span', 'tkb-conflict');
+      w.append(icon('warn', 'tkb-conflict__icon'));
+      w.setAttribute('data-tip', '');
+      w._tip = () => [tx('card.writeScopes'), t.writeScopeWarnings[0]];
+      box.append(w);
+    }
   }
   function refRow(kind, label, ids, next) {
     const row = h('div', 'tkb-detail__row');
@@ -2154,12 +2384,14 @@ function createBoard(mount) {
       let desired;
       if (key === 'pending') {
         desired = next.ready.map(t => cards.get(t.id));
-        if (next.blocked.length) { desired.push(divider); next.blocked.forEach(t => desired.push(cards.get(t.id))); }
+        if (next.ready.length && next.blocked.length) desired.push(divider);
+        next.blocked.forEach(t => desired.push(cards.get(t.id)));
       } else desired = next.lanes[key].map(t => cards.get(t.id));
       if (!desired.length) desired.push(L.empty);
       desired.forEach((node, i) => { if (L.body.children[i] !== node) L.body.insertBefore(node, L.body.children[i] || null); });
       while (L.body.childElementCount > desired.length) L.body.lastElementChild.remove();
       L.el.toggleAttribute('data-empty', next.lanes[key].length === 0);
+      syncLaneHead(key);
     });
   }
 
@@ -2371,16 +2603,28 @@ function createBoard(mount) {
   function toggle(id) {
     const was = expandedId;
     expandedId = was === id ? null : id;
-    if (was && cards.get(was)) cards.get(was).setAttribute('aria-expanded', 'false');
+    if (was && cards.get(was)) {
+      const wEl = cards.get(was);
+      wEl.setAttribute('aria-expanded', 'false');
+      wEl.removeAttribute('data-expanded');
+      wEl._p.detail.setAttribute('aria-hidden', 'true');
+    }
     if (expandedId) {
       const el = cards.get(expandedId);
       el.setAttribute('aria-expanded', 'true');
+      el.setAttribute('data-expanded', '');
+      el._p.detail.removeAttribute('aria-hidden');
       setTimeout(() => { if (expandedId === id) el.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' }); }, ms(240));
     }
   }
   function jumpTo(id) {
     const el = cards.get(id);
     if (!el) return;
+    const laneKey = el.dataset.status;
+    if (laneKey && collapsed.has(laneKey)) {
+      collapsed.delete(laneKey);
+      syncLaneHead(laneKey);
+    }
     el.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' });
     el.focus({ preventScroll: true });
     setTimeout(() => pulse(el, 'is-flash', 1100), reduced() ? 0 : ms(260));
@@ -2435,6 +2679,7 @@ function createBoard(mount) {
       const off = s.off || e.off;
       const path = document.createElementNS(SVGNS, 'path');
       path.setAttribute('d', `M${x1},${s.cy} C${c1[0]},${c1[1]} ${c2[0]},${c2[1]} ${x2},${e.cy}`);
+      path.setAttribute('pathLength', '100');
       path.setAttribute('class', `tkb-wire tkb-wire--${kind}${off ? ' is-off' : ''}`);
       wires.append(path);
       [[x1, s.cy], [x2, e.cy]].forEach(([x, y]) => {
@@ -2443,12 +2688,6 @@ function createBoard(mount) {
         c.setAttribute('class', `tkb-wire-dot tkb-wire--${kind}`);
         wires.append(c);
       });
-      if (reduced()) return;
-      if (off) { anim(path, [{ opacity: 0 }, { opacity: .5 }], { duration: ms(240), delay: ms(i * 40), fill: 'backwards' }); return; }
-      const len = path.getTotalLength();
-      path.style.strokeDasharray = String(len);
-      anim(path, [{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: ms(340), delay: ms(i * 40), easing: EASE, fill: 'backwards' })
-        .finished.then(() => { path.style.strokeDasharray = ''; }, () => {});
     });
   }
   function showLineage(id) {
@@ -2547,7 +2786,9 @@ function createBoard(mount) {
     const c = e.target.closest && e.target.closest('.tkb-card');
     if (!isCard(c) || e.target.closest('.tkb-ref')) return;
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(c._id); return; }
-    const list = k => [...lanes[k].body.querySelectorAll(':scope > .tkb-card')];
+    const list = k => (lanes[k].el.hasAttribute('data-collapsed')
+      ? []
+      : [...lanes[k].body.querySelectorAll(':scope > .tkb-card')]);
     const li = LANES.indexOf(c.closest('.tkb-lane').dataset.lane);
     const cur = list(LANES[li]);
     const i = cur.indexOf(c);
@@ -2946,7 +3187,7 @@ function resetAll() {
   host.dismissed = false;
   if (PARAMS.get('script') === 'loop') {
     spawn('builder'); spawn('designer'); spawn('reviewer');
-    mkTask(1, '设计看板主题 token 映射与容器断点', '只使用 --dsw-alias-* 变量；540 / 820 两档容器查询；Light / Dark 对比度自检。', [2], ['client.js#styles']);
+    mkTask(1, '设计看板主题 token 映射与容器断点', '只使用 --dsw-alias-* 变量；540 / 820 两档容器查询；Light / Dark 对比度自检。', [2], ['client.js#styles'], ['与 #2 的写入范围 client.js 存在重叠']);
     mkTask(2, '实现 TeamKanbanWatcher 自动开闭状态机', '挂载在 conversation.session.header.actions，按 agentTeam 投影开闭标签页。', [], ['client.js#watcher']);
     mkTask(3, '梳理 sidebar-right 标签页注册契约', '核对 tab-registry.ts 与 contract/slots.ts。', [], ['docs/contract-notes.md']);
     mkTask(4, '实现多智能体动态流转与异常投影', '解析 agentTeam 字段，处理失败提示与恢复。', [], ['client.js#stream']);

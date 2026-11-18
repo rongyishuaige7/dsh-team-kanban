@@ -1,0 +1,169 @@
+{
+  "measured_date": "2026-11-17",
+  "pipeline": {
+    "engine": "Remotion 4.0.484",
+    "renderer": "Chromium Headless + ANGLE",
+    "codec_container": "FFmpeg 7.1 libx264 + AAC 48kHz MP4",
+    "probe": "Normalized FFT cross-correlation (rendered BGM bed + 4 sharp Foley SFX probes @ 48kHz)"
+  },
+  "measured_output_audio_offset_sec": 0.042333,
+  "measured_output_audio_offset_frames": 1.27,
+  "configured_output_audio_offset_sec": 0.0427,
+  "rendered_grid": {
+    "bpm": 122.041,
+    "t0": 0.115891,
+    "T": 0.491638
+  },
+  "cut_errors": [
+    {
+      "cut": "s2_hero",
+      "beat": 8,
+      "designed_frame": 121,
+      "measured_beat_frame": 121.47,
+      "error_frames": -0.47,
+      "pass_3f": true
+    },
+    {
+      "cut": "c1_title",
+      "beat": 20,
+      "designed_frame": 298,
+      "measured_beat_frame": 298.46,
+      "error_frames": -0.46,
+      "pass_3f": true
+    },
+    {
+      "cut": "s3_flow",
+      "beat": 24,
+      "designed_frame": 357,
+      "measured_beat_frame": 357.46,
+      "error_frames": -0.46,
+      "pass_3f": true
+    },
+    {
+      "cut": "c2_title",
+      "beat": 36,
+      "designed_frame": 534,
+      "measured_beat_frame": 534.45,
+      "error_frames": -0.45,
+      "pass_3f": true
+    },
+    {
+      "cut": "s4_theme",
+      "beat": 40,
+      "designed_frame": 593,
+      "measured_beat_frame": 593.44,
+      "error_frames": -0.44,
+      "pass_3f": true
+    },
+    {
+      "cut": "s5_disarm",
+      "beat": 52,
+      "designed_frame": 770,
+      "measured_beat_frame": 770.43,
+      "error_frames": -0.43,
+      "pass_3f": true
+    },
+    {
+      "cut": "s6_outro",
+      "beat": 64,
+      "designed_frame": 947,
+      "measured_beat_frame": 947.42,
+      "error_frames": -0.42,
+      "pass_3f": true
+    },
+    {
+      "cut": "END",
+      "beat": 76,
+      "designed_frame": 1124,
+      "measured_beat_frame": 1124.41,
+      "error_frames": -0.41,
+      "pass_3f": true
+    }
+  ],
+  "max_abs_cut_error_frames": 0.47,
+  "sfx_probe_residuals": [
+    {
+      "cue": "s3-drawer",
+      "file": "switch-click-quick.mp3",
+      "target_frame": 385,
+      "measured_peak_frame": 385.28,
+      "residual_frames": 0.28,
+      "pass_1f": true
+    },
+    {
+      "cue": "s4-toggle",
+      "file": "switch-light.mp3",
+      "target_frame": 608,
+      "measured_peak_frame": 608.29,
+      "residual_frames": 0.29,
+      "pass_1f": true
+    },
+    {
+      "cue": "s5-click1",
+      "file": "click-camera.mp3",
+      "target_frame": 814,
+      "measured_peak_frame": 814.28,
+      "residual_frames": 0.28,
+      "pass_1f": true
+    },
+    {
+      "cue": "s6-impact",
+      "file": "impact-deep-whoosh.mp3",
+      "target_frame": 993,
+      "measured_peak_frame": 993.27,
+      "residual_frames": 0.27,
+      "pass_1f": true
+    }
+  ],
+  "volumedetect_bgm": {
+    "max_volume_db": -1.8,
+    "mean_volume_db": -20.7
+  },
+  "volumedetect_nobgm": {
+    "max_volume_db": -1.9,
+    "mean_volume_db": -24.8
+  },
+  "nobgm_peak_dbfs": -4.63,
+  "segment_sfx_peaks": [
+    {
+      "segment": "s1_open",
+      "peak_dbfs": -8.53,
+      "audible": true
+    },
+    {
+      "segment": "s2_hero",
+      "peak_dbfs": -7.34,
+      "audible": true
+    },
+    {
+      "segment": "c1_title",
+      "peak_dbfs": -10.27,
+      "audible": true
+    },
+    {
+      "segment": "s3_flow",
+      "peak_dbfs": -6.91,
+      "audible": true
+    },
+    {
+      "segment": "c2_title",
+      "peak_dbfs": -10.28,
+      "audible": true
+    },
+    {
+      "segment": "s4_theme",
+      "peak_dbfs": -6.31,
+      "audible": true
+    },
+    {
+      "segment": "s5_disarm",
+      "peak_dbfs": -6.29,
+      "audible": true
+    },
+    {
+      "segment": "s6_outro",
+      "peak_dbfs": -4.63,
+      "audible": true
+    }
+  ]
+}

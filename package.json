@@ -1,6 +1,6 @@
 {
   "name": "dsh-team-kanban",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "A living three-column kanban board in the right sidebar for DeepSeek Harness agent teams, driven by the native agentTeam projection DAG.",
   "keywords": [
     "dsh",
@@ -63,7 +63,7 @@
       "dshReleases": {
         "0.2.2-rc.3": "compatible"
       },
-      "note": "0.2.2-rc.3 desktop 已验收 T3（清空自动关闭）与 T4（流转与角标同步）；0.5.1 修复停用 RPC 校验与重发探测，0.5.2 采用 DSH 原生科技蓝与精简物理动效，0.5.3-0.5.6 严格对齐宿主 Design Platform alias tokens、同步 8px/12px 圆角真值、引入 85% 危险红双 AA 对比度与 WCAG 数学计算守卫、补齐原型停用弹层 Mock 预览与 100% 规则全双工覆盖；T1/T2/T5/T6 待实机补验。0.2.1-alpha.4 的 Team 结构仅单测覆盖。"
+      "note": "0.2.2-rc.3 desktop 已验收 T3（清空自动关闭）与 T4（流转与角标同步）；0.5.1 修复停用 RPC 校验与重发探测，0.5.2 采用 DSH 原生科技蓝与精简物理动效，0.5.3-0.5.6 严格对齐宿主 Design Platform alias tokens 与双模 WCAG AA 数学对比度守卫，0.5.7 修复停用控件顶栏挂载层级与抽屉折叠动画、新增窄栏空列静默与泳道折叠、外露卡面下游瓶颈与写冲突微标、补齐同首字队友消歧与正式版轻量 FLIP / 贝塞尔血缘连线；T1/T2/T5/T6 待实机补验。0.2.1-alpha.4 的 Team 结构仅单测覆盖。"
     }
   },
   "devDependencies": {

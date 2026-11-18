@@ -25,9 +25,9 @@ A living three-column kanban board for [DeepSeek Harness](https://github.com/dee
 ## 功能
 
 - **自动显隐**：根会话开启团队协作且出现任务时，自动在右侧栏打开；任务清空或关闭团队时自动关闭，不留空标签、不占位。
-- **三列流转**：待处理 / 进行中 / 已完成，卡片随投影实时换列；`pending` 列区分「就绪」与「被依赖阻塞」。
-- **依赖血缘**：卡片显示 `blockedBy` 前置任务与解锁关系，前置完成后阻塞态自动解除。
-- **顶部概览**：完成进度条 + 分类统计 + 队友运行态（名册 `phase`、`useSessionStatus`、子会话运行态三路合一）。
+- **三列流转**：待处理 / 进行中 / 已完成，卡片随投影实时 FLIP 换列与补位；`pending` 列区分「就绪」与「被依赖阻塞」，非空泳道支持点击折叠，窄栏下空泳道自动静默收敛。
+- **依赖血缘与冲突预警**：卡面直接外露 `blockedBy` 前置依赖、`↘ N` 下游解锁瓶颈计数与并发写范围冲突告警；宽屏悬停卡片实时绘制 SVG 贝塞尔上下游血缘连线。
+- **顶部概览**：凹槽完成进度条 + 分类统计 + 队友视窗（支持同首字智能体自动消歧、`phase` 异常/启动态透出、窄屏点击锁定展开姓名胶囊）。
 - **标签角标**：标签页标题内嵌完成度圆环与计数，停留在文件树或浏览器标签时也能看到进度。
 - **几何与主题**：`@container` 响应式适配 360px 窄栏 / 分栏 / 全屏 / 浮动窗；只用宿主 `--dsw-alias-*` token，Light / Dark 自动跟随；中英双语。
 - **一键停用团队**：header 上的「团队」按钮可以直接停用本会话的团队协作（带确认），不用回模型菜单；任务会保留，看板随团队关闭而收起。
@@ -35,9 +35,9 @@ A living three-column kanban board for [DeepSeek Harness](https://github.com/dee
 
 ## 视觉预览
 
-![任务板：右侧栏三列活体看板动态流转演示](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/kanban-loop-v3.webp)
+![任务板：右侧栏三列活体看板动态流转演示](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/kanban-loop-v4.webp)
 
-*1:1 真实运行动效（v0.5.6 · 官方浅色高对比度）：涵盖多智能体任务分发、依赖阻塞解锁、FLIP 物理换列及标签页环形角标打勾。20 秒 1080P@60fps 发布片见 [`docs/assets/kanban-launch-v4.mp4`](docs/assets/kanban-launch-v4.mp4)（[纯音效版](docs/assets/kanban-launch-v4-nobgm.mp4)）——真实 60fps 运行素材、跨列飞行慢放、深浅同帧对照、停用团队的真实点击；源码与采集链路在 [`media/launch-v4/`](media/launch-v4/)。*
+*1:1 真实运行动效（v0.5.7 · 官方浅色高对比度）：涵盖顶栏内嵌「团队」开关、依赖瓶颈 `↘ N` 与写冲突 `⚠` 徽章、FLIP 物理换列及标签页环形角标打勾。37 秒 1080P 产品发布宣传片见 [`docs/assets/kanban-launch-v5.mp4`](docs/assets/kanban-launch-v5.mp4)（[纯音效无 BGM 版](docs/assets/kanban-launch-v5-nobgm.mp4) · [English International Cut](https://github.com/rongyishuaige7/dsh-team-kanban/releases/download/v0.5.7/kanban-launch-v5-en.mp4) · [9:16 竖屏短视频版](https://github.com/rongyishuaige7/dsh-team-kanban/releases/download/v0.5.7/kanban-launch-v5-vertical-9x16.mp4)）；Remotion 源码、剪映草稿导出器与可编辑工作台清单在 [`media/launch-v5/`](media/launch-v5/)。*
 
 <details>
 <summary><b>查看最新深浅双色实机截帧（1:1 像素）</b></summary>
@@ -123,7 +123,7 @@ Node ≥ 20，无第三方依赖，无构建步骤——`client.js` 是手写的
 
 ```bash
 npm run check   # node --check 两个入口
-npm test        # node:test，33 项：纯函数、双结构渲染冒烟、清单一致性、旧标签清理、空闲探测、诊断记录、团队开关
+npm test        # node:test，43 项：纯函数、双结构渲染冒烟、清单一致性、旧标签清理、空闲探测、诊断记录、团队开关、WCAG 对比度与双向规则同构
 ```
 
 测试用假的 `__ModuleLoader__` 加载 `client.js`，用 hook 形状的 React 替身走完渲染路径，不需要浏览器或宿主。

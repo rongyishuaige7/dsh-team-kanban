@@ -254,10 +254,75 @@ test('apply leaves a diagnostic record that needs no DevTools', () => {
 test('the board renders one team switch in the header', () => {
   const { slots } = boot({ agentTeam: rcTeam });
   const board = slots['sidebar.right.pane.tab'](sessionProps(rcTeam));
-  const button = findByClass(board, 'tkb-team__btn');
-  assert.ok(button, 'the team control sits next to the header');
+  const head = findByClass(board, 'tkb-head');
+  assert.ok(head, 'the board renders .tkb-head');
+  const button = findByClass(head, 'tkb-team__btn');
+  assert.ok(button, 'the team control sits inside .tkb-head');
   assert.equal(button.props['aria-label'], 'team.disable');
   assert.equal(button.props['aria-haspopup'], 'dialog');
+});
+
+test('cards surface downstream bottleneck counts, write-scope conflict icons, and smooth grid drawers', () => {
+  const { slots } = boot({ agentTeam: rcTeam });
+  const board = slots['sidebar.right.pane.tab'](sessionProps(rcTeam));
+  const unlocks = findByClass(board, 'tkb-unlocks');
+  assert.ok(unlocks, 'task-2 blocks task-3 so its card surfaces .tkb-unlocks');
+  assert.equal(textOf(unlocks).trim(), '1');
+  const conflict = findByClass(board, 'tkb-conflict');
+  assert.ok(conflict, 'task-2 has writeScopeWarnings so its card surfaces .tkb-conflict');
+  const drawer = findByClass(board, 'tkb-card__detail');
+  assert.ok(drawer, 'collapsed cards keep .tkb-card__detail mounted for 0fr -> 1fr grid animation');
+  assert.equal(drawer.props['aria-hidden'], 'true');
+  assert.ok(findByClass(drawer, 'tkb-card__detail-clip'), 'drawer wraps content in .tkb-card__detail-clip');
+});
+
+test('failed and colliding teammates expose phase markers and disambiguated monograms', () => {
+  const rosterTeam = {
+    members: [
+      { id: 'S-lead', name: 'lead', role: 'lead', phase: 'active' },
+      { id: 'S-1', name: 'worker-1', role: 'teammate', phase: 'active' },
+      { id: 'S-2', name: 'worker-2', role: 'teammate', phase: 'failed', error: 'crash' },
+    ],
+    tasks: [
+      { id: 'task-1', revision: 1, subject: 'Work', description: '', status: 'in_progress', blockedBy: [], writeScopes: [], ownerName: 'worker-1', ready: true, writeScopeWarnings: [] },
+    ],
+  };
+  const { slots } = boot({ agentTeam: rosterTeam });
+  const board = slots['sidebar.right.pane.tab'](sessionProps(rosterTeam));
+  const matesStrip = findByClass(board, 'tkb-mates');
+  const stripText = textOf(matesStrip);
+  assert.ok(stripText.includes('W1') && stripText.includes('W2'), 'colliding teammate initials disambiguate to W1 / W2');
+
+  let failedBadge = null;
+  let failedChip = null;
+  renderTree(matesStrip, (el) => {
+    if (el.props && el.props['data-phase'] === 'failed') failedBadge = el;
+    if (el.props && typeof el.props['aria-label'] === 'string' && el.props['aria-label'].includes('crash')) failedChip = el;
+  });
+  assert.ok(failedBadge, 'failed teammate renders data-phase="failed"');
+  assert.ok(failedChip, 'failed teammate surfaces error message in aria-label');
+});
+
+test('non-empty lanes expose accessible collapse controls while empty lanes stay inert', () => {
+  const partialTeam = {
+    enabled: true,
+    tasks: [
+      { id: 'task-1', revision: 1, subject: 'Only pending', description: '', status: 'pending', blockedBy: [], writeScopes: [], ready: true, writeScopeWarnings: [] },
+    ],
+  };
+  const { slots } = boot({ agentTeam: partialTeam });
+  const board = slots['sidebar.right.pane.tab'](sessionProps(partialTeam));
+  const lanes = [];
+  renderTree(board, (el) => {
+    if (el.props && el.props.className === 'tkb-lane') lanes.push(el);
+  });
+  assert.equal(lanes.length, 3);
+  const pendingHead = findByClass(lanes[0], 'tkb-lane__head');
+  const activeHead = findByClass(lanes[1], 'tkb-lane__head');
+  assert.equal(pendingHead.props.role, 'button');
+  assert.ok(findByClass(pendingHead, 'tkb-lane__chev'));
+  assert.equal(activeHead.props.role, undefined);
+  assert.equal(findByClass(activeHead, 'tkb-lane__chev'), null);
 });
 
 test('disabling the team calls the only exposed remote method', async () => {
@@ -609,6 +674,15 @@ test('semantic elements satisfy WCAG AA / non-text mathematical contrast thresho
   const doneRing = mix(parseHex(HOST_FIXTURE.light['--dsw-alias-state-success-primary']), parseHex(HOST_FIXTURE.light['--dsw-alias-label-primary']), 0.8);
   const doneRingCR = cr(doneRing, [255, 255, 255]);
   assert.ok(doneRingCR >= 3.0, `completed badge ring contrast ${doneRingCR.toFixed(2)}:1 must satisfy non-text contrast (>= 3.0:1)`);
+
+  // 5. Downstream bottleneck pill (.tkb-unlocks) & lane count pill (.tkb-lane__count) text contrast in Light & Dark
+  const lightUnlocksBg = mix(parseHex(HOST_FIXTURE.light['--dsw-alias-label-primary']), parseHex(HOST_FIXTURE.light['--dsw-alias-bg-base']), 0.06);
+  const lightUnlocksCR = cr(parseHex(HOST_FIXTURE.light['--dsw-alias-label-secondary']), lightUnlocksBg);
+  assert.ok(lightUnlocksCR >= 4.5, `light unlocks pill contrast ${lightUnlocksCR.toFixed(2)}:1 must satisfy WCAG AA (>= 4.5:1)`);
+
+  const darkUnlocksBg = mix(parseHex(HOST_FIXTURE.dark['--dsw-alias-label-primary']), parseHex(HOST_FIXTURE.dark['--dsw-alias-bg-base']), 0.06);
+  const darkUnlocksCR = cr(parseHex(HOST_FIXTURE.dark['--dsw-alias-label-secondary']), darkUnlocksBg);
+  assert.ok(darkUnlocksCR >= 4.5, `dark unlocks pill contrast ${darkUnlocksCR.toFixed(2)}:1 must satisfy WCAG AA (>= 4.5:1)`);
 });
 
 test('prototype mock tokens adhere strictly to host design-platform fixture (anti-drift)', () => {
