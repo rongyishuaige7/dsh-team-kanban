@@ -1747,7 +1747,8 @@ const DICT = {
     'pane.files': 'Files', 'pane.terminal': 'Terminal',
   },
 };
-let LANG = 'zh';
+let LANG = PARAMS.get('lang') === 'en' ? 'en' : 'zh';
+if (LANG === 'en') document.documentElement.lang = 'en';
 const tx = (k, v) => {
   let s = (DICT[LANG] && DICT[LANG][k]) || DICT.zh[k] || k;
   if (v) s = s.replace(/\{(\w+)\}/g, (_, n) => (v[n] != null ? v[n] : ''));
@@ -3106,18 +3107,19 @@ function commit(fn) {
 
 /* ================= 6. 剧本：一次完整的多智能体协作 ================= */
 const M = MATE_DEFS;
+const lpick = (zh, en) => (LANG === 'en' ? en : zh);
 const SCRIPT = [
-  { wait: 2300, run() { mkTask(1, '梳理 sidebar-right 标签页注册契约', '核对 tab-registry.ts 与 contract/slots.ts，\n确认 openTabIn / closeIn / tabsIn 的调用时序与同分栏去重规则。', [], ['docs/contract-notes.md']); } },
+  { wait: 2300, run() { mkTask(1, lpick('梳理 sidebar-right 标签页注册契约', 'Map sidebar-right tab registration contract'), lpick('核对 tab-registry.ts 与 contract/slots.ts，\n确认 openTabIn / closeIn / tabsIn 的调用时序与同分栏去重规则。', 'Verify tab-registry.ts & contract/slots.ts;\nconfirm openTabIn / closeIn ordering and same-pane deduplication.'), [], ['docs/contract-notes.md']); } },
   { wait: 2200, run() {
-    mkTask(2, '实现 TeamKanbanWatcher 自动开闭状态机', '挂载在 conversation.session.header.actions，按 agentTeam 投影开闭标签页；\n维护 dismissedSessions 防打扰标记。', [1], ['client.js#watcher']);
-    mkTask(3, '设计看板主题 token 映射与容器断点', '只使用 --dsw-alias-* 变量；540 / 820 两档容器查询；Light / Dark 对比度自检。', [1], ['client.js#styles']);
-    mkTask(4, '实现 TeamKanbanBoard 三列视图与任务卡片', '三列分组、卡片展开、依赖高亮、飞行层动效与减少动效降级。', [2, 3], ['client.js#board'], ['与 #3 的写入范围 client.js 存在重叠']);
-    mkTask(5, '编写 teamKanban 中英文字典', '对齐 DESIGN.md 3.3 的键名清单，补充读屏播报文案。', [], ['locale/zh.json', 'locale/en.json']);
-    mkTask(6, '联调验收 T1–T6 场景', '安装到 desktop profile，逐项验证自动显隐、手动关闭防打扰、主题与几何适配。', [4, 5]);
+    mkTask(2, lpick('实现 TeamKanbanWatcher 自动开闭状态机', 'Implement TeamKanbanWatcher auto-lifecycle'), lpick('挂载在 conversation.session.header.actions，按 agentTeam 投影开闭标签页；\n维护 dismissedSessions 防打扰标记。', 'Mount on conversation.session.header.actions; sync tab open/close from agentTeam;\nmaintain dismissedSessions guard.'), [1], ['client.js#watcher']);
+    mkTask(3, lpick('设计看板主题 token 映射与容器断点', 'Design --dsw-alias-* tokens & @container queries'), lpick('只使用 --dsw-alias-* 变量；540 / 820 两档容器查询；Light / Dark 对比度自检。', 'Strictly use --dsw-alias-* host variables; 540 / 820px @container tiers; Light & Dark WCAG AA.'), [1], ['client.js#styles']);
+    mkTask(4, lpick('实现 TeamKanbanBoard 三列视图与任务卡片', 'Build TeamKanbanBoard 3-lane view & task cards'), lpick('三列分组、卡片展开、依赖高亮、飞行层动效与减少动效降级。', 'Three lanes, 0fr→1fr card drawer, SVG lineage curves, FLIP flights & reduced-motion fallback.'), [2, 3], ['client.js#board'], [lpick('与 #3 的写入范围 client.js 存在重叠', 'Write scope client.js overlaps with #3')]);
+    mkTask(5, lpick('编写 teamKanban 中英文字典', 'Author bilingual teamKanban locale dictionaries'), lpick('对齐 DESIGN.md 3.3 的键名清单，补充读屏播报文案。', 'Align zh/en key namespaces with DESIGN.md 3.3 and screen-reader live announcements.'), [], ['locale/zh.json', 'locale/en.json']);
+    mkTask(6, lpick('联调验收 T1–T6 场景', 'Verify end-to-end T1–T6 scenarios on desktop'), lpick('安装到 desktop profile，逐项验证自动显隐、手动关闭防打扰、主题与几何适配。', 'Install into desktop profile; verify auto-open/close, manual dismiss, theme parity & team disarm.'), [4, 5]);
   } },
   { wait: 2000, run() { spawn('explorer'); claimT(T(1), M.explorer.id); } },
   { wait: 2000, run() { claimT(T(5), ROOT_ID); } },
-  { wait: 2000, run() { revise(T(1), '补充：右侧栏 store 未实例化时 openTabIn 安全 noop，需在首次挂载后补同步。'); } },
+  { wait: 2000, run() { revise(T(1), lpick('补充：右侧栏 store 未实例化时 openTabIn 安全 noop，需在首次挂载后补同步。', 'Note: openTabIn is a safe no-op before sidebar store mounts; re-sync on first mount.')); } },
   { wait: 2800, run() { completeT(T(1)); } },
   { wait: 2200, run() { spawn('builder'); spawn('designer'); claimT(T(2), M.builder.id); claimT(T(3), M.designer.id); } },
   { wait: 2200, run() { completeT(T(5)); } },
@@ -3377,6 +3379,9 @@ new ResizeObserver(() => { ptWidth.textContent = Math.round(side.getBoundingClie
 mq.addEventListener('change', refreshUI);
 
 /* ================= 9. 启动 ================= */
+if (LANG === 'en') {
+  document.querySelectorAll('[data-seg="lang"] button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === 'en')));
+}
 relabelChips();
 updateTabs();
 refreshUI();
