@@ -974,7 +974,10 @@ window.__ModuleLoader__.load({
         return () => document.removeEventListener('pointerdown', onDown, true);
       }, [teamMenu, closeTeamMenu]);
 
+      const hasVisibleBoard = !!team && team.enabled === true && model.tasks.length > 0;
+
       useEffect(() => {
+        if (!hasVisibleBoard) return undefined;
         const root = rootRef.current;
         if (!root || typeof ResizeObserver !== 'function') return undefined;
         const update = (w) => {
@@ -991,7 +994,7 @@ window.__ModuleLoader__.load({
         });
         ro.observe(root);
         return () => ro.disconnect();
-      }, []);
+      }, [hasVisibleBoard]);
 
       const queueTip = useCallback((target, title, sub, opts) => {
         if (!target) return;
@@ -1047,7 +1050,10 @@ window.__ModuleLoader__.load({
           place = 'bottom';
         }
         const arrowLeft = clamp(tip.centerX - left - 3.5, 10, Math.max(10, tipW - 17));
-        if (Math.abs(left - tip.left) > 1 || Math.abs(top - tip.top) > 1 || place !== tip.place) {
+        if (Math.abs(left - tip.left) > 1
+          || Math.abs(top - tip.top) > 1
+          || Math.abs(arrowLeft - tip.arrowLeft) > 1
+          || place !== tip.place) {
           setTip((prev) => (prev ? Object.assign({}, prev, { left, top, place, arrowLeft }) : prev));
         }
       }, [tip]);
@@ -1138,22 +1144,23 @@ window.__ModuleLoader__.load({
                 { transform: 'none' },
               ], { duration: 430, delay, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'both' });
               let settled = false;
-              const finish = () => {
+              const finish = (cancelled) => {
                 if (settled) return;
                 settled = true;
                 try { anim.cancel(); } catch (error) {}
                 if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
                 el.style.visibility = '';
-                if (el.classList) {
+                if (!cancelled && el.classList) {
                   el.classList.add('is-landed');
-                  setTimeout(() => el.classList.remove('is-landed'), 220);
+                  const landTimer = setTimeout(() => el.classList.remove('is-landed'), 220);
+                  activeFlightsRef.current.push(() => clearTimeout(landTimer));
                 }
               };
-              activeFlightsRef.current.push(finish);
+              activeFlightsRef.current.push(() => finish(true));
               if (anim && anim.finished && typeof anim.finished.then === 'function') {
-                anim.finished.then(finish, finish);
+                anim.finished.then(() => finish(false), () => finish(true));
               } else {
-                const tid = setTimeout(finish, 440 + delay);
+                const tid = setTimeout(() => finish(false), 440 + delay);
                 activeFlightsRef.current.push(() => clearTimeout(tid));
               }
             } else if (typeof el.animate === 'function') {
@@ -1511,6 +1518,9 @@ window.__ModuleLoader__.load({
         hideTip();
         clearTimeout(lineageTimer.current);
         setLineageId(null);
+        setFocusedDepId(null);
+        setConflictPair(null);
+        setRelayWires(EMPTY);
         if (activeFlightsRef.current.length === 0 && rootRef.current) {
           const fresh = snapshotRects(rootRef.current);
           const stored = new Map();
@@ -1913,7 +1923,7 @@ window.__ModuleLoader__.load({
           String(counts.completed).split('').map((digit, index) => h('span', {
             key: index,
             className: 'tkb-odo',
-            style: { transform: 'translateY(' + (-Number(digit) * 22) + 'px)' },
+            style: { transform: 'translateY(' + (-Number(digit) * 1.15) + 'em)' },
           },
           [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => h('span', { key: n }, String(n)))))),
         h('span', { className: 'tkb-score__total' }, '/' + total)),
@@ -2586,8 +2596,8 @@ window.__ModuleLoader__.load({
   position: relative;
   display: inline-flex;
   overflow: hidden;
-  height: 22px;
-  line-height: 22px;
+  height: 1.15em;
+  line-height: 1.15em;
   font-size: 19px;
   font-weight: 700;
   letter-spacing: -.02em;
@@ -2601,8 +2611,8 @@ window.__ModuleLoader__.load({
   transition: transform 380ms linear(0, .14 5%, .48 13%, .78 23%, .95 34%, 1.03 48%, 1.01 68%, 1);
 }
 .tkb-odo span {
-  height: 22px;
-  line-height: 22px;
+  height: 1.15em;
+  line-height: 1.15em;
   display: block;
   text-align: center;
 }
