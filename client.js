@@ -870,7 +870,11 @@ window.__ModuleLoader__.load({
       const [spot, setSpot] = useState(null);
       const [pinned, setPinned] = useState(false);
       const [lineageId, setLineageId] = useState(null);
+      const [focusedDepId, setFocusedDepId] = useState(null);
+      const [conflictPair, setConflictPair] = useState(null);
+      const [unlockedIds, setUnlockedIds] = useState(null);
       const [wires, setWires] = useState(EMPTY);
+      const [relayWires, setRelayWires] = useState(EMPTY);
       const [flashId, setFlashId] = useState(null);
       const [tip, setTip] = useState(null);
       const [entering, setEntering] = useState(true);
@@ -878,10 +882,13 @@ window.__ModuleLoader__.load({
       const [teamMenu, setTeamMenu] = useState(false);
       const [teamBusy, setTeamBusy] = useState(false);
       const [teamError, setTeamError] = useState(null);
+      const [narrowMates, setNarrowMates] = useState(false);
+      const [showAllMates, setShowAllMates] = useState(false);
 
       const rootRef = useRef(null);
       const gridRef = useRef(null);
       const flightsRef = useRef(null);
+      const tipRef = useRef(null);
       const cardRectsRef = useRef(null);
       const activeFlightsRef = useRef([]);
       const tipTimer = useRef(0);
@@ -967,10 +974,32 @@ window.__ModuleLoader__.load({
         return () => document.removeEventListener('pointerdown', onDown, true);
       }, [teamMenu, closeTeamMenu]);
 
-      const queueTip = useCallback((target, title, sub) => {
+      useEffect(() => {
+        const root = rootRef.current;
+        if (!root || typeof ResizeObserver !== 'function') return undefined;
+        const update = (w) => {
+          const narrow = w > 0 && w < 520;
+          setNarrowMates(narrow);
+          if (!narrow) setShowAllMates(false);
+        };
+        if (typeof root.getBoundingClientRect === 'function') {
+          update(root.getBoundingClientRect().width);
+        }
+        const ro = new ResizeObserver((entries) => {
+          const entry = entries && entries[0];
+          if (entry && entry.contentRect) update(entry.contentRect.width);
+        });
+        ro.observe(root);
+        return () => ro.disconnect();
+      }, []);
+
+      const queueTip = useCallback((target, title, sub, opts) => {
         if (!target) return;
-        clearTimeout(lineageTimer.current);
-        setLineageId(null);
+        if (!(opts && opts.keepLineage)) {
+          clearTimeout(lineageTimer.current);
+          setLineageId(null);
+          setFocusedDepId(null);
+        }
         clearTimeout(tipTimer.current);
         tipTimer.current = setTimeout(() => {
           const root = rootRef.current;
@@ -978,17 +1007,50 @@ window.__ModuleLoader__.load({
           const rootRect = root.getBoundingClientRect();
           const rect = target.getBoundingClientRect();
           if (!rect.width && !rect.height) return;
-          const half = 110;
-          const left = clamp(
-            rect.left - rootRect.left + rect.width / 2,
-            half + 6,
-            Math.max(half + 6, rootRect.width - half - 6),
-          );
-          let top = rect.top - rootRect.top - 36;
-          if (top < 4) top = rect.bottom - rootRect.top + 6;
-          setTip({ left, top, title: String(title || ''), sub: String(sub || '') });
-        }, 190);
+          const tipNode = tipRef.current;
+          const tipW = tipNode && tipNode.offsetWidth ? tipNode.offsetWidth : 180;
+          const tipH = tipNode && tipNode.offsetHeight ? tipNode.offsetHeight : 34;
+          const centerX = rect.left - rootRect.left + rect.width / 2;
+          const left = clamp(centerX - tipW / 2, 8, Math.max(8, rootRect.width - tipW - 8));
+          let top = rect.top - rootRect.top - tipH - 8;
+          let place = 'top';
+          if (top < 6) {
+            top = rect.bottom - rootRect.top + 8;
+            place = 'bottom';
+          }
+          const arrowLeft = clamp(centerX - left - 3.5, 10, Math.max(10, tipW - 17));
+          setTip({
+            left,
+            top,
+            place,
+            arrowLeft,
+            centerX,
+            targetTop: rect.top - rootRect.top,
+            targetBottom: rect.bottom - rootRect.top,
+            rootW: rootRect.width,
+            title: String(title || ''),
+            sub: String(sub || ''),
+          });
+        }, 160);
       }, []);
+
+      useLayout(() => {
+        const tipNode = tipRef.current;
+        if (!tip || !tipNode || !tipNode.offsetWidth) return;
+        const tipW = tipNode.offsetWidth;
+        const tipH = tipNode.offsetHeight;
+        const left = clamp(tip.centerX - tipW / 2, 8, Math.max(8, tip.rootW - tipW - 8));
+        let top = tip.targetTop - tipH - 8;
+        let place = 'top';
+        if (top < 6) {
+          top = tip.targetBottom + 8;
+          place = 'bottom';
+        }
+        const arrowLeft = clamp(tip.centerX - left - 3.5, 10, Math.max(10, tipW - 17));
+        if (Math.abs(left - tip.left) > 1 || Math.abs(top - tip.top) > 1 || place !== tip.place) {
+          setTip((prev) => (prev ? Object.assign({}, prev, { left, top, place, arrowLeft }) : prev));
+        }
+      }, [tip]);
 
       const cleanupFlights = useCallback(() => {
         activeFlightsRef.current.forEach((fn) => {
@@ -1066,14 +1128,15 @@ window.__ModuleLoader__.load({
               flightsRef.current.appendChild(ghost);
               el.style.visibility = 'hidden';
               const dist = Math.hypot(dx, dy) || 1;
-              const lift = Math.min(18, 5 + dist * 0.045);
+              const lift = Math.min(20, 6 + dist * 0.045);
+              const tilt = dx < 0 ? 1.25 : -1.25;
               const delay = Math.min(staggerIndex * 30, 180);
               staggerIndex += 1;
               const anim = ghost.animate([
                 { transform: 'translate(' + dx + 'px, ' + dy + 'px) scale(0.985)' },
-                { transform: 'translate(' + (dx * 0.48) + 'px, ' + (dy * 0.48 - lift) + 'px) scale(1.025)', offset: 0.45 },
+                { transform: 'translate(' + (dx * 0.48) + 'px, ' + (dy * 0.48 - lift) + 'px) scale(1.028) rotate(' + tilt + 'deg)', offset: 0.45 },
                 { transform: 'none' },
-              ], { duration: 420, delay, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'both' });
+              ], { duration: 430, delay, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'both' });
               let settled = false;
               const finish = () => {
                 if (settled) return;
@@ -1081,6 +1144,10 @@ window.__ModuleLoader__.load({
                 try { anim.cancel(); } catch (error) {}
                 if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
                 el.style.visibility = '';
+                if (el.classList) {
+                  el.classList.add('is-landed');
+                  setTimeout(() => el.classList.remove('is-landed'), 220);
+                }
               };
               activeFlightsRef.current.push(finish);
               if (anim && anim.finished && typeof anim.finished.then === 'function') {
@@ -1136,60 +1203,10 @@ window.__ModuleLoader__.load({
         });
       }, [tabInfo, runtime, sessionId]);
 
-      useEffect(() => {
-        const previous = previousTasks.current;
-        const current = new Map(model.tasks.map((task) => [task.id, task]));
-        if (previous !== null) {
-          const parts = [];
-          model.tasks.forEach((task) => {
-            const before = previous.get(task.id);
-            const id = '#' + shortId(task.id);
-            if (!before) {
-              parts.push(t('a11y.created', { id }));
-              return;
-            }
-            if (before.status !== task.status) {
-              parts.push(t('a11y.moved.' + task.status, { id }));
-            }
-            if (before.status === 'pending' && task.status === 'pending' && !before.ready && task.ready) {
-              parts.push(t('a11y.unlocked', { id }));
-            }
-          });
-          previous.forEach((task, id) => {
-            if (!current.has(id)) parts.push(t('a11y.deleted', { id: '#' + shortId(id) }));
-          });
-          if (parts.length) setAnnouncement(parts.join(t('a11y.listSeparator')));
-        }
-        previousTasks.current = current;
-      }, [model, t]);
-
-      const lineage = useMemo(() => {
-        if (!lineageId) return null;
-        const task = model.map.get(lineageId);
-        if (!task) return null;
-        const blockers = Array.isArray(task.blockedBy) ? task.blockedBy : EMPTY;
-        const upstream = blockers.filter((id) => model.map.has(id));
-        const downstream = model.dependents.get(lineageId) || EMPTY;
-        if (!upstream.length && !downstream.length) return null;
-        return {
-          id: lineageId,
-          up: new Set(upstream),
-          down: new Set(downstream),
-        };
-      }, [lineageId, model]);
-
-      useEffect(() => {
-        if (!lineage) {
-          setWires(EMPTY);
-          return;
-        }
-        const root = rootRef.current;
-        if (!root || typeof root.getBoundingClientRect !== 'function') return;
+      const computeBezierWires = useCallback((root, edges) => {
+        if (!root || typeof root.getBoundingClientRect !== 'function') return EMPTY;
         const rr = root.getBoundingClientRect();
-        if (rr.width < 540) {
-          setWires(EMPTY);
-          return;
-        }
+        if (rr.width < 540) return EMPTY;
         const cardMap = new Map();
         Array.from(root.querySelectorAll('.tkb-card')).forEach((node) => {
           const id = node.getAttribute('data-task-id');
@@ -1217,23 +1234,11 @@ window.__ModuleLoader__.load({
             off,
           };
         };
-        const focus = anchorOf(lineage.id);
-        if (!focus) {
-          setWires(EMPTY);
-          return;
-        }
-        const nextWires = [];
-        const pairs = [];
-        lineage.up.forEach((uid) => {
-          const ut = model.map.get(uid);
-          pairs.push([uid, ut && ut.status === 'completed' ? 'up-done' : 'up-open']);
-        });
-        lineage.down.forEach((did) => pairs.push([did, 'down']));
-        pairs.forEach(([oid, kind]) => {
-          const other = anchorOf(oid);
-          if (!other) return;
-          const start = kind === 'down' ? focus : other;
-          const end = kind === 'down' ? other : focus;
+        const out = [];
+        edges.forEach((edge) => {
+          const start = anchorOf(edge.from);
+          const end = anchorOf(edge.to);
+          if (!start || !end) return;
           let x1;
           let x2;
           let c1x;
@@ -1252,9 +1257,11 @@ window.__ModuleLoader__.load({
             c1x = x1 + k;
             c2x = x2 + k;
           }
-          nextWires.push({
-            key: kind + ':' + oid,
-            kind,
+          out.push({
+            key: edge.key,
+            kind: edge.kind,
+            dim: !!edge.dim,
+            focus: !!edge.focus,
             off: start.off || end.off,
             x1,
             y1: start.cy,
@@ -1263,8 +1270,105 @@ window.__ModuleLoader__.load({
             d: 'M' + x1 + ',' + start.cy + ' C' + c1x + ',' + start.cy + ' ' + c2x + ',' + end.cy + ' ' + x2 + ',' + end.cy,
           });
         });
-        setWires(nextWires.length ? nextWires : EMPTY);
-      }, [lineage, model, collapsed, expandedId]);
+        return out.length ? out : EMPTY;
+      }, []);
+
+      useEffect(() => {
+        const previous = previousTasks.current;
+        const current = new Map(model.tasks.map((task) => [task.id, task]));
+        if (previous !== null) {
+          const parts = [];
+          const justUnlocked = [];
+          const justCompleted = [];
+          model.tasks.forEach((task) => {
+            const before = previous.get(task.id);
+            const id = '#' + shortId(task.id);
+            if (!before) {
+              parts.push(t('a11y.created', { id }));
+              return;
+            }
+            if (before.status !== task.status) {
+              parts.push(t('a11y.moved.' + task.status, { id }));
+              if (task.status === 'completed') justCompleted.push(task.id);
+            }
+            if (before.status === 'pending' && task.status === 'pending' && !before.ready && task.ready) {
+              parts.push(t('a11y.unlocked', { id }));
+              justUnlocked.push(task.id);
+            }
+          });
+          previous.forEach((task, id) => {
+            if (!current.has(id)) parts.push(t('a11y.deleted', { id: '#' + shortId(id) }));
+          });
+          if (parts.length) setAnnouncement(parts.join(t('a11y.listSeparator')));
+          if (justUnlocked.length && !reducedMotion()) {
+            setUnlockedIds(new Set(justUnlocked));
+            clearTimeout(uiTimers.current.unlock);
+            uiTimers.current.unlock = setTimeout(() => setUnlockedIds(null), 680);
+          }
+          if (justCompleted.length && !reducedMotion()) {
+            const edges = [];
+            justCompleted.forEach((cid) => {
+              (model.dependents.get(cid) || EMPTY).forEach((did) => {
+                edges.push({ key: 'relay:' + cid + ':' + did, from: cid, to: did, kind: 'relay' });
+              });
+            });
+            if (edges.length) {
+              const nextRelays = computeBezierWires(rootRef.current, edges);
+              if (nextRelays.length) {
+                setRelayWires(nextRelays);
+                clearTimeout(uiTimers.current.relay);
+                uiTimers.current.relay = setTimeout(() => setRelayWires(EMPTY), 920);
+              }
+            }
+          }
+        }
+        previousTasks.current = current;
+      }, [model, t, computeBezierWires]);
+
+      const lineage = useMemo(() => {
+        if (!lineageId) return null;
+        const task = model.map.get(lineageId);
+        if (!task) return null;
+        const blockers = Array.isArray(task.blockedBy) ? task.blockedBy : EMPTY;
+        const upstream = blockers.filter((id) => model.map.has(id));
+        const downstream = model.dependents.get(lineageId) || EMPTY;
+        if (!upstream.length && !downstream.length) return null;
+        return {
+          id: lineageId,
+          up: new Set(upstream),
+          down: new Set(downstream),
+        };
+      }, [lineageId, model]);
+
+      useEffect(() => {
+        if (!lineage) {
+          setWires(EMPTY);
+          return;
+        }
+        const edges = [];
+        lineage.up.forEach((uid) => {
+          const ut = model.map.get(uid);
+          const kind = ut && ut.status === 'completed' ? 'up-done' : 'up-open';
+          edges.push({
+            key: kind + ':' + uid,
+            from: uid,
+            to: lineage.id,
+            kind,
+            dim: !!(focusedDepId && focusedDepId !== uid),
+            focus: focusedDepId === uid,
+          });
+        });
+        lineage.down.forEach((did) => {
+          edges.push({
+            key: 'down:' + did,
+            from: lineage.id,
+            to: did,
+            kind: 'down',
+            dim: !!focusedDepId,
+          });
+        });
+        setWires(computeBezierWires(rootRef.current, edges));
+      }, [lineage, focusedDepId, model, collapsed, expandedId, computeBezierWires]);
 
       const focusCard = useCallback((taskId) => {
         const root = rootRef.current;
@@ -1300,20 +1404,29 @@ window.__ModuleLoader__.load({
       }, [hideTip]);
 
       const toggleTask = useCallback((taskId) => {
+        if (typeof window !== 'undefined' && typeof window.getSelection === 'function') {
+          const sel = window.getSelection();
+          if (sel && sel.toString().trim().length > 0) return;
+        }
         setExpandedId((current) => (current === taskId ? null : taskId));
         setLineageId(null);
+        setFocusedDepId(null);
       }, []);
 
       const enterCard = useCallback((task) => {
         hideTip();
         if (spot) return;
         clearTimeout(lineageTimer.current);
-        lineageTimer.current = setTimeout(() => setLineageId(task.id), 150);
+        lineageTimer.current = setTimeout(() => {
+          setLineageId(task.id);
+          setFocusedDepId(null);
+        }, 150);
       }, [spot, hideTip]);
 
       const leaveCard = useCallback(() => {
         clearTimeout(lineageTimer.current);
         setLineageId(null);
+        setFocusedDepId(null);
       }, []);
 
       const hoverMate = useCallback((id) => {
@@ -1546,6 +1659,8 @@ window.__ModuleLoader__.load({
           if (lineage.down.has(task.id)) className += ' is-lin is-down';
         }
         if (flashId === task.id) className += ' is-flash';
+        if (unlockedIds && unlockedIds.has(task.id)) className += ' is-unlocked';
+        if (conflictPair && conflictPair.has(task.id)) className += ' is-conflict-pair';
 
         const ownerChildren = [];
         if (task.ownerId) {
@@ -1637,12 +1752,21 @@ window.__ModuleLoader__.load({
                 'data-done': done ? '' : undefined,
                 'aria-label': t('card.blockedBy') + ' #' + shortId(depId)
                   + (related ? ' ' + related.subject : ''),
-                onPointerEnter: (event) => queueTip(
-                  event.currentTarget,
-                  related ? '#' + shortId(depId) + ' ' + related.subject : '#' + shortId(depId),
-                  related ? statusText(related, t, ownerDisplay(related, model, t)) : '',
-                ),
-                onPointerLeave: hideTip,
+                onPointerEnter: (event) => {
+                  clearTimeout(lineageTimer.current);
+                  setLineageId(task.id);
+                  setFocusedDepId(depId);
+                  queueTip(
+                    event.currentTarget,
+                    related ? '#' + shortId(depId) + ' ' + related.subject : '#' + shortId(depId),
+                    related ? statusText(related, t, ownerDisplay(related, model, t)) : '',
+                    { keepLineage: true },
+                  );
+                },
+                onPointerLeave: () => {
+                  setFocusedDepId(null);
+                  hideTip();
+                },
                 onClick: (event) => {
                   event.stopPropagation();
                   jumpTo(depId);
@@ -1653,6 +1777,7 @@ window.__ModuleLoader__.load({
           openDownstream.length > 0
             ? h('span', {
               className: 'tkb-unlocks',
+              'data-critical': openDownstream.length >= 2 ? '' : undefined,
               onPointerEnter: (event) => queueTip(
                 event.currentTarget,
                 t('card.blocks'),
@@ -1666,12 +1791,23 @@ window.__ModuleLoader__.load({
           task.status !== 'completed' && warnings.length > 0
             ? h('span', {
               className: 'tkb-conflict',
-              onPointerEnter: (event) => queueTip(
-                event.currentTarget,
-                t('card.writeScopes'),
-                warnings[0],
-              ),
-              onPointerLeave: hideTip,
+              onPointerEnter: (event) => {
+                const peers = new Set([task.id]);
+                warnings.forEach((msg) => {
+                  const matches = String(msg || '').match(/task-\d+/g);
+                  if (matches) matches.forEach((m) => { if (model.map.has(m)) peers.add(m); });
+                });
+                if (peers.size > 1) setConflictPair(peers);
+                queueTip(
+                  event.currentTarget,
+                  t('card.writeScopes'),
+                  warnings[0],
+                );
+              },
+              onPointerLeave: () => {
+                setConflictPair(null);
+                hideTip();
+              },
             }, h(WarnIcon, { className: 'tkb-conflict__icon' }))
             : null),
         h('span', { className: 'tkb-card__owner' }, ownerChildren),
@@ -1747,6 +1883,12 @@ window.__ModuleLoader__.load({
         h('div', { className: 'tkb-lane__body' }, children));
       }
 
+      const visibleMates = narrowMates && !showAllMates && model.mates.length > 3
+        ? model.mates.slice(0, 3)
+        : model.mates;
+      const hiddenMatesCount = model.mates.length - visibleMates.length;
+      const activeWires = wires.length ? wires : relayWires;
+
       return h('div', {
         ref: rootRef,
         className: 'tkb-root',
@@ -1767,10 +1909,13 @@ window.__ModuleLoader__.load({
           'aria-label': progressLabel,
           title: summary,
         },
-        h('span', {
-          key: 'done-' + counts.completed,
-          className: 'tkb-score__done',
-        }, String(counts.completed)),
+        h('span', { className: 'tkb-score__done' },
+          String(counts.completed).split('').map((digit, index) => h('span', {
+            key: index,
+            className: 'tkb-odo',
+            style: { transform: 'translateY(' + (-Number(digit) * 22) + 'px)' },
+          },
+          [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => h('span', { key: n }, String(n)))))),
         h('span', { className: 'tkb-score__total' }, '/' + total)),
         h('div', { className: 'tkb-strip', role: 'group', 'aria-label': summary },
           segments.map((segment) => h('button', {
@@ -1785,9 +1930,15 @@ window.__ModuleLoader__.load({
             onPointerLeave: hideTip,
             onClick: segment.task ? () => jumpTo(segment.task.id) : undefined,
           }, h('span', { className: 'tkb-slot__bar' })))),
-        h('div', { className: 'tkb-mates', role: 'group', 'aria-label': matesLabel },
-          model.mates.length
-            ? model.mates.map((mate) => {
+        h('div', { className: 'tkb-mates-wrap' },
+          h('div', {
+            className: 'tkb-mates',
+            role: 'group',
+            'aria-label': matesLabel,
+            'data-overflow': hiddenMatesCount > 0 ? '' : undefined,
+          },
+          visibleMates.length
+            ? visibleMates.map((mate) => {
               const label = mate.lead ? t('card.lead') : mate.label;
               const mono = mate.lead ? initialOf(label) : (mate.mono || initialOf(label));
               const subText = mateStatusText(mate, mate.running, t);
@@ -1825,6 +1976,18 @@ window.__ModuleLoader__.load({
               h('span', { className: 'tkb-mc__name' }, label));
             })
             : h('span', { className: 'tkb-mates__empty' }, t('header.noTeammates'))),
+          hiddenMatesCount > 0
+            ? h('button', {
+              type: 'button',
+              className: 'tkb-mates__more',
+              'aria-label': '+' + hiddenMatesCount,
+              onClick: (event) => {
+                event.stopPropagation();
+                hideTip();
+                setShowAllMates(true);
+              },
+            }, '+' + hiddenMatesCount)
+            : null),
         h('div', {
           className: 'tkb-team',
           ref: teamRef,
@@ -1914,13 +2077,16 @@ window.__ModuleLoader__.load({
           h('div', { className: 'tkb-banner__msg' }, failure === null ? '' : failure))))),
       h('div', { ref: gridRef, className: 'tkb-lanes', onScrollCapture: handleScroll },
         LANES.map((key, index) => renderLane(key, index))),
-      wires.length
+      activeWires.length
         ? h('svg', { className: 'tkb-wires', 'aria-hidden': 'true' },
-          wires.map((wire) => h('g', { key: wire.key },
+          activeWires.map((wire) => h('g', { key: wire.key },
             h('path', {
               d: wire.d,
               pathLength: 100,
-              className: 'tkb-wire tkb-wire--' + wire.kind + (wire.off ? ' is-off' : ''),
+              className: 'tkb-wire tkb-wire--' + wire.kind
+                + (wire.off ? ' is-off' : '')
+                + (wire.dim ? ' is-dim' : '')
+                + (wire.focus ? ' is-focus' : ''),
             }),
             h('circle', {
               cx: wire.x1,
@@ -1938,13 +2104,16 @@ window.__ModuleLoader__.load({
       h('div', { ref: flightsRef, className: 'tkb-flights', 'aria-hidden': 'true' }),
       tip
         ? h('div', {
+          ref: tipRef,
           className: 'tkb-tip',
           'data-show': '',
+          'data-place': tip.place || 'top',
           'aria-hidden': 'true',
           style: { left: tip.left, top: tip.top },
         },
         h('b', null, tip.title),
-        tip.sub ? h('span', null, tip.sub) : null)
+        tip.sub ? h('span', null, tip.sub) : null,
+        h('i', { className: 'tkb-tip__arrow', style: { left: tip.arrowLeft } }))
         : null,
       h('div', { className: 'tkb-sr', 'aria-live': 'polite' }, announcement));
     }
@@ -2409,17 +2578,33 @@ window.__ModuleLoader__.load({
 .tkb-score {
   flex: none;
   display: inline-flex;
-  align-items: flex-end;
+  align-items: baseline;
   gap: 1px;
   cursor: default;
 }
 .tkb-score__done {
+  position: relative;
+  display: inline-flex;
+  overflow: hidden;
+  height: 22px;
+  line-height: 22px;
   font-size: 19px;
   font-weight: 700;
   letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
-  animation: tkb-num-in 240ms var(--tkb-ease-spring) both;
   transition: color var(--tkb-d3) var(--tkb-ease);
+}
+.tkb-odo {
+  display: inline-flex;
+  flex-direction: column;
+  transition: transform 340ms ease-out;
+  transition: transform 380ms linear(0, .14 5%, .48 13%, .78 23%, .95 34%, 1.03 48%, 1.01 68%, 1);
+}
+.tkb-odo span {
+  height: 22px;
+  line-height: 22px;
+  display: block;
+  text-align: center;
 }
 .tkb-score__total {
   font-size: 12px;
@@ -2429,22 +2614,33 @@ window.__ModuleLoader__.load({
   font-variant-numeric: tabular-nums;
 }
 .tkb-root[data-alldone] .tkb-score__done {
-  color: var(--tkb-c-active);
+  color: var(--tkb-c-done);
 }
 
-/* 顶部进度条（DSH 原生胶囊风格） */
+/* 顶部进度条（校准游标槽） */
 .tkb-strip {
   position: relative;
   flex: 1 1 auto;
   min-width: 48px;
-  height: 10px;
+  height: 12px;
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 1px 2px;
-  border-radius: 5px;
+  padding: 2px 3px;
+  border-radius: 6px;
+  overflow: hidden;
   background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, var(--dsw-alias-bg-base));
   border: 1px solid var(--dsw-alias-border-l2);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+}
+.tkb-root[data-alldone] .tkb-strip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tkb-c-done) 45%, var(--dsw-alias-label-on-color)), transparent);
+  transform: translateX(-100%);
+  animation: tkb-alldone-sweep 900ms var(--tkb-ease) 1;
+  pointer-events: none;
 }
 .tkb-slot {
   position: relative;
@@ -2487,10 +2683,16 @@ window.__ModuleLoader__.load({
   box-shadow: 0 0 4px color-mix(in srgb, var(--tkb-c-active) 35%, transparent);
 }
 .tkb-slot[data-s="blocked"] .tkb-slot__bar {
-  background-color: color-mix(in srgb, var(--tkb-c-warn) 38%, transparent);
+  background-color: color-mix(in srgb, var(--tkb-c-warn) 22%, transparent);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--tkb-c-warn) 50%, transparent) 0 3px,
+    color-mix(in srgb, var(--tkb-c-warn) 18%, transparent) 3px 6px
+  );
 }
 .tkb-slot[data-s="ready"] .tkb-slot__bar {
-  background-color: color-mix(in srgb, var(--tkb-c-active) 32%, var(--dsw-alias-border-l2));
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1.2px color-mix(in srgb, var(--tkb-c-active) 55%, transparent);
 }
 .tkb-slot[data-s="active"] .tkb-slot__bar {
   background: var(--tkb-c-active);
@@ -2507,16 +2709,49 @@ window.__ModuleLoader__.load({
 /* =====================================================================
    智能体指挥官视窗 (Agent Cockpit Strip)
    ===================================================================== */
+.tkb-mates-wrap {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: calc(100% - 140px);
+}
 .tkb-mates {
   flex: none;
   display: flex;
   align-items: center;
   padding-left: 4px;
   min-width: 0;
-  max-width: calc(100% - 140px);
+  max-width: 100%;
   overflow: clip;
   overflow-clip-margin: 8px;
 }
+.tkb-mates[data-overflow] {
+  -webkit-mask-image: linear-gradient(to right, var(--dsw-alias-label-primary) calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(to right, var(--dsw-alias-label-primary) calc(100% - 18px), transparent 100%);
+}
+.tkb-mates__more {
+  flex: none;
+  height: 22px;
+  padding: 0 6px;
+  margin-left: 2px;
+  border-radius: 11px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--tkb-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color var(--tkb-d1) var(--tkb-ease), color var(--tkb-d1) var(--tkb-ease), transform var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-mates__more:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+.tkb-mates__more:active { transform: scale(0.95); }
 .tkb-mates__empty {
   font-size: 11px;
   color: var(--dsw-alias-label-tertiary);
@@ -2578,7 +2813,9 @@ window.__ModuleLoader__.load({
   border-radius: var(--dsw-radius-md);
   background: var(--dsw-alias-bg-layer-2);
   box-shadow: 0 12px 32px color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent);
-  animation: tkb-pop-in 160ms var(--tkb-ease) both;
+  transform-origin: top right;
+  animation: tkb-pop-in 180ms ease-out both;
+  animation: tkb-pop-in 260ms linear(0, .45 18%, 1.04 48%, .99 72%, 1) both;
 }
 .tkb-team__title {
   margin: 0 0 6px;
@@ -2634,7 +2871,7 @@ window.__ModuleLoader__.load({
   .tkb-team { padding-left: 6px; }
   .tkb-team__label { display: none; }
   .tkb-team__btn { padding: 0 6px; }
-  .tkb-mates { max-width: calc(100% - 156px); }
+  .tkb-mates-wrap { max-width: calc(100% - 156px); }
   .tkb-mc + .tkb-mc { margin-left: 5px; }
 }
 .tkb-mc {
@@ -2750,16 +2987,6 @@ window.__ModuleLoader__.load({
 .tkb-mate[data-phase="provisioning"] .tkb-mate__dot {
   background: var(--tkb-c-warn);
   animation: tkb-blink calc(1400ms) ease-in-out infinite;
-}
-/* 智能体运行态：声呐外扩雷达波纹 */
-.tkb-mate[data-running]::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: inherit;
-  border: 1px solid var(--tkb-c-active);
-  pointer-events: none;
-  animation: tkb-sonar-ping calc(2200ms) cubic-bezier(0, .2, .8, 1) infinite;
 }
 
 /* =====================================================================
@@ -2918,7 +3145,9 @@ window.__ModuleLoader__.load({
   cursor: pointer;
   outline: none;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--dsw-alias-label-on-color) 10%, transparent),
+              0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent),
+              0 4px 10px -4px color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);
   transition: transform var(--tkb-d2) var(--tkb-ease),
               box-shadow var(--tkb-d2) var(--tkb-ease),
               background-color var(--tkb-d1) var(--tkb-ease),
@@ -2929,12 +3158,21 @@ window.__ModuleLoader__.load({
   transform: translateY(-2px);
   background: var(--dsw-alias-card-fill-hover);
   border-color: color-mix(in srgb, var(--dsw-alias-border-l2) 80%, transparent);
-  box-shadow: 0 8px 20px -3px color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent),
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--dsw-alias-label-on-color) 12%, transparent),
+              0 8px 20px -3px color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent),
               0 2px 6px -1px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
 }
 .tkb-card:active {
-  transform: translateY(-0.5px) scale(0.997);
-  transition-duration: 80ms;
+  transform: translateY(0) scale(0.992);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+  transition-duration: 70ms;
+}
+.tkb-card[data-expanded] {
+  z-index: 3;
+  border-color: color-mix(in srgb, var(--tkb-c-active) 48%, var(--dsw-alias-border-l2));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--tkb-c-active) 16%, transparent),
+              0 10px 26px -6px color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent),
+              0 0 0 1px color-mix(in srgb, var(--tkb-c-active) 18%, transparent);
 }
 .tkb-card__hit {
   position: absolute;
@@ -2969,6 +3207,7 @@ window.__ModuleLoader__.load({
   font-size: 11px;
   color: var(--dsw-alias-label-tertiary);
   letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .tkb-card__deps {
@@ -3026,9 +3265,12 @@ window.__ModuleLoader__.load({
 }
 .tkb-card:hover .tkb-card__chev,
 .tkb-card:focus-within .tkb-card__chev { opacity: .55; }
+@media (hover: none) {
+  .tkb-card__chev { opacity: .55; }
+}
 .tkb-card[data-expanded] .tkb-card__chev { opacity: .8; transform: rotate(180deg); }
 
-/* 活跃运行脉冲指示器 */
+/* 活跃运行指示器 */
 .tkb-card__live-dot {
   position: relative;
   flex: none;
@@ -3037,15 +3279,6 @@ window.__ModuleLoader__.load({
   border-radius: 50%;
   background: var(--tkb-c-active);
   box-shadow: 0 0 8px var(--tkb-c-active);
-}
-.tkb-card__live-dot::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 1.5px solid var(--tkb-c-active);
-  pointer-events: none;
-  animation: tkb-sonar-ping calc(1800ms) cubic-bezier(0, .2, .8, 1) infinite;
 }
 
 .tkb-card__title {
@@ -3060,6 +3293,7 @@ window.__ModuleLoader__.load({
   -webkit-box-orient: vertical;
   overflow: hidden;
   overflow-wrap: anywhere;
+  text-wrap: pretty;
   transition: color var(--tkb-d2) var(--tkb-ease);
 }
 .tkb-card[data-expanded] .tkb-card__title { -webkit-line-clamp: unset; }
@@ -3092,10 +3326,10 @@ window.__ModuleLoader__.load({
    状态 1：待处理（Pending）—— 阻塞暗哑 vs 就绪轻盈
    --------------------------------------------------------------------- */
 .tkb-card[data-status="pending"][data-ready="false"] {
-  background: color-mix(in srgb, var(--dsw-alias-card-fill) 60%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 2.2%, var(--dsw-alias-bg-base));
   border-style: dashed;
   border-color: var(--dsw-alias-border-l2);
-  box-shadow: none;
+  box-shadow: inset 0 1px 3px color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
 }
 .tkb-card[data-status="pending"][data-ready="false"]:hover {
   background: var(--dsw-alias-interactive-bg-hover);
@@ -3115,12 +3349,18 @@ window.__ModuleLoader__.load({
 }
 
 /* ---------------------------------------------------------------------
-   状态 2：进行中（In Progress）—— DSH 科技蓝纯净质感
+   状态 2：进行中（In Progress）—— DSH 科技蓝纯净质感与低噪呼吸
    --------------------------------------------------------------------- */
 .tkb-card[data-status="in_progress"] {
+  padding-left: 15px;
   background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 18%, var(--dsw-alias-card-fill));
   border-color: color-mix(in srgb, var(--tkb-c-active) 36%, var(--dsw-alias-border-l1));
-  box-shadow: 0 2px 8px -1px color-mix(in srgb, var(--tkb-c-active) 12%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--tkb-c-active) 18%, transparent),
+              0 4px 14px -4px color-mix(in srgb, var(--tkb-c-active) 18%, transparent),
+              0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
+}
+.tkb-card[data-status="in_progress"][data-live] {
+  animation: tkb-breath calc(2800ms) ease-in-out infinite;
 }
 .tkb-card[data-status="in_progress"]:hover {
   background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 28%, var(--dsw-alias-card-fill-hover));
@@ -3128,14 +3368,14 @@ window.__ModuleLoader__.load({
   box-shadow: 0 4px 14px -2px color-mix(in srgb, var(--tkb-c-active) 18%, transparent);
 }
 
-/* 左侧能量槽与科技蓝指示 */
+/* 左侧内嵌式圆角能量槽 */
 .tkb-card__rail {
   position: absolute;
-  left: -1px;
-  top: 8px;
-  bottom: 8px;
-  width: 2.5px;
-  border-radius: 0 2px 2px 0;
+  left: 5px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 3px;
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
@@ -3287,6 +3527,11 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-secondary);
   background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, var(--dsw-alias-bg-base));
 }
+.tkb-unlocks[data-critical] {
+  color: color-mix(in srgb, var(--tkb-c-active) 75%, var(--dsw-alias-label-primary));
+  background: var(--dsw-alias-state-business-tertiary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-active) 32%, transparent);
+}
 .tkb-unlocks__icon { width: 10px; height: 10px; opacity: .8; }
 .tkb-conflict {
   flex: none;
@@ -3395,6 +3640,7 @@ window.__ModuleLoader__.load({
   gap: 6px;
   padding: 6px 8px;
   border-radius: var(--dsw-radius-sm);
+  border-left: 2.5px solid var(--tkb-c-warn);
   background: var(--dsw-alias-state-warn-tertiary);
   color: var(--dsw-alias-state-warn-label);
   font-size: 11.5px;
@@ -3448,8 +3694,17 @@ window.__ModuleLoader__.load({
   box-shadow: 0 2px 8px color-mix(in srgb, var(--tkb-c-active) 18%, transparent);
 }
 
-/* 卡片跳转高亮闪光与贝塞尔血缘连线 / 飞行层 */
+/* 卡片跳转高亮、冲突成对高亮、解扣脉冲与贝塞尔血缘连线 / 飞行层 */
 .tkb-card.is-flash { animation: tkb-flash 1100ms var(--tkb-ease) 1; }
+.tkb-card.is-unlocked { animation: tkb-unlock-pulse 640ms var(--tkb-ease) 1; }
+.tkb-card.is-landed { animation: tkb-land 200ms ease-out 1; }
+.tkb-card.is-conflict-pair {
+  z-index: 3;
+  border-style: dashed;
+  border-color: var(--tkb-c-warn);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tkb-c-warn) 28%, transparent),
+              0 6px 18px -4px color-mix(in srgb, var(--tkb-c-warn) 24%, transparent);
+}
 .tkb-wires {
   position: absolute;
   inset: 0;
@@ -3466,21 +3721,39 @@ window.__ModuleLoader__.load({
   stroke-dasharray: 100;
   stroke-dashoffset: 0;
   animation: tkb-wire-draw var(--tkb-d2) var(--tkb-ease) both;
+  transition: opacity var(--tkb-d1) var(--tkb-ease), stroke-width var(--tkb-d1) var(--tkb-ease);
 }
 .tkb-wire.is-off {
   stroke-dasharray: 3 3;
   opacity: .55;
   animation: none;
 }
-.tkb-wire--up-open { stroke: var(--tkb-c-warn); }
+.tkb-wire.is-dim { opacity: .2; }
+.tkb-wire.is-focus { stroke-width: 2.6; }
+.tkb-wire--up-open {
+  stroke: var(--tkb-c-warn);
+  stroke-dasharray: 4 3;
+  animation: tkb-wire-flow calc(1200ms) linear infinite;
+}
 .tkb-wire--up-done { stroke: var(--tkb-c-done); }
-.tkb-wire--down { stroke: var(--tkb-c-active); }
+.tkb-wire--down {
+  stroke: var(--tkb-c-active);
+  stroke-dasharray: 6 3;
+  animation: tkb-wire-flow calc(1600ms) linear infinite;
+}
+.tkb-wire--relay {
+  stroke: var(--tkb-c-done);
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--tkb-c-done) 55%, transparent));
+  animation: tkb-relay-pulse calc(900ms) var(--tkb-ease) both;
+}
 .tkb-wire-dot {
   stroke: var(--dsw-alias-bg-base);
   stroke-width: 1.5;
 }
 .tkb-wire-dot.tkb-wire--up-open { fill: var(--tkb-c-warn); }
-.tkb-wire-dot.tkb-wire--up-done { fill: var(--tkb-c-done); }
+.tkb-wire-dot.tkb-wire--up-done,
+.tkb-wire-dot.tkb-wire--relay { fill: var(--tkb-c-done); }
 .tkb-wire-dot.tkb-wire--down { fill: var(--tkb-c-active); }
 .tkb-flights {
   position: absolute;
@@ -3490,10 +3763,10 @@ window.__ModuleLoader__.load({
   overflow: hidden;
 }
 .tkb-flight-card {
-  box-shadow: 0 10px 26px -4px color-mix(in srgb, var(--dsw-alias-label-primary) 16%, transparent);
+  box-shadow: 0 14px 32px -6px color-mix(in srgb, var(--dsw-alias-label-primary) 20%, transparent);
 }
 
-/* 提示气泡 */
+/* 提示气泡（实测边界 + 光学方向箭头） */
 .tkb-tip {
   position: absolute;
   left: 0; top: 0;
@@ -3507,14 +3780,23 @@ window.__ModuleLoader__.load({
   font-size: 11.5px;
   line-height: 1.4;
   opacity: 0;
-  transform: translate(-50%, 2px);
+  transform: translateY(2px);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--dsw-alias-label-primary) 20%, transparent);
   transition: opacity var(--tkb-d1) var(--tkb-ease), transform var(--tkb-d1) var(--tkb-ease);
 }
-.tkb-tip[data-show] { opacity: 1; transform: translate(-50%, 0); }
+.tkb-tip[data-show] { opacity: 1; transform: none; }
 .tkb-tip b { display: block; font-weight: 600; }
 .tkb-tip span { display: block; margin-top: 1px; opacity: .75; }
 .tkb-tip span:empty { display: none; }
+.tkb-tip__arrow {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  background: var(--dsw-alias-label-primary);
+  transform: rotate(45deg);
+}
+.tkb-tip[data-place="top"] .tkb-tip__arrow { bottom: -3px; }
+.tkb-tip[data-place="bottom"] .tkb-tip__arrow { top: -3px; }
 
 /* =====================================================================
    动画关键帧清单（硬件加速，零强制 Repaint）
@@ -3523,10 +3805,9 @@ window.__ModuleLoader__.load({
   from { transform: translateY(-100%); }
   to { transform: translateY(220%); }
 }
-@keyframes tkb-sonar-ping {
-  0% { transform: scale(0.9); opacity: 0.85; }
-  60% { opacity: 0.25; }
-  100% { transform: scale(1.32); opacity: 0; }
+@keyframes tkb-breath {
+  0%, 100% { border-color: color-mix(in srgb, var(--tkb-c-active) 34%, var(--dsw-alias-border-l1)); }
+  50% { border-color: color-mix(in srgb, var(--tkb-c-active) 68%, var(--dsw-alias-border-l1)); }
 }
 @keyframes tkb-blink {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -3539,6 +3820,36 @@ window.__ModuleLoader__.load({
 @keyframes tkb-wire-draw {
   from { stroke-dashoffset: 100; opacity: .2; }
   to { stroke-dashoffset: 0; opacity: .9; }
+}
+@keyframes tkb-wire-flow {
+  from { stroke-dashoffset: 18; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes tkb-relay-pulse {
+  0% { stroke-dashoffset: 100; opacity: 0; }
+  25% { stroke-dashoffset: 0; opacity: 1; }
+  75% { stroke-dashoffset: 0; opacity: .9; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes tkb-unlock-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--tkb-c-active) 55%, transparent);
+    border-color: var(--tkb-c-active);
+  }
+  45% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--tkb-c-active) 16%, transparent);
+    background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 55%, var(--dsw-alias-card-fill));
+  }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes tkb-land {
+  0% { transform: scale(0.985); }
+  50% { transform: scale(1.012); }
+  100% { transform: none; }
+}
+@keyframes tkb-alldone-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 @keyframes tkb-flash {
   0%, 40% {
@@ -3570,8 +3881,7 @@ window.__ModuleLoader__.load({
     transition-duration: 1ms !important;
     transition-delay: 0ms !important;
   }
-  .tkb-card__rail::after,
-  .tkb-mate[data-running]::after { opacity: 0 !important; }
+  .tkb-card__rail::after { opacity: 0 !important; }
 }
 
 /* =====================================================================

@@ -276,6 +276,23 @@ test('cards surface downstream bottleneck counts, write-scope conflict icons, an
   assert.ok(findByClass(drawer, 'tkb-card__detail-clip'), 'drawer wraps content in .tkb-card__detail-clip');
 });
 
+test('header renders odometer score wheel, mates wrapper, and critical bottleneck marker', () => {
+  const criticalTeam = {
+    enabled: true,
+    tasks: [
+      { id: 'task-1', revision: 2, subject: 'Core', description: '', status: 'in_progress', blockedBy: [], writeScopes: [], ownerId: 'S-b', ownerName: 'bob', ready: true, writeScopeWarnings: [] },
+      { id: 'task-2', revision: 1, subject: 'Sub A', description: '', status: 'pending', blockedBy: ['task-1'], writeScopes: [], ready: false, writeScopeWarnings: [] },
+      { id: 'task-3', revision: 1, subject: 'Sub B', description: '', status: 'pending', blockedBy: ['task-1'], writeScopes: [], ready: false, writeScopeWarnings: [] },
+    ],
+  };
+  const { slots } = boot({ agentTeam: criticalTeam });
+  const board = slots['sidebar.right.pane.tab'](sessionProps(criticalTeam));
+  assert.ok(findByClass(board, 'tkb-odo'), 'score renders vertical odometer wheel');
+  assert.ok(findByClass(board, 'tkb-mates-wrap'), 'teammates strip is wrapped for overflow fade and +N pill');
+  const unlocks = findByClass(board, 'tkb-unlocks');
+  assert.ok(unlocks && unlocks.props['data-critical'] === '', 'blocking >=2 downstream tasks sets data-critical');
+});
+
 test('failed and colliding teammates expose phase markers and disambiguated monograms', () => {
   const rosterTeam = {
     members: [

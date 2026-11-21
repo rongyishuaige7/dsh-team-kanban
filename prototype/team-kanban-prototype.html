@@ -286,17 +286,33 @@ button { font: inherit; }
 .tkb-score {
   flex: none;
   display: inline-flex;
-  align-items: flex-end;
+  align-items: baseline;
   gap: 1px;
   cursor: default;
 }
 .tkb-score__done {
+  position: relative;
+  display: inline-flex;
+  overflow: hidden;
+  height: 22px;
+  line-height: 22px;
   font-size: 19px;
   font-weight: 700;
   letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
-  animation: tkb-num-in 240ms var(--tkb-ease-spring) both;
   transition: color var(--tkb-d3) var(--tkb-ease);
+}
+.tkb-odo {
+  display: inline-flex;
+  flex-direction: column;
+  transition: transform 340ms ease-out;
+  transition: transform 380ms linear(0, .14 5%, .48 13%, .78 23%, .95 34%, 1.03 48%, 1.01 68%, 1);
+}
+.tkb-odo span {
+  height: 22px;
+  line-height: 22px;
+  display: block;
+  text-align: center;
 }
 .tkb-score__total {
   font-size: 12px;
@@ -306,22 +322,33 @@ button { font: inherit; }
   font-variant-numeric: tabular-nums;
 }
 .tkb-root[data-alldone] .tkb-score__done {
-  color: var(--tkb-c-active);
+  color: var(--tkb-c-done);
 }
 
-/* 顶部进度条（DSH 原生胶囊风格） */
+/* 顶部进度条（校准游标槽） */
 .tkb-strip {
   position: relative;
   flex: 1 1 auto;
   min-width: 48px;
-  height: 10px;
+  height: 12px;
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 1px 2px;
-  border-radius: 5px;
+  padding: 2px 3px;
+  border-radius: 6px;
+  overflow: hidden;
   background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, var(--dsw-alias-bg-base));
   border: 1px solid var(--dsw-alias-border-l2);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+}
+.tkb-root[data-alldone] .tkb-strip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tkb-c-done) 45%, var(--dsw-alias-label-on-color)), transparent);
+  transform: translateX(-100%);
+  animation: tkb-alldone-sweep 900ms var(--tkb-ease) 1;
+  pointer-events: none;
 }
 .tkb-slot {
   position: relative;
@@ -364,10 +391,16 @@ button { font: inherit; }
   box-shadow: 0 0 4px color-mix(in srgb, var(--tkb-c-active) 35%, transparent);
 }
 .tkb-slot[data-s="blocked"] .tkb-slot__bar {
-  background-color: color-mix(in srgb, var(--tkb-c-warn) 38%, transparent);
+  background-color: color-mix(in srgb, var(--tkb-c-warn) 22%, transparent);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--tkb-c-warn) 50%, transparent) 0 3px,
+    color-mix(in srgb, var(--tkb-c-warn) 18%, transparent) 3px 6px
+  );
 }
 .tkb-slot[data-s="ready"] .tkb-slot__bar {
-  background-color: color-mix(in srgb, var(--tkb-c-active) 32%, var(--dsw-alias-border-l2));
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1.2px color-mix(in srgb, var(--tkb-c-active) 55%, transparent);
 }
 .tkb-slot[data-s="active"] .tkb-slot__bar {
   background: var(--tkb-c-active);
@@ -384,16 +417,49 @@ button { font: inherit; }
 /* =====================================================================
    智能体指挥官视窗 (Agent Cockpit Strip)
    ===================================================================== */
+.tkb-mates-wrap {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: calc(100% - 140px);
+}
 .tkb-mates {
   flex: none;
   display: flex;
   align-items: center;
   padding-left: 4px;
   min-width: 0;
-  max-width: calc(100% - 140px);
+  max-width: 100%;
   overflow: clip;
   overflow-clip-margin: 8px;
 }
+.tkb-mates[data-overflow] {
+  -webkit-mask-image: linear-gradient(to right, var(--dsw-alias-label-primary) calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(to right, var(--dsw-alias-label-primary) calc(100% - 18px), transparent 100%);
+}
+.tkb-mates__more {
+  flex: none;
+  height: 22px;
+  padding: 0 6px;
+  margin-left: 2px;
+  border-radius: 11px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--tkb-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color var(--tkb-d1) var(--tkb-ease), color var(--tkb-d1) var(--tkb-ease), transform var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-mates__more:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+.tkb-mates__more:active { transform: scale(0.95); }
 .tkb-mates__empty {
   font-size: 11px;
   color: var(--dsw-alias-label-tertiary);
@@ -455,7 +521,9 @@ button { font: inherit; }
   border-radius: var(--dsw-radius-md);
   background: var(--dsw-alias-bg-layer-2);
   box-shadow: 0 12px 32px color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent);
-  animation: tkb-pop-in 160ms var(--tkb-ease) both;
+  transform-origin: top right;
+  animation: tkb-pop-in 180ms ease-out both;
+  animation: tkb-pop-in 260ms linear(0, .45 18%, 1.04 48%, .99 72%, 1) both;
 }
 .tkb-team__title {
   margin: 0 0 6px;
@@ -511,10 +579,9 @@ button { font: inherit; }
   .tkb-team { padding-left: 6px; }
   .tkb-team__label { display: none; }
   .tkb-team__btn { padding: 0 6px; }
-  .tkb-mates { max-width: calc(100% - 156px); }
+  .tkb-mates-wrap { max-width: calc(100% - 156px); }
   .tkb-mc + .tkb-mc { margin-left: 5px; }
 }
-
 .tkb-mc {
   position: relative;
   display: flex;
@@ -628,16 +695,6 @@ button { font: inherit; }
 .tkb-mate[data-phase="provisioning"] .tkb-mate__dot {
   background: var(--tkb-c-warn);
   animation: tkb-blink calc(1400ms * var(--tkb-speed, 1)) ease-in-out infinite;
-}
-/* 智能体运行态：声呐外扩雷达波纹 */
-.tkb-mate[data-running]::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: inherit;
-  border: 1px solid var(--tkb-c-active);
-  pointer-events: none;
-  animation: tkb-sonar-ping calc(2200ms * var(--tkb-speed, 1)) cubic-bezier(0, .2, .8, 1) infinite;
 }
 
 /* =====================================================================
@@ -796,7 +853,9 @@ button { font: inherit; }
   cursor: pointer;
   outline: none;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--dsw-alias-label-on-color) 10%, transparent),
+              0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent),
+              0 4px 10px -4px color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);
   transition: transform var(--tkb-d2) var(--tkb-ease),
               box-shadow var(--tkb-d2) var(--tkb-ease),
               background-color var(--tkb-d1) var(--tkb-ease),
@@ -807,12 +866,21 @@ button { font: inherit; }
   transform: translateY(-2px);
   background: var(--dsw-alias-card-fill-hover);
   border-color: color-mix(in srgb, var(--dsw-alias-border-l2) 80%, transparent);
-  box-shadow: 0 8px 20px -3px color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent),
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--dsw-alias-label-on-color) 12%, transparent),
+              0 8px 20px -3px color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent),
               0 2px 6px -1px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
 }
 .tkb-card:active {
-  transform: translateY(-0.5px) scale(0.997);
-  transition-duration: 80ms;
+  transform: translateY(0) scale(0.992);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+  transition-duration: 70ms;
+}
+.tkb-card[data-expanded] {
+  z-index: 3;
+  border-color: color-mix(in srgb, var(--tkb-c-active) 48%, var(--dsw-alias-border-l2));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--tkb-c-active) 16%, transparent),
+              0 10px 26px -6px color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent),
+              0 0 0 1px color-mix(in srgb, var(--tkb-c-active) 18%, transparent);
 }
 .tkb-card__hit {
   position: absolute;
@@ -847,6 +915,7 @@ button { font: inherit; }
   font-size: 11px;
   color: var(--dsw-alias-label-tertiary);
   letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .tkb-card__deps {
@@ -904,9 +973,12 @@ button { font: inherit; }
 }
 .tkb-card:hover .tkb-card__chev,
 .tkb-card:focus-within .tkb-card__chev { opacity: .55; }
+@media (hover: none) {
+  .tkb-card__chev { opacity: .55; }
+}
 .tkb-card[data-expanded] .tkb-card__chev { opacity: .8; transform: rotate(180deg); }
 
-/* 活跃运行脉冲指示器 */
+/* 活跃运行指示器 */
 .tkb-card__live-dot {
   position: relative;
   flex: none;
@@ -915,15 +987,6 @@ button { font: inherit; }
   border-radius: 50%;
   background: var(--tkb-c-active);
   box-shadow: 0 0 8px var(--tkb-c-active);
-}
-.tkb-card__live-dot::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 1.5px solid var(--tkb-c-active);
-  pointer-events: none;
-  animation: tkb-sonar-ping calc(1800ms * var(--tkb-speed, 1)) cubic-bezier(0, .2, .8, 1) infinite;
 }
 
 .tkb-card__title {
@@ -938,6 +1001,7 @@ button { font: inherit; }
   -webkit-box-orient: vertical;
   overflow: hidden;
   overflow-wrap: anywhere;
+  text-wrap: pretty;
   transition: color var(--tkb-d2) var(--tkb-ease);
 }
 .tkb-card[data-expanded] .tkb-card__title { -webkit-line-clamp: unset; }
@@ -970,10 +1034,10 @@ button { font: inherit; }
    状态 1：待处理（Pending）—— 阻塞暗哑 vs 就绪轻盈
    --------------------------------------------------------------------- */
 .tkb-card[data-status="pending"][data-ready="false"] {
-  background: color-mix(in srgb, var(--dsw-alias-card-fill) 60%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 2.2%, var(--dsw-alias-bg-base));
   border-style: dashed;
   border-color: var(--dsw-alias-border-l2);
-  box-shadow: none;
+  box-shadow: inset 0 1px 3px color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
 }
 .tkb-card[data-status="pending"][data-ready="false"]:hover {
   background: var(--dsw-alias-interactive-bg-hover);
@@ -993,12 +1057,18 @@ button { font: inherit; }
 }
 
 /* ---------------------------------------------------------------------
-   状态 2：进行中（In Progress）—— DSH 科技蓝纯净质感
+   状态 2：进行中（In Progress）—— DSH 科技蓝纯净质感与低噪呼吸
    --------------------------------------------------------------------- */
 .tkb-card[data-status="in_progress"] {
+  padding-left: 15px;
   background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 18%, var(--dsw-alias-card-fill));
   border-color: color-mix(in srgb, var(--tkb-c-active) 36%, var(--dsw-alias-border-l1));
-  box-shadow: 0 2px 8px -1px color-mix(in srgb, var(--tkb-c-active) 12%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--tkb-c-active) 18%, transparent),
+              0 4px 14px -4px color-mix(in srgb, var(--tkb-c-active) 18%, transparent),
+              0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
+}
+.tkb-card[data-status="in_progress"][data-live] {
+  animation: tkb-breath calc(2800ms * var(--tkb-speed, 1)) ease-in-out infinite;
 }
 .tkb-card[data-status="in_progress"]:hover {
   background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 28%, var(--dsw-alias-card-fill-hover));
@@ -1006,14 +1076,14 @@ button { font: inherit; }
   box-shadow: 0 4px 14px -2px color-mix(in srgb, var(--tkb-c-active) 18%, transparent);
 }
 
-/* 左侧能量槽与科技蓝指示 */
+/* 左侧内嵌式圆角能量槽 */
 .tkb-card__rail {
   position: absolute;
-  left: -1px;
-  top: 8px;
-  bottom: 8px;
-  width: 2.5px;
-  border-radius: 0 2px 2px 0;
+  left: 5px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 3px;
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
@@ -1165,6 +1235,11 @@ button { font: inherit; }
   color: var(--dsw-alias-label-secondary);
   background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, var(--dsw-alias-bg-base));
 }
+.tkb-unlocks[data-critical] {
+  color: color-mix(in srgb, var(--tkb-c-active) 75%, var(--dsw-alias-label-primary));
+  background: var(--dsw-alias-state-business-tertiary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-active) 32%, transparent);
+}
 .tkb-unlocks__icon { width: 10px; height: 10px; opacity: .8; }
 .tkb-conflict {
   flex: none;
@@ -1273,6 +1348,7 @@ button { font: inherit; }
   gap: 6px;
   padding: 6px 8px;
   border-radius: var(--dsw-radius-sm);
+  border-left: 2.5px solid var(--tkb-c-warn);
   background: var(--dsw-alias-state-warn-tertiary);
   color: var(--dsw-alias-state-warn-label);
   font-size: 11.5px;
@@ -1326,8 +1402,17 @@ button { font: inherit; }
   box-shadow: 0 2px 8px color-mix(in srgb, var(--tkb-c-active) 18%, transparent);
 }
 
-/* 卡片跳转高亮闪光与贝塞尔血缘连线 / 飞行层 */
+/* 卡片跳转高亮、冲突成对高亮、解扣脉冲与贝塞尔血缘连线 / 飞行层 */
 .tkb-card.is-flash { animation: tkb-flash 1100ms var(--tkb-ease) 1; }
+.tkb-card.is-unlocked { animation: tkb-unlock-pulse 640ms var(--tkb-ease) 1; }
+.tkb-card.is-landed { animation: tkb-land 200ms ease-out 1; }
+.tkb-card.is-conflict-pair {
+  z-index: 3;
+  border-style: dashed;
+  border-color: var(--tkb-c-warn);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tkb-c-warn) 28%, transparent),
+              0 6px 18px -4px color-mix(in srgb, var(--tkb-c-warn) 24%, transparent);
+}
 .tkb-wires {
   position: absolute;
   inset: 0;
@@ -1344,21 +1429,39 @@ button { font: inherit; }
   stroke-dasharray: 100;
   stroke-dashoffset: 0;
   animation: tkb-wire-draw var(--tkb-d2) var(--tkb-ease) both;
+  transition: opacity var(--tkb-d1) var(--tkb-ease), stroke-width var(--tkb-d1) var(--tkb-ease);
 }
 .tkb-wire.is-off {
   stroke-dasharray: 3 3;
   opacity: .55;
   animation: none;
 }
-.tkb-wire--up-open { stroke: var(--tkb-c-warn); }
+.tkb-wire.is-dim { opacity: .2; }
+.tkb-wire.is-focus { stroke-width: 2.6; }
+.tkb-wire--up-open {
+  stroke: var(--tkb-c-warn);
+  stroke-dasharray: 4 3;
+  animation: tkb-wire-flow calc(1200ms * var(--tkb-speed, 1)) linear infinite;
+}
 .tkb-wire--up-done { stroke: var(--tkb-c-done); }
-.tkb-wire--down { stroke: var(--tkb-c-active); }
+.tkb-wire--down {
+  stroke: var(--tkb-c-active);
+  stroke-dasharray: 6 3;
+  animation: tkb-wire-flow calc(1600ms * var(--tkb-speed, 1)) linear infinite;
+}
+.tkb-wire--relay {
+  stroke: var(--tkb-c-done);
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--tkb-c-done) 55%, transparent));
+  animation: tkb-relay-pulse calc(900ms * var(--tkb-speed, 1)) var(--tkb-ease) both;
+}
 .tkb-wire-dot {
   stroke: var(--dsw-alias-bg-base);
   stroke-width: 1.5;
 }
 .tkb-wire-dot.tkb-wire--up-open { fill: var(--tkb-c-warn); }
-.tkb-wire-dot.tkb-wire--up-done { fill: var(--tkb-c-done); }
+.tkb-wire-dot.tkb-wire--up-done,
+.tkb-wire-dot.tkb-wire--relay { fill: var(--tkb-c-done); }
 .tkb-wire-dot.tkb-wire--down { fill: var(--tkb-c-active); }
 .tkb-flights {
   position: absolute;
@@ -1368,10 +1471,10 @@ button { font: inherit; }
   overflow: hidden;
 }
 .tkb-flight-card {
-  box-shadow: 0 10px 26px -4px color-mix(in srgb, var(--dsw-alias-label-primary) 16%, transparent);
+  box-shadow: 0 14px 32px -6px color-mix(in srgb, var(--dsw-alias-label-primary) 20%, transparent);
 }
 
-/* 提示气泡 */
+/* 提示气泡（实测边界 + 光学方向箭头） */
 .tkb-tip {
   position: absolute;
   left: 0; top: 0;
@@ -1385,14 +1488,23 @@ button { font: inherit; }
   font-size: 11.5px;
   line-height: 1.4;
   opacity: 0;
-  transform: translate(-50%, 2px);
+  transform: translateY(2px);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--dsw-alias-label-primary) 20%, transparent);
   transition: opacity var(--tkb-d1) var(--tkb-ease), transform var(--tkb-d1) var(--tkb-ease);
 }
-.tkb-tip[data-show] { opacity: 1; transform: translate(-50%, 0); }
+.tkb-tip[data-show] { opacity: 1; transform: none; }
 .tkb-tip b { display: block; font-weight: 600; }
 .tkb-tip span { display: block; margin-top: 1px; opacity: .75; }
 .tkb-tip span:empty { display: none; }
+.tkb-tip__arrow {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  background: var(--dsw-alias-label-primary);
+  transform: rotate(45deg);
+}
+.tkb-tip[data-place="top"] .tkb-tip__arrow { bottom: -3px; }
+.tkb-tip[data-place="bottom"] .tkb-tip__arrow { top: -3px; }
 
 /* =====================================================================
    动画关键帧清单（硬件加速，零强制 Repaint）
@@ -1401,10 +1513,9 @@ button { font: inherit; }
   from { transform: translateY(-100%); }
   to { transform: translateY(220%); }
 }
-@keyframes tkb-sonar-ping {
-  0% { transform: scale(0.9); opacity: 0.85; }
-  60% { opacity: 0.25; }
-  100% { transform: scale(1.32); opacity: 0; }
+@keyframes tkb-breath {
+  0%, 100% { border-color: color-mix(in srgb, var(--tkb-c-active) 34%, var(--dsw-alias-border-l1)); }
+  50% { border-color: color-mix(in srgb, var(--tkb-c-active) 68%, var(--dsw-alias-border-l1)); }
 }
 @keyframes tkb-blink {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -1418,16 +1529,46 @@ button { font: inherit; }
   from { stroke-dashoffset: 100; opacity: .2; }
   to { stroke-dashoffset: 0; opacity: .9; }
 }
+@keyframes tkb-wire-flow {
+  from { stroke-dashoffset: 18; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes tkb-relay-pulse {
+  0% { stroke-dashoffset: 100; opacity: 0; }
+  25% { stroke-dashoffset: 0; opacity: 1; }
+  75% { stroke-dashoffset: 0; opacity: .9; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes tkb-unlock-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--tkb-c-active) 55%, transparent);
+    border-color: var(--tkb-c-active);
+  }
+  45% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--tkb-c-active) 16%, transparent);
+    background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 55%, var(--dsw-alias-card-fill));
+  }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes tkb-land {
+  0% { transform: scale(0.985); }
+  50% { transform: scale(1.012); }
+  100% { transform: none; }
+}
+@keyframes tkb-alldone-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
 @keyframes tkb-flash {
   0%, 40% {
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--tkb-c-active) 70%, transparent),
-                0 0 16px color-mix(in srgb, var(--tkb-c-active) 35%, transparent);
+                0 0 20px color-mix(in srgb, var(--tkb-c-active) 40%, transparent);
   }
   20%, 60% {
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--tkb-c-active) 25%, transparent),
-                0 0 24px color-mix(in srgb, var(--tkb-c-active) 20%, transparent);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--tkb-c-active) 25%, transparent),
+                0 0 30px color-mix(in srgb, var(--tkb-c-active) 20%, transparent);
   }
-  100% { box-shadow: 0 0 0 1px transparent; }
+  100% { box-shadow: 0 0 0 2px transparent; }
 }
 @keyframes tkb-rise {
   from { opacity: 0; transform: translateY(8px); }
@@ -1448,8 +1589,7 @@ button { font: inherit; }
     transition-duration: 1ms !important;
     transition-delay: 0ms !important;
   }
-  .tkb-card__rail::after,
-  .tkb-mate[data-running]::after { opacity: 0 !important; }
+  .tkb-card__rail::after { opacity: 0 !important; }
 }
 
 /* =====================================================================
@@ -2037,7 +2177,8 @@ function createBoard(mount) {
   const tip = h('div', 'tkb-tip');
   const tipT = h('b');
   const tipS = h('span');
-  tip.append(tipT, tipS);
+  const tipArrow = h('i', 'tkb-tip__arrow');
+  tip.append(tipT, tipS, tipArrow);
   const sr = h('div', 'tkb-sr');
   sr.setAttribute('aria-live', 'polite');
   root.append(head, banner, lanesEl, wires, flights, tip, sr);
@@ -2313,6 +2454,7 @@ function createBoard(mount) {
     });
     if (openDown.length > 0) {
       const u = h('span', 'tkb-unlocks');
+      if (openDown.length >= 2) u.setAttribute('data-critical', '');
       u.append(icon('down', 'tkb-unlocks__icon'), document.createTextNode(String(openDown.length)));
       u.setAttribute('data-tip', '');
       u._tip = () => [tx('card.blocks'), openDown.map(id => '#' + shortId(id)).join(' · ')];
@@ -2323,6 +2465,17 @@ function createBoard(mount) {
       w.append(icon('warn', 'tkb-conflict__icon'));
       w.setAttribute('data-tip', '');
       w._tip = () => [tx('card.writeScopes'), t.writeScopeWarnings[0]];
+      w.addEventListener('pointerenter', () => {
+        const peers = new Set([t.id]);
+        t.writeScopeWarnings.forEach(msg => {
+          const ms = String(msg || '').match(/task-\d+/g);
+          if (ms) ms.forEach(m => { if (cards.has(m)) peers.add(m); });
+        });
+        if (peers.size > 1) peers.forEach(pid => cards.get(pid) && cards.get(pid).classList.add('is-conflict-pair'));
+      });
+      w.addEventListener('pointerleave', () => {
+        cards.forEach(c => c.classList.remove('is-conflict-pair'));
+      });
       box.append(w);
     }
   }
@@ -2602,6 +2755,8 @@ function createBoard(mount) {
 
   /* --- 交互：展开 / 跳转 / 按人聚焦 / 依赖链 --- */
   function toggle(id) {
+    const sel = window.getSelection && window.getSelection();
+    if (sel && sel.toString().trim().length > 0) return;
     const was = expandedId;
     expandedId = was === id ? null : id;
     if (was && cards.get(was)) {
@@ -2755,12 +2910,19 @@ function createBoard(mount) {
     tip.setAttribute('data-show', '');
     const rr = root.getBoundingClientRect(), r = tg.getBoundingClientRect();
     const tw = tip.offsetWidth, th = tip.offsetHeight;
-    let x = r.left - rr.left + r.width / 2 - tw / 2;
-    x = Math.max(6, Math.min(rr.width - tw - 6, x));
-    let y = r.top - rr.top - th - 6;
-    if (y < 4) y = r.bottom - rr.top + 6;
+    const cx = r.left - rr.left + r.width / 2;
+    let x = cx - tw / 2;
+    x = Math.max(8, Math.min(rr.width - tw - 8, x));
+    let y = r.top - rr.top - th - 8;
+    let place = 'top';
+    if (y < 6) {
+      y = r.bottom - rr.top + 8;
+      place = 'bottom';
+    }
     tip.style.left = x + 'px';
     tip.style.top = y + 'px';
+    tip.setAttribute('data-place', place);
+    tipArrow.style.left = Math.max(10, Math.min(tw - 17, cx - x - 3.5)) + 'px';
   }
   function hideTip() {
     clearTimeout(tipTimer);
