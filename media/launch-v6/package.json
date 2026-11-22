@@ -1,0 +1,25 @@
+{
+  "name": "kanban-launch-v6",
+  "private": true,
+  "version": "6.0.0",
+  "type": "module",
+  "scripts": {
+    "studio": "./node_modules/.bin/remotion studio src/index.ts",
+    "render": "./node_modules/.bin/remotion render src/index.ts KanbanPromo out/kanban-launch-v6.mp4 --crf=18",
+    "render:nobgm": "./node_modules/.bin/remotion render src/index.ts KanbanPromo out/kanban-launch-v6-nobgm.mp4 --crf=18 --props=props-nobgm.json",
+    "render:plate": "./node_modules/.bin/remotion render src/index.ts KanbanPromo out/plate-v6.mp4 --crf=18 --props=props-plate.json",
+    "export:jianying": "uv run --with pyJianYingDraft --python 3.11 tools/export-jianying.py",
+    "still": "./node_modules/.bin/remotion still src/index.ts KanbanPromo"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.484",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "remotion": "4.0.484"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.17",
+    "playwright-core": "^1.56.1",
+    "typescript": "6.0.3"
+  }
+}

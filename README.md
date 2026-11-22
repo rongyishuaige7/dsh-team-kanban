@@ -8,7 +8,7 @@
 
 ![任务板：右侧栏三列活体看板动态流转演示](https://raw.githubusercontent.com/rongyishuaige7/dsh-team-kanban/main/docs/assets/kanban-loop-v4.webp)
 
-🎬 **观看 37 秒完整产品宣传片（1080P）**：[中文主版](docs/assets/kanban-launch-v5.mp4) · [纯音效无 BGM 版](docs/assets/kanban-launch-v5-nobgm.mp4) · [English Cut](https://github.com/rongyishuaige7/dsh-team-kanban/releases/download/v0.5.7/kanban-launch-v5-en.mp4) · [9:16 竖屏短视频版](https://github.com/rongyishuaige7/dsh-team-kanban/releases/download/v0.5.7/kanban-launch-v5-vertical-9x16.mp4)
+🎬 **观看 37 秒完整产品宣传片（1080P · v0.6.0）**：[中文主版（v6）](docs/assets/kanban-launch-v6.mp4) · [纯拟音无 BGM 版（v6）](docs/assets/kanban-launch-v6-nobgm.mp4) · [v0.5.7 归档版](docs/assets/kanban-launch-v5.mp4) · [English Cut](https://github.com/rongyishuaige7/dsh-team-kanban/releases/download/v0.5.7/kanban-launch-v5-en.mp4) · [9:16 竖屏短视频版](https://github.com/rongyishuaige7/dsh-team-kanban/releases/download/v0.5.7/kanban-launch-v5-vertical-9x16.mp4)
 
 💡 想先免安装上手把玩？直接用浏览器打开仓库内的零依赖交互原型 [`prototype/team-kanban-prototype.html`](prototype/team-kanban-prototype.html)，即可体验完整流转、血缘连线、深浅换肤与窄栏缩放。
 
@@ -101,7 +101,7 @@ dsh-team-kanban/
 ├── cordis.patch.yml     # Desktop profile 注入声明
 ├── locale/{zh,en}.json  # 中英文双语词典
 ├── prototype/           # 零依赖离线交互原型
-├── media/launch-v5/     # Remotion 产品宣传片工程与工作台清单
+├── media/launch-v6/     # Remotion v0.6.0 产品宣传片工程与动效工作台清单（保留 launch-v5）
 └── test/                # 49 项自动化单测（状态机、渲染、WCAG 对比度与双向样式同构）
 ```
 

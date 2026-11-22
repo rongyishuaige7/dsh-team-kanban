@@ -1,0 +1,128 @@
+{
+  "air-whoosh-powerful.mp3": {
+    "dur_s": 1.84,
+    "dur_f": 56,
+    "peak_db": -3.0,
+    "peak_s": 0.2295,
+    "peak_f": 7
+  },
+  "air-woosh-deep.mp3": {
+    "dur_s": 2.98,
+    "dur_f": 90,
+    "peak_db": -0.3,
+    "peak_s": 0.4869,
+    "peak_f": 15
+  },
+  "click-camera.mp3": {
+    "dur_s": 0.35,
+    "dur_f": 11,
+    "peak_db": -6.9,
+    "peak_s": 0.1936,
+    "peak_f": 6
+  },
+  "impact-deep-whoosh.mp3": {
+    "dur_s": 4.06,
+    "dur_f": 122,
+    "peak_db": -0.9,
+    "peak_s": 0.6326,
+    "peak_f": 19
+  },
+  "light-sweep-magic.mp3": {
+    "dur_s": 4.75,
+    "dur_f": 143,
+    "peak_db": -7.3,
+    "peak_s": 1.6024,
+    "peak_f": 48
+  },
+  "lock-quick.mp3": {
+    "dur_s": 1.13,
+    "dur_f": 34,
+    "peak_db": -0.3,
+    "peak_s": 0.016,
+    "peak_f": 0
+  },
+  "pen-write-paper.mp3": {
+    "dur_s": 1.47,
+    "dur_f": 45,
+    "peak_db": -7.0,
+    "peak_s": 0.0678,
+    "peak_f": 2
+  },
+  "riser-cine.mp3": {
+    "dur_s": 4.81,
+    "dur_f": 145,
+    "peak_db": -0.1,
+    "peak_s": 1.1673,
+    "peak_f": 35
+  },
+  "shimmer-sparkle-sweep.mp3": {
+    "dur_s": 3.0,
+    "dur_f": 90,
+    "peak_db": -1.7,
+    "peak_s": 0.9299,
+    "peak_f": 28
+  },
+  "sweep-fast-small.mp3": {
+    "dur_s": 0.78,
+    "dur_f": 24,
+    "peak_db": -3.9,
+    "peak_s": 0.3372,
+    "peak_f": 10
+  },
+  "switch-click-quick.mp3": {
+    "dur_s": 1.04,
+    "dur_f": 32,
+    "peak_db": 0.1,
+    "peak_s": 0.006,
+    "peak_f": 0
+  },
+  "switch-light.mp3": {
+    "dur_s": 0.17,
+    "dur_f": 5,
+    "peak_db": -10.7,
+    "peak_s": 0.0659,
+    "peak_f": 2
+  },
+  "switch-tap.mp3": {
+    "dur_s": 1.11,
+    "dur_f": 34,
+    "peak_db": -0.8,
+    "peak_s": 0.006,
+    "peak_f": 0
+  },
+  "swoosh-quick.mp3": {
+    "dur_s": 0.78,
+    "dur_f": 24,
+    "peak_db": -3.9,
+    "peak_s": 0.3372,
+    "peak_f": 10
+  },
+  "transition-snap.mp3": {
+    "dur_s": 0.57,
+    "dur_f": 18,
+    "peak_db": -5.2,
+    "peak_s": 0.1137,
+    "peak_f": 3
+  },
+  "transition-soft.mp3": {
+    "dur_s": 1.27,
+    "dur_f": 39,
+    "peak_db": -0.9,
+    "peak_s": 0.431,
+    "peak_f": 13
+  },
+  "whoosh-fast.mp3": {
+    "dur_s": 1.76,
+    "dur_f": 53,
+    "peak_db": -6.1,
+    "peak_s": 0.7244,
+    "peak_f": 22
+  },
+  "wind-woosh-throw.mp3": {
+    "dur_s": 0.96,
+    "dur_f": 29,
+    "peak_db": -0.5,
+    "peak_s": 0.1556,
+    "peak_f": 5
+  }
+}

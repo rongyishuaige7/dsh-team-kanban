@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>dsh-team-kanban v0.6.0 · Launch v6 Styleframe</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1920px; height: 1080px; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "SF Pro Display", sans-serif;
+    background: linear-gradient(180deg, #f5f8fd 0%, #edf2fb 54%, #e3ebf7 100%);
+    color: #0f1115;
+    display: grid;
+    grid-template-columns: 1.08fr 0.92fr;
+    gap: 36px;
+    padding: 56px 72px;
+  }
+  .panel {
+    border-radius: 24px;
+    padding: 40px 44px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .porcelain {
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(15,17,21,0.08);
+    box-shadow: inset 0 1px 0 #fff, 0 36px 84px -24px rgba(12,24,54,0.18);
+  }
+  .darkroom {
+    background: linear-gradient(180deg, #101420 0%, #0b0e17 60%, #070910 100%);
+    border: 1px solid rgba(255,255,255,0.10);
+    color: #f5f6f8;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 36px 84px -20px rgba(0,2,8,0.65);
+  }
+  .kicker {
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 22px;
+    letter-spacing: 0.10em;
+    font-weight: 600;
+    color: #4176e6;
+  }
+  .darkroom .kicker { color: #22c55e; }
+  h1 {
+    font-size: 68px;
+    line-height: 1.08;
+    letter-spacing: -0.035em;
+    font-weight: 780;
+    margin-top: 18px;
+  }
+  h1 em { font-style: italic; color: #4176e6; }
+  .darkroom h1 em { color: #22c55e; }
+  .mock-card {
+    margin-top: 28px;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    border: 1px solid rgba(15,17,21,0.10);
+    box-shadow: inset 0 1px 0 #fff, 0 18px 40px -14px rgba(12,24,54,0.16);
+    position: relative;
+  }
+  .rail {
+    position: absolute; left: 6px; top: 10px; bottom: 10px; width: 4px;
+    border-radius: 99px; background: #4176e6;
+  }
+  .dark-constellation {
+    margin-top: 28px;
+    background: #15171e;
+    border-radius: 14px;
+    padding: 24px;
+    border: 1.5px solid rgba(34,197,94,0.62);
+    box-shadow: 0 0 36px rgba(34,197,94,0.18);
+  }
+  .swatches {
+    display: flex; gap: 14px; align-items: center;
+    font-family: "SF Mono", Menlo, monospace; font-size: 20px; color: #61666b;
+  }
+  .darkroom .swatches { color: #a1a6b0; }
+  .dot { width: 22px; height: 22px; border-radius: 6px; display: inline-block; }
+</style>
+</head>
+<body>
+  <section class="panel porcelain">
+    <div>
+      <div class="kicker">ACT I–II · OPTICAL PORCELAIN BENCH</div>
+      <h1>精密遥测顶栏，<br/>因果脉冲 <em>即刻</em> 接力。</h1>
+      <div class="mock-card">
+        <span class="rail"></span>
+        <div style="padding-left:12px;display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:26px;">#4 联调写冲突与协调指令</strong>
+          <span style="padding:4px 12px;border-radius:99px;background:rgba(34,197,94,0.12);color:#15803d;font-size:20px;font-weight:700;">✓ 已复制</span>
+        </div>
+        <p style="padding-left:12px;margin-top:10px;font-size:22px;color:#61666b;">4x 布局级 CSS zoom 锐度 · 45° 斜纹校准槽 · 920ms 翡翠贝塞尔接力</p>
+      </div>
+    </div>
+    <div class="swatches">
+      <span class="dot" style="background:#edf2fb;border:1px solid rgba(0,0,0,.12)"></span> #EDF2FB
+      <span class="dot" style="background:#4176e6"></span> #4176E6
+      <span class="dot" style="background:#22c55e"></span> #22C55E
+      <span class="dot" style="background:#dd8629"></span> #DD8629
+    </div>
+  </section>
+  <section class="panel darkroom">
+    <div>
+      <div class="kicker">ACT III · DARKROOM CONSTELLATION CLIMAX</div>
+      <h1>15° 晨昏扫入暗室，<br/>点亮 <em>关键路径</em> 星图。</h1>
+      <div class="dark-constellation">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:24px;font-weight:700;color:#f5f6f8;">关键路径 4 级 · #1 → #3 → #4 → #6</span>
+          <span style="padding:5px 14px;border-radius:8px;border:1px solid #22c55e;color:#6ee7b7;font-size:20px;">★ 星图回放</span>
+        </div>
+        <p style="margin-top:12px;font-size:22px;color:#a1a6b0;">360px 窄栏左侧微弧血缘 · 离席追帧胶囊 · 零闪切无缝明暗转场</p>
+      </div>
+    </div>
+    <div class="swatches">
+      <span class="dot" style="background:#0b0e17;border:1px solid rgba(255,255,255,.2)"></span> #0B0E17
+      <span class="dot" style="background:#7aaaff"></span> #7AAAFF
+      <span class="dot" style="background:#22c55e"></span> #22C55E
+      <span>Caption Floor: 60px</span>
+    </div>
+  </section>
+</body>
+</html>
