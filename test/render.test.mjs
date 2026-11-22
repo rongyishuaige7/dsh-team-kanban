@@ -313,6 +313,22 @@ test('board renders interactive scope chips, conflict steer nudge, and all-done 
   assert.ok(findByClass(openDebrief, 'tkb-debrief__btn'), 'debrief exposes constellation replay and markdown copy buttons');
 });
 
+test('pending lane renders blocked cards even when ready count is zero without an orphan divider', () => {
+  const { slots } = boot({ agentTeam: rcTeam });
+  const board = slots['sidebar.right.pane.tab'](sessionProps(rcTeam));
+  const lanes = [];
+  renderTree(board, (el) => {
+    if (el.props && el.props.className === 'tkb-lane') lanes.push(el);
+  });
+  const pendingLane = lanes[0];
+  let blockedCard = null;
+  renderTree(pendingLane, (el) => {
+    if (el.props && el.props['data-task-id'] === 'task-3') blockedCard = el;
+  });
+  assert.ok(blockedCard, 'blocked-only pending lane must render its blocked card');
+  assert.equal(findByClass(pendingLane, 'tkb-divider'), null, 'no chain divider when ready list is empty');
+});
+
 test('failed and colliding teammates expose phase markers and disambiguated monograms', () => {
   const rosterTeam = {
     members: [

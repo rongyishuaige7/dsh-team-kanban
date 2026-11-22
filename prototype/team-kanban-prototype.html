@@ -460,6 +460,10 @@ button { font: inherit; }
   color: var(--dsw-alias-label-primary);
 }
 .tkb-mates__more:active { transform: scale(0.95); }
+.tkb-mates__more:focus-visible {
+  outline: 2px solid var(--tkb-c-active);
+  outline-offset: 1px;
+}
 .tkb-mates__empty {
   font-size: 11px;
   color: var(--dsw-alias-label-tertiary);
@@ -514,7 +518,7 @@ button { font: inherit; }
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  z-index: 6;
+  z-index: 15;
   width: 232px;
   padding: 12px;
   border: 1px solid var(--dsw-alias-border-l2);
@@ -1872,8 +1876,8 @@ button { font: inherit; }
     padding: 6px 8px 20px;
     scrollbar-width: thin;
     scrollbar-color: var(--dsw-alias-border-l3) transparent;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 18px), transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 18px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, var(--dsw-alias-label-primary) 6px, var(--dsw-alias-label-primary) calc(100% - 18px), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, var(--dsw-alias-label-primary) 6px, var(--dsw-alias-label-primary) calc(100% - 18px), transparent 100%);
   }
   .tkb-lane[data-empty] .tkb-lane__body { display: flex; }
   .tkb-empty { min-height: 52px; }

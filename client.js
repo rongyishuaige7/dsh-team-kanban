@@ -54,6 +54,7 @@ window.__ModuleLoader__.load({
       'header.summary': '{completed} 已完成 · {active} 进行中 · {pending} 待处理',
       'header.teammates': '队友运行中 {running}/{total}',
       'header.noTeammates': '暂无活跃队友',
+      'header.moreMates': '展开其余 {count} 位队友',
       'team.label': '团队',
       'team.disable': '停用智能体团队协作',
       'team.confirmTitle': '停用智能体团队协作？',
@@ -128,6 +129,7 @@ window.__ModuleLoader__.load({
       'header.summary': '{completed} completed · {active} in progress · {pending} pending',
       'header.teammates': 'Teammates active {running}/{total}',
       'header.noTeammates': 'No active teammates',
+      'header.moreMates': 'Show {count} more teammates',
       'team.label': 'Team',
       'team.disable': 'Disable agent teamwork',
       'team.confirmTitle': 'Disable agent teamwork?',
@@ -1161,7 +1163,7 @@ window.__ModuleLoader__.load({
       return {
         depth: pathIds.length,
         pathIds,
-        criticalSet: new Set(pathIds),
+        criticalSet: maxStage === 0 ? new Set(list.map((task) => task.id)) : new Set(pathIds),
         stages,
         maxStage,
         scopes: Array.from(scopeSet),
@@ -1281,6 +1283,7 @@ window.__ModuleLoader__.load({
       const activeFlightsRef = useRef([]);
       const replayTimersRef = useRef([]);
       const latestModelRef = useRef(null);
+      const prevSessionIdRef = useRef(sessionId);
       const tipTimer = useRef(0);
       const lineageTimer = useRef(0);
       const uiTimers = useRef({});
@@ -1289,12 +1292,19 @@ window.__ModuleLoader__.load({
       const teamRef = useRef(null);
       const cancelBtnRef = useRef(null);
 
+      if (prevSessionIdRef.current !== sessionId) {
+        prevSessionIdRef.current = sessionId;
+        previousTasks.current = null;
+        cardRectsRef.current = null;
+      }
+
       const model = useMemo(
         () => buildModel(team, catalog, statuses, summaries, sessionId),
         [team, catalog, catalogSignature, statuses, summaries, sessionId],
       );
       latestModelRef.current = model;
-      const nowMs = clockNow || Date.now();
+      void clockNow;
+      const nowMs = Date.now();
       const taskClock = syncSessionClock(sessionId, model, nowMs);
       const crit = useMemo(
         () => (model.allDone ? computeCriticalPath(model.tasks) : null),
@@ -1780,42 +1790,73 @@ window.__ModuleLoader__.load({
       }, [t, computeBezierWires]);
 
       useEffect(() => {
+        cleanupFlights();
+        clearReplayTimers();
+        hideTip();
+        closeTeamMenu();
+        pinnedRef.current = false;
+        setExpandedId(null);
+        setCollapsed({});
+        setSpot(null);
+        setPinned(false);
+        setLineageId(null);
+        setFocusedDepId(null);
+        setConflictPair(null);
+        setUnlockedIds(null);
+        setWires(EMPTY);
+        setRelayWires(EMPTY);
+        setCatchupInfo(null);
+        setCopiedState(null);
+        setCritStage(-1);
+        setShowAllMates(false);
+      }, [sessionId, cleanupFlights, clearReplayTimers, hideTip, closeTeamMenu]);
+
+      useEffect(() => {
         if (!hasVisibleBoard) return undefined;
+        const curTasks = latestModelRef.current && latestModelRef.current.sessionId === sessionId
+          ? latestModelRef.current.tasks
+          : EMPTY;
         const saved = awaySnapshots.get(sessionId);
         const now = Date.now();
         if (saved && saved.hiddenAt && now - saved.hiddenAt >= AWAY_MIN_MS) {
-          const diff = diffCatchup(saved.snapshot, latestModelRef.current ? latestModelRef.current.tasks : EMPTY);
+          const diff = diffCatchup(saved.snapshot, curTasks);
           if (diff.totalChanges > 0) runCatchupVisuals(diff);
         }
-        const putSnapshot = (hiddenAt) => {
-          const tasks = latestModelRef.current ? latestModelRef.current.tasks : EMPTY;
+        const putVisibleSnapshot = (tasks) => {
           awaySnapshots.delete(sessionId);
-          awaySnapshots.set(sessionId, { snapshot: snapshotTaskStates(tasks), hiddenAt });
+          awaySnapshots.set(sessionId, { snapshot: snapshotTaskStates(tasks), hiddenAt: null });
           while (awaySnapshots.size > FALLBACK_LIMIT) {
             awaySnapshots.delete(awaySnapshots.keys().next().value);
           }
         };
-        putSnapshot(null);
+        const stampHidden = () => {
+          const entry = awaySnapshots.get(sessionId);
+          if (entry && !entry.hiddenAt) entry.hiddenAt = Date.now();
+        };
+        putVisibleSnapshot(curTasks);
 
         if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') {
-          return () => putSnapshot(Date.now());
+          return stampHidden;
         }
         const onVis = () => {
           if (document.visibilityState === 'hidden') {
-            putSnapshot(Date.now());
+            stampHidden();
           } else if (document.visibilityState === 'visible') {
             const cur = awaySnapshots.get(sessionId);
+            const freshTasks = latestModelRef.current && latestModelRef.current.sessionId === sessionId
+              ? latestModelRef.current.tasks
+              : EMPTY;
             if (cur && cur.hiddenAt && Date.now() - cur.hiddenAt >= AWAY_MIN_MS) {
-              const diff = diffCatchup(cur.snapshot, latestModelRef.current ? latestModelRef.current.tasks : EMPTY);
+              const diff = diffCatchup(cur.snapshot, freshTasks);
               if (diff.totalChanges > 0) runCatchupVisuals(diff);
             }
-            putSnapshot(null);
+            putVisibleSnapshot(freshTasks);
           }
         };
         document.addEventListener('visibilitychange', onVis);
         return () => {
           document.removeEventListener('visibilitychange', onVis);
-          putSnapshot(Date.now());
+          stampHidden();
         };
       }, [hasVisibleBoard, sessionId, runCatchupVisuals]);
 
@@ -1968,7 +2009,7 @@ window.__ModuleLoader__.load({
           });
         });
         setWires(computeBezierWires(rootRef.current, edges));
-      }, [lineage, focusedDepId, model, collapsed, expandedId, computeBezierWires]);
+      }, [lineage, focusedDepId, model, collapsed, expandedId, Boolean(catchupInfo), team && team.failure, computeBezierWires]);
 
       const focusCard = useCallback((taskId) => {
         const root = rootRef.current;
@@ -2517,10 +2558,10 @@ window.__ModuleLoader__.load({
               onPointerEnter: (event) => queueTip(event.currentTarget, t('card.blocked'), ''),
               onPointerLeave: hideTip,
             }, h(ChainIcon)));
-            model.blocked.forEach((task) => {
-              children.push(renderCard(task, laneIndex, children.length));
-            });
           }
+          model.blocked.forEach((task) => {
+            children.push(renderCard(task, laneIndex, children.length));
+          });
         } else {
           laneTasks.forEach((task) => {
             children.push(renderCard(task, laneIndex, children.length));
@@ -2672,7 +2713,13 @@ window.__ModuleLoader__.load({
             ? h('button', {
               type: 'button',
               className: 'tkb-mates__more',
-              'aria-label': '+' + hiddenMatesCount,
+              'aria-label': t('header.moreMates', { count: hiddenMatesCount }),
+              onPointerEnter: (event) => queueTip(
+                event.currentTarget,
+                t('header.moreMates', { count: hiddenMatesCount }),
+                '',
+              ),
+              onPointerLeave: hideTip,
               onClick: (event) => {
                 event.stopPropagation();
                 hideTip();
@@ -3492,6 +3539,10 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-primary);
 }
 .tkb-mates__more:active { transform: scale(0.95); }
+.tkb-mates__more:focus-visible {
+  outline: 2px solid var(--tkb-c-active);
+  outline-offset: 1px;
+}
 .tkb-mates__empty {
   font-size: 11px;
   color: var(--dsw-alias-label-tertiary);
@@ -3546,7 +3597,7 @@ window.__ModuleLoader__.load({
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  z-index: 6;
+  z-index: 15;
   width: 232px;
   padding: 12px;
   border: 1px solid var(--dsw-alias-border-l2);
@@ -4904,8 +4955,8 @@ window.__ModuleLoader__.load({
     padding: 6px 8px 20px;
     scrollbar-width: thin;
     scrollbar-color: var(--dsw-alias-border-l3) transparent;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 18px), transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 18px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, var(--dsw-alias-label-primary) 6px, var(--dsw-alias-label-primary) calc(100% - 18px), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, var(--dsw-alias-label-primary) 6px, var(--dsw-alias-label-primary) calc(100% - 18px), transparent 100%);
   }
   .tkb-lane[data-empty] .tkb-lane__body { display: flex; }
   .tkb-empty { min-height: 52px; }
@@ -4993,6 +5044,9 @@ window.__ModuleLoader__.load({
         openConfirmed.clear();
         dismissedSessions.clear();
         selfClosing.clear();
+        columnEnsured.clear();
+        sessionTaskClocks.clear();
+        awaySnapshots.clear();
         try {
           const openTabs = ctx.sidebarRight.openTabs && ctx.sidebarRight.openTabs.getSnapshot
             ? ctx.sidebarRight.openTabs.getSnapshot()

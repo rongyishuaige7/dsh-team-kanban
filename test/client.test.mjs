@@ -315,6 +315,14 @@ test('computeCriticalPath solves longest DAG chain and tolerates cycles', () => 
   ];
   const cycRes = computeCriticalPath(cyclic);
   assert.ok(cycRes.depth >= 1 && cycRes.depth <= 2, 'cycles terminate safely');
+
+  const parallel = [
+    { id: 'task-1', blockedBy: [], writeScopes: [] },
+    { id: 'task-2', blockedBy: [], writeScopes: [] },
+  ];
+  const parRes = computeCriticalPath(parallel);
+  assert.equal(parRes.maxStage, 0);
+  assert.equal(parRes.criticalSet.size, 2, 'flat parallel tasks all light up together');
 });
 
 test('detectStall flags idle owners, failed teammates, and long-running tasks', () => {
