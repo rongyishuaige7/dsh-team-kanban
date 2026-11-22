@@ -294,3 +294,75 @@ test('disambiguateMonos keeps unique initials compact and resolves colliding nam
   assert.equal(colliding.get('dup2'), 'R2');
 });
 
+test('computeCriticalPath solves longest DAG chain and tolerates cycles', () => {
+  const { computeCriticalPath } = loadClient();
+  const tasks = [
+    { id: 'task-1', blockedBy: [], writeScopes: ['a.ts'] },
+    { id: 'task-2', blockedBy: ['task-1'], writeScopes: ['b.ts'] },
+    { id: 'task-3', blockedBy: ['task-1'], writeScopes: ['b.ts', 'c.ts'] },
+    { id: 'task-4', blockedBy: ['task-2'], writeScopes: [] },
+    { id: 'task-5', blockedBy: ['task-3', 'task-4'], writeScopes: ['d.ts'] },
+  ];
+  const crit = computeCriticalPath(tasks);
+  assert.equal(crit.depth, 4);
+  assert.deepEqual(crit.pathIds, ['task-1', 'task-2', 'task-4', 'task-5']);
+  assert.equal(crit.maxStage, 3);
+  assert.deepEqual(crit.scopes, ['a.ts', 'b.ts', 'c.ts', 'd.ts']);
+
+  const cyclic = [
+    { id: 'task-1', blockedBy: ['task-2'], writeScopes: [] },
+    { id: 'task-2', blockedBy: ['task-1'], writeScopes: [] },
+  ];
+  const cycRes = computeCriticalPath(cyclic);
+  assert.ok(cycRes.depth >= 1 && cycRes.depth <= 2, 'cycles terminate safely');
+});
+
+test('detectStall flags idle owners, failed teammates, and long-running tasks', () => {
+  const { detectStall } = loadClient();
+  const activeTask = { id: 'task-2', status: 'in_progress', ownerId: 'S-b' };
+  assert.equal(detectStall(activeTask, true, { phase: 'active' }, 0, 30000), null);
+  assert.deepEqual(detectStall(activeTask, true, { phase: 'active' }, 0, 195000), { kind: 'long', minutes: 3 });
+  assert.equal(detectStall(activeTask, false, { phase: 'provisioning' }, 9000, 9000), null, 'starting teammates do not false-alarm');
+  assert.equal(detectStall(activeTask, false, { phase: 'active' }, 1500, 1500), null, 'grace window suppresses sub-4s jitter');
+  assert.deepEqual(detectStall(activeTask, false, { phase: 'active' }, 5000, 5000), { kind: 'stalled' });
+  assert.deepEqual(detectStall(activeTask, false, { phase: 'failed', error: 'oom' }, 0, 0), { kind: 'error', reason: 'oom' });
+  assert.equal(detectStall({ ...activeTask, status: 'pending' }, false, null, 9000, 9000), null);
+});
+
+test('diffCatchup and debrief/steer builders synthesize away deltas and prompts', () => {
+  const { diffCatchup, normalizeTeam, buildModel, computeCriticalPath, buildSteerPrompt, buildDebriefMarkdown } = loadClient();
+  const before = new Map([
+    ['task-1', { status: 'in_progress', ready: true }],
+    ['task-2', { status: 'pending', ready: true }],
+    ['task-3', { status: 'pending', ready: false }],
+  ]);
+  const after = [
+    { id: 'task-1', status: 'completed', ready: true },
+    { id: 'task-2', status: 'in_progress', ready: true },
+    { id: 'task-3', status: 'pending', ready: true },
+  ];
+  const diff = diffCatchup(before, after);
+  assert.deepEqual(diff.doneIds, ['task-1']);
+  assert.deepEqual(diff.activeIds, ['task-2']);
+  assert.deepEqual(diff.unlockedIds, ['task-3']);
+  assert.equal(diff.totalChanges, 3);
+
+  const team = normalizeTeam({
+    enabled: true,
+    tasks: [
+      { id: 'task-1', revision: 2, subject: 'Spec', description: '', status: 'completed', blockedBy: [], writeScopes: ['spec.md'], ownerId: 'S-lead', ownerName: 'lead', ready: true, writeScopeWarnings: [] },
+      { id: 'task-2', revision: 3, subject: 'Impl', description: '', status: 'completed', blockedBy: ['task-1'], writeScopes: ['auth.ts'], ownerId: 'S-b', ownerName: 'bob', ready: true, writeScopeWarnings: [] },
+    ],
+  }, 'S-lead');
+  const model = buildModel(team, [{ id: 'S-b', label: 'bob' }], new Map(), {}, 'S-lead');
+  const crit = computeCriticalPath(model.tasks);
+  const md = buildDebriefMarkdown(model, crit, (k, v) => (v ? `${k}:${JSON.stringify(v)}` : k));
+  assert.match(md, /#1 → #2/);
+  assert.match(md, /`spec\.md`/);
+  assert.match(md, /\[x\] #2 Impl \(bob\)/);
+
+  const conflictTask = { id: 'task-2', subject: 'Impl', status: 'in_progress', writeScopeWarnings: ['overlap on auth.ts'] };
+  assert.match(buildSteerPrompt(conflictTask, model, null, (k, v) => `${k}:${v ? v.warning : ''}`), /overlap on auth\.ts/);
+});
+
+

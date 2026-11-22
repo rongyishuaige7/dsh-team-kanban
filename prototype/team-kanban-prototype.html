@@ -698,6 +698,133 @@ button { font: inherit; }
 }
 
 /* =====================================================================
+   离席追帧微胶囊与收口战报条（Catch-up Pill & Mission Debrief Strip）
+   ===================================================================== */
+.tkb-catchup,
+.tkb-debrief {
+  flex: none;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--tkb-d2) var(--tkb-ease);
+}
+.tkb-catchup[data-open],
+.tkb-debrief[data-open] { grid-template-rows: 1fr; }
+.tkb-catchup__clip,
+.tkb-debrief__clip { min-height: 0; overflow: hidden; }
+.tkb-catchup__pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: calc(100% - 20px);
+  min-height: 28px;
+  margin: 8px 10px 0;
+  padding: 4px 10px;
+  border-radius: var(--dsw-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--tkb-c-active) 28%, var(--dsw-alias-border-l1));
+  background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 36%, var(--dsw-alias-bg-base));
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color var(--tkb-d1) var(--tkb-ease), transform var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-catchup__pill:hover {
+  background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 52%, var(--dsw-alias-bg-base));
+}
+.tkb-catchup__pill:active { transform: scale(0.99); }
+.tkb-catchup__pill:focus-visible {
+  outline: 2px solid var(--tkb-c-active);
+  outline-offset: 1px;
+}
+.tkb-catchup__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tkb-c-active);
+  box-shadow: 0 0 6px var(--tkb-c-active);
+}
+.tkb-catchup__txt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tkb-debrief__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: color-mix(in srgb, var(--tkb-c-done) 6%, var(--dsw-alias-bg-base));
+}
+.tkb-debrief__meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.tkb-debrief__actions {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.tkb-debrief__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color var(--tkb-d1) var(--tkb-ease),
+              border-color var(--tkb-d1) var(--tkb-ease),
+              color var(--tkb-d1) var(--tkb-ease),
+              transform var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-debrief__btn svg { width: 11.5px; height: 11.5px; }
+.tkb-debrief__btn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l3);
+}
+.tkb-debrief__btn:active { transform: scale(0.96); }
+.tkb-debrief__btn:focus-visible {
+  outline: 2px solid var(--tkb-c-active);
+  outline-offset: 1px;
+}
+.tkb-debrief__btn[data-active] {
+  color: color-mix(in srgb, var(--tkb-c-done) 58%, var(--dsw-alias-label-primary));
+  border-color: color-mix(in srgb, var(--tkb-c-done) 45%, var(--dsw-alias-border-l2));
+  background: color-mix(in srgb, var(--tkb-c-done) 10%, var(--dsw-alias-bg-base));
+}
+.tkb-debrief__btn[data-copied] {
+  color: color-mix(in srgb, var(--tkb-c-done) 58%, var(--dsw-alias-label-primary));
+  border-color: color-mix(in srgb, var(--tkb-c-done) 45%, var(--dsw-alias-border-l2));
+}
+.tkb-debrief__btn[data-failed] {
+  color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 85%, var(--dsw-alias-label-primary));
+  border-color: var(--dsw-alias-state-error-primary);
+}
+
+/* =====================================================================
    异常横幅
    ===================================================================== */
 .tkb-banner {
@@ -1255,6 +1382,40 @@ button { font: inherit; }
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-warn) 22%, transparent);
 }
 .tkb-conflict__icon { width: 11px; height: 11px; }
+.tkb-stall {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 5px;
+  pointer-events: auto;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--dsw-alias-state-warn-label) 60%, var(--dsw-alias-label-primary));
+  background: var(--dsw-alias-state-warn-tertiary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-warn) 22%, transparent);
+}
+.tkb-stall[data-kind="error"] {
+  color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 85%, var(--dsw-alias-label-primary));
+  background: color-mix(in srgb, var(--tkb-c-error) 10%, var(--dsw-alias-bg-base));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-error) 28%, transparent);
+}
+.tkb-elapsed {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  pointer-events: auto;
+  font-family: var(--tkb-mono);
+  font-size: 10px;
+  color: var(--dsw-alias-label-tertiary);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, var(--dsw-alias-bg-base));
+  font-variant-numeric: tabular-nums;
+}
 
 /* =====================================================================
    展开抽屉（Drawer Physics）
@@ -1330,14 +1491,40 @@ button { font: inherit; }
 .tkb-scope {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   max-width: 100%;
-  height: 20px;
+  min-height: 22px;
   padding: 0 7px;
   border-radius: 5px;
   border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
   font-family: var(--tkb-mono);
   font-size: 10.5px;
   color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  appearance: none;
+  transition: background-color var(--tkb-d1) var(--tkb-ease),
+              border-color var(--tkb-d1) var(--tkb-ease),
+              color var(--tkb-d1) var(--tkb-ease),
+              transform var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-scope:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l3);
+}
+.tkb-scope:active { transform: scale(0.97); }
+.tkb-scope:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tkb-c-active) 60%, transparent);
+  outline-offset: 1px;
+}
+.tkb-scope[data-copied] {
+  color: color-mix(in srgb, var(--tkb-c-done) 58%, var(--dsw-alias-label-primary));
+  border-color: color-mix(in srgb, var(--tkb-c-done) 45%, var(--dsw-alias-border-l2));
+}
+.tkb-scope__check { width: 10.5px; height: 10.5px; }
+.tkb-scope__txt {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1355,6 +1542,49 @@ button { font: inherit; }
   line-height: 1.5;
 }
 .tkb-warnline svg { width: 13px; height: 13px; margin-top: 2px; }
+.tkb-nudge {
+  display: flex;
+  justify-content: flex-end;
+}
+.tkb-nudge__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color var(--tkb-d1) var(--tkb-ease),
+              border-color var(--tkb-d1) var(--tkb-ease),
+              color var(--tkb-d1) var(--tkb-ease),
+              transform var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-nudge__btn svg { width: 12px; height: 12px; }
+.tkb-nudge__btn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l3);
+}
+.tkb-nudge__btn:active { transform: scale(0.97); }
+.tkb-nudge__btn:focus-visible {
+  outline: 2px solid var(--tkb-c-active);
+  outline-offset: 1px;
+}
+.tkb-nudge__btn[data-copied] {
+  color: color-mix(in srgb, var(--tkb-c-done) 58%, var(--dsw-alias-label-primary));
+  border-color: color-mix(in srgb, var(--tkb-c-done) 45%, var(--dsw-alias-border-l2));
+}
+.tkb-nudge__btn[data-failed] {
+  color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 85%, var(--dsw-alias-label-primary));
+  border-color: var(--dsw-alias-state-error-primary);
+}
 
 /* =====================================================================
    神经网络血缘与聚焦矩阵（免除 blur 离屏卷积开销，保持字体锐利）
@@ -1400,6 +1630,24 @@ button { font: inherit; }
   border-color: var(--tkb-c-active);
   background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 45%, var(--dsw-alias-card-fill));
   box-shadow: 0 2px 8px color-mix(in srgb, var(--tkb-c-active) 18%, transparent);
+}
+
+/* 收口关键路径星图回放 */
+.tkb-root[data-constellation] .tkb-card:not(.is-crit-node):not(.is-stage-lit) {
+  opacity: .32;
+  filter: saturate(0.6);
+  transform: scale(0.99);
+}
+.tkb-root[data-constellation] .tkb-card.is-stage-lit {
+  opacity: .72;
+}
+.tkb-root[data-constellation] .tkb-card.is-crit-node {
+  z-index: 3;
+  transform: translateY(-1.5px);
+  border-color: var(--tkb-c-done);
+  background: color-mix(in srgb, var(--tkb-c-done) 11%, var(--dsw-alias-card-fill));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-done) 42%, transparent),
+              0 4px 14px -2px color-mix(in srgb, var(--tkb-c-done) 20%, transparent);
 }
 
 /* 卡片跳转高亮、冲突成对高亮、解扣脉冲与贝塞尔血缘连线 / 飞行层 */
@@ -1850,6 +2098,10 @@ const ICON = {
   close: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l5 5M8.5 3.5l-5 5"/></svg>',
   play: '<svg viewBox="0 0 12 12"><path d="M3 2v8l7-4z" fill="currentColor"/></svg>',
   pause: '<svg viewBox="0 0 12 12"><path d="M3 2h2v8H3zM7 2h2v8H7z" fill="currentColor"/></svg>',
+  copy: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="7" height="7" rx="1.5"/><path d="M9.5 4.5V3a1.5 1.5 0 0 0-1.5-1.5H3A1.5 1.5 0 0 0 1.5 3v5A1.5 1.5 0 0 0 3 9.5h1.5"/></svg>',
+  checkSmall: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 7.3 5.7 10.2 11.2 4.2"/></svg>',
+  steer: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 3.5v4a2 2 0 0 1-2 2H3"/><path d="M5.5 7 3 9.5 5.5 12"/></svg>',
+  replay: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.2" cy="7" r="1.5"/><circle cx="10.8" cy="3.5" r="1.5"/><circle cx="10.8" cy="10.5" r="1.5"/><path d="M4.6 6.3 9.4 4.2"/><path d="M4.6 7.7 9.4 9.8"/></svg>',
 };
 const tpl = document.createElement('template');
 function icon(name, cls) {
@@ -1867,6 +2119,11 @@ const DICT = {
     'column.collapse': '折叠{lane}', 'column.expand': '展开{lane}',
     'card.unowned': '未分配', 'card.ready': '就绪', 'card.blocked': '被依赖阻塞', 'card.blockedShort': '阻塞', 'card.blockedBy': '依赖', 'card.blocks': '解锁后续',
     'card.writeScopes': '写入范围', 'card.running': '运行中', 'card.idle': '空闲', 'card.provisioning': '启动中', 'card.failed': '启动失败', 'card.lead': '主智能体',
+    'card.stalled': '待确认', 'card.stalledSub': '负责智能体已空闲，但任务仍处于进行中',
+    'card.steer': '复制协调指令', 'card.copied': '已复制',
+    'catchup.prefix': '刚刚推进 · ', 'catchup.done': '+{count} 完成', 'catchup.active': '+{count} 开始', 'catchup.unlocked': '解锁 {ids}',
+    'debrief.summary': '关键路径 {depth} 级 · {mates} 成员 · {scopes} 处路径',
+    'debrief.replay': '星图', 'debrief.copy': '战报',
     'team.label': '团队', 'team.disable': '停用智能体团队协作', 'team.confirmTitle': '停用智能体团队协作？',
     'team.confirmBody': '本会话将不再使用共享任务工具；已有任务会保留，看板会关闭。', 'team.confirm': '停用', 'team.cancel': '取消',
     'error.title': '任务记录异常',
@@ -1879,6 +2136,11 @@ const DICT = {
     'column.collapse': 'Collapse {lane}', 'column.expand': 'Expand {lane}',
     'card.unowned': 'Unowned', 'card.ready': 'Ready', 'card.blocked': 'Blocked', 'card.blockedShort': 'Blocked', 'card.blockedBy': 'Blocked by', 'card.blocks': 'Unblocks',
     'card.writeScopes': 'Write scopes', 'card.running': 'Running', 'card.idle': 'Idle', 'card.provisioning': 'Starting', 'card.failed': 'Failed', 'card.lead': 'Lead agent',
+    'card.stalled': 'Idle', 'card.stalledSub': 'Owner stopped running while task is still in progress',
+    'card.steer': 'Copy steer prompt', 'card.copied': 'Copied',
+    'catchup.prefix': 'Catch-up · ', 'catchup.done': '+{count} done', 'catchup.active': '+{count} started', 'catchup.unlocked': 'unlocked {ids}',
+    'debrief.summary': 'Critical path {depth} · {mates} members · {scopes} scopes',
+    'debrief.replay': 'Replay', 'debrief.copy': 'Debrief',
     'team.label': 'Team', 'team.disable': 'Disable agent teamwork', 'team.confirmTitle': 'Disable agent teamwork?',
     'team.confirmBody': 'This session stops using shared task tools. Existing tasks are kept and the board closes.', 'team.confirm': 'Disable', 'team.cancel': 'Cancel',
     'error.title': 'Invalid task record',
@@ -2103,6 +2365,52 @@ function createBoard(mount) {
 
   head.append(score, strip, matesEl, teamWrap);
 
+  async function copyProtoText(text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return true; }
+    } catch (e) {}
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+    document.body.append(ta);
+    ta.select();
+    try { return !!document.execCommand('copy'); } catch (e) { return false; } finally { ta.remove(); }
+  }
+
+  const catchupWrap = h('div', 'tkb-catchup');
+  const catchupClip = h('div', 'tkb-catchup__clip');
+  const catchupPill = h('button', 'tkb-catchup__pill');
+  catchupPill.type = 'button';
+  const catchupDot = h('span', 'tkb-catchup__dot');
+  const catchupTxt = h('span', 'tkb-catchup__txt');
+  catchupPill.append(catchupDot, catchupTxt);
+  catchupClip.append(catchupPill);
+  catchupWrap.append(catchupClip);
+  let catchupTargetId = null, catchupHideTimer = 0;
+  catchupPill.addEventListener('click', () => {
+    catchupWrap.removeAttribute('data-open');
+    if (catchupTargetId) jumpTo(catchupTargetId);
+  });
+
+  const debriefWrap = h('div', 'tkb-debrief');
+  const debriefClip = h('div', 'tkb-debrief__clip');
+  const debriefBar = h('div', 'tkb-debrief__bar');
+  const debriefMeta = h('span', 'tkb-debrief__meta');
+  const debriefActs = h('div', 'tkb-debrief__actions');
+  const debriefReplayBtn = h('button', 'tkb-debrief__btn');
+  debriefReplayBtn.type = 'button';
+  const debriefReplayLbl = h('span', '', tx('debrief.replay'));
+  debriefReplayBtn.append(icon('replay'), debriefReplayLbl);
+  const debriefCopyBtn = h('button', 'tkb-debrief__btn');
+  debriefCopyBtn.type = 'button';
+  const debriefCopyLbl = h('span', '', tx('debrief.copy'));
+  debriefCopyBtn.append(icon('copy'), debriefCopyLbl);
+  debriefActs.append(debriefReplayBtn, debriefCopyBtn);
+  debriefBar.append(debriefMeta, debriefActs);
+  debriefClip.append(debriefBar);
+  debriefWrap.append(debriefClip);
+
   const banner = h('div', 'tkb-banner');
   const bClip = h('div', 'tkb-banner__clip');
   const bBox = h('div', 'tkb-banner__box');
@@ -2181,7 +2489,7 @@ function createBoard(mount) {
   tip.append(tipT, tipS, tipArrow);
   const sr = h('div', 'tkb-sr');
   sr.setAttribute('aria-live', 'polite');
-  root.append(head, banner, lanesEl, wires, flights, tip, sr);
+  root.append(head, catchupWrap, debriefWrap, banner, lanesEl, wires, flights, tip, sr);
   mount.append(root);
 
   /* --- 状态 --- */
@@ -2291,7 +2599,103 @@ function createBoard(mount) {
     if (allDone && !root.hasAttribute('data-alldone')) {
       root.setAttribute('data-alldone', '');
     } else if (!allDone) root.removeAttribute('data-alldone');
+
+    debriefWrap.toggleAttribute('data-open', allDone);
+    debriefReplayLbl.textContent = tx('debrief.replay');
+    if (!debriefCopyBtn.hasAttribute('data-copied')) debriefCopyLbl.textContent = tx('debrief.copy');
+    if (allDone) {
+      const crit = solveProtoCrit(next.tasks);
+      debriefMeta.textContent = tx('debrief.summary', {
+        depth: crit.pathIds.length,
+        mates: Math.max(1, next.mates.length),
+        scopes: crit.scopes.length,
+      });
+      debriefWrap._crit = crit;
+    } else {
+      root.removeAttribute('data-constellation');
+      cards.forEach(c => c.classList.remove('is-crit-node', 'is-stage-lit'));
+    }
   }
+  function solveProtoCrit(tasks) {
+    const byId = new Map(tasks.map(t => [t.id, t]));
+    const memo = new Map();
+    const solve = id => {
+      if (memo.has(id)) return memo.get(id);
+      const t = byId.get(id);
+      if (!t) return { len: 0, prev: null };
+      let len = 1, prevId = null;
+      (t.blockedBy || []).forEach(d => {
+        if (!byId.has(d)) return;
+        const s = solve(d);
+        if (s.len + 1 > len) { len = s.len + 1; prevId = d; }
+      });
+      const r = { len, prev: prevId };
+      memo.set(id, r);
+      return r;
+    };
+    let sink = tasks[0] && tasks[0].id, best = 0, maxStage = 0;
+    const stages = new Map();
+    tasks.forEach(t => {
+      const r = solve(t.id);
+      stages.set(t.id, r.len - 1);
+      if (r.len - 1 > maxStage) maxStage = r.len - 1;
+      if (r.len >= best) { best = r.len; sink = t.id; }
+    });
+    const pathIds = [];
+    let cur = sink;
+    while (cur) { pathIds.push(cur); cur = memo.get(cur) && memo.get(cur).prev; }
+    pathIds.reverse();
+    const scopes = [...new Set(tasks.flatMap(t => t.writeScopes || []))];
+    return { pathIds, critSet: new Set(pathIds), stages, maxStage, scopes };
+  }
+  debriefReplayBtn.addEventListener('click', () => {
+    const crit = debriefWrap._crit;
+    if (!crit || !crit.pathIds.length) return;
+    if (collapsed.has('completed')) { collapsed.delete('completed'); syncLaneHead('completed'); }
+    root.setAttribute('data-constellation', '');
+    debriefReplayBtn.setAttribute('data-active', '');
+    const step = Math.min(260, Math.floor(1100 / Math.max(1, crit.maxStage + 1)));
+    for (let s = 0; s <= crit.maxStage; s++) {
+      later(() => {
+        cards.forEach((el, id) => {
+          const st = crit.stages.get(id) || 0;
+          el.classList.toggle('is-crit-node', crit.critSet.has(id) && st <= s);
+          el.classList.toggle('is-stage-lit', !crit.critSet.has(id) && st <= s);
+        });
+        wires.replaceChildren();
+        const rr = root.getBoundingClientRect();
+        wires.setAttribute('width', rr.width);
+        wires.setAttribute('height', rr.height);
+        wires.setAttribute('viewBox', `0 0 ${rr.width} ${rr.height}`);
+        for (let i = 0; i < crit.pathIds.length - 1; i++) {
+          const aId = crit.pathIds[i], bId = crit.pathIds[i + 1];
+          if ((crit.stages.get(bId) || (i + 1)) <= s || s === crit.maxStage) {
+            appendProtoWire(cards.get(aId), cards.get(bId), 'relay', rr);
+          }
+        }
+      }, ms(s * step + 20));
+    }
+    later(() => {
+      root.removeAttribute('data-constellation');
+      debriefReplayBtn.removeAttribute('data-active');
+      cards.forEach(c => c.classList.remove('is-crit-node', 'is-stage-lit'));
+      if (!root.hasAttribute('data-lineage')) wires.replaceChildren();
+    }, ms(crit.maxStage * step + 980));
+  });
+  debriefCopyBtn.addEventListener('click', () => {
+    const crit = debriefWrap._crit;
+    if (!crit || !vm) return;
+    const md = [
+      `### ${tx('tab.title')} (${vm.total}/${vm.total})`,
+      `- Critical path: ${crit.pathIds.map(id => '#' + shortId(id)).join(' → ')}`,
+      ...vm.tasks.map(t => `  - [x] #${shortId(t.id)} ${t.subject}`),
+    ].join('\n');
+    copyProtoText(md).then(() => {
+      debriefCopyBtn.setAttribute('data-copied', '');
+      debriefCopyLbl.textContent = tx('card.copied');
+      setTimeout(() => { debriefCopyBtn.removeAttribute('data-copied'); debriefCopyLbl.textContent = tx('debrief.copy'); }, 1800);
+    });
+  });
   function togglePin(id) {
     if (pinned && spot === id) { pinned = false; setSpot(null); } else { pinned = true; setSpot(id); }
   }
@@ -2460,6 +2864,13 @@ function createBoard(mount) {
       u._tip = () => [tx('card.blocks'), openDown.map(id => '#' + shortId(id)).join(' · ')];
       box.append(u);
     }
+    if (t.status === 'in_progress' && t.ownerId && !next.isRunning(t.ownerId)) {
+      const st = h('span', 'tkb-stall', tx('card.stalled'));
+      st.dataset.kind = 'stalled';
+      st.setAttribute('data-tip', '');
+      st._tip = () => [tx('card.stalled'), tx('card.stalledSub')];
+      box.append(st);
+    }
     if (t.writeScopeWarnings && t.writeScopeWarnings.length > 0) {
       const w = h('span', 'tkb-conflict');
       w.append(icon('warn', 'tkb-conflict__icon'));
@@ -2515,10 +2926,47 @@ function createBoard(mount) {
       icw._tip = () => [tx('card.writeScopes'), ''];
       const items = h('div', 'tkb-detail__items');
       row.append(icw, items);
-      t.writeScopes.forEach(s => items.append(h('span', 'tkb-scope', s)));
+      t.writeScopes.forEach(s => {
+        const btn = h('button', 'tkb-scope');
+        btn.type = 'button';
+        const txt = h('span', 'tkb-scope__txt', s);
+        btn.append(txt);
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          copyProtoText(s).then(() => {
+            btn.setAttribute('data-copied', '');
+            const ck = icon('checkSmall', 'tkb-scope__check');
+            btn.prepend(ck);
+            setTimeout(() => { btn.removeAttribute('data-copied'); ck.remove(); }, 1600);
+          });
+        });
+        items.append(btn);
+      });
       wrap.append(row);
     }
     t.writeScopeWarnings.forEach(w => { const l = h('div', 'tkb-warnline'); l.append(icon('warn'), h('span', '', w)); wrap.append(l); });
+    const stalled = t.status === 'in_progress' && t.ownerId && !next.isRunning(t.ownerId);
+    if ((t.status !== 'completed' && t.writeScopeWarnings.length > 0) || stalled) {
+      const nudge = h('div', 'tkb-nudge');
+      const nBtn = h('button', 'tkb-nudge__btn');
+      nBtn.type = 'button';
+      const nIco = icon('steer');
+      const nLbl = h('span', '', tx('card.steer'));
+      nBtn.append(nIco, nLbl);
+      nBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const prompt = t.writeScopeWarnings.length
+          ? `#${shortId(t.id)} (${t.subject}) conflict: ${t.writeScopeWarnings[0]}`
+          : `#${shortId(t.id)} (${t.subject}) owner idle while in_progress`;
+        copyProtoText(prompt).then(() => {
+          nBtn.setAttribute('data-copied', '');
+          nLbl.textContent = tx('card.copied');
+          setTimeout(() => { nBtn.removeAttribute('data-copied'); nLbl.textContent = tx('card.steer'); }, 1800);
+        });
+      });
+      nudge.append(nBtn);
+      wrap.append(nudge);
+    }
     inner.replaceChildren(wrap);
   }
 
@@ -2799,52 +3247,59 @@ function createBoard(mount) {
     });
   }
   function anchorOf(el, rr) {
+    const wide = rr.width >= 540;
     const r = rel(el, rr);
-    const br = rel(el.parentElement, rr);
+    const br = rel(wide ? el.parentElement : lanesEl, rr);
     let cy = r.y + Math.min(r.h / 2, 20);
     let off = false;
     if (cy < br.y + 4) { cy = br.y + 4; off = true; } else if (cy > br.y + br.h - 4) { cy = br.y + br.h - 4; off = true; }
     return { l: r.x, r: r.x + r.w, cx: r.x + r.w / 2, cy, off };
+  }
+  function appendProtoWire(fromEl, toEl, kind, rr) {
+    if (!fromEl || !toEl) return;
+    const wide = rr.width >= 540;
+    const s = anchorOf(fromEl, rr);
+    const e = anchorOf(toEl, rr);
+    let x1, x2, c1, c2;
+    if (!wide) {
+      x1 = Math.max(4, s.l - 1); x2 = Math.max(4, e.l - 1);
+      const bow = Math.min(8.5, 4.5 + Math.abs(e.cy - s.cy) * .035);
+      c1 = [Math.max(1.5, x1 - bow), s.cy];
+      c2 = [Math.max(1.5, x2 - bow), e.cy];
+    } else if (Math.abs(s.cx - e.cx) > 24) {
+      const dir = s.cx < e.cx ? 1 : -1;
+      x1 = dir > 0 ? s.r : s.l;
+      x2 = dir > 0 ? e.l : e.r;
+      const k = Math.max(28, Math.abs(x2 - x1) * .5);
+      c1 = [x1 + dir * k, s.cy];
+      c2 = [x2 - dir * k, e.cy];
+    } else {
+      x1 = s.r - 6; x2 = e.r - 6;
+      const k = 26 + Math.min(40, Math.abs(e.cy - s.cy) * .15);
+      c1 = [x1 + k, s.cy];
+      c2 = [x2 + k, e.cy];
+    }
+    const off = s.off || e.off;
+    const path = document.createElementNS(SVGNS, 'path');
+    path.setAttribute('d', `M${x1},${s.cy} C${c1[0]},${c1[1]} ${c2[0]},${c2[1]} ${x2},${e.cy}`);
+    path.setAttribute('pathLength', '100');
+    path.setAttribute('class', `tkb-wire tkb-wire--${kind}${off ? ' is-off' : ''}`);
+    wires.append(path);
+    [[x1, s.cy], [x2, e.cy]].forEach(([x, y]) => {
+      const c = document.createElementNS(SVGNS, 'circle');
+      c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 2.6);
+      c.setAttribute('class', `tkb-wire-dot tkb-wire--${kind}`);
+      wires.append(c);
+    });
   }
   function drawWires(id, up, down) {
     const rr = root.getBoundingClientRect();
     wires.setAttribute('width', rr.width);
     wires.setAttribute('height', rr.height);
     wires.setAttribute('viewBox', `0 0 ${rr.width} ${rr.height}`);
-    const f = anchorOf(cards.get(id), rr);
-    const pairs = up.map(u => [u, vm.map.get(u).status === 'completed' ? 'up-done' : 'up-open']).concat(down.map(d => [d, 'down']));
-    pairs.forEach(([oid, kind], i) => {
-      const el = cards.get(oid);
-      if (!el) return;
-      const a = anchorOf(el, rr);
-      const [s, e] = kind === 'down' ? [f, a] : [a, f];
-      let x1, x2, c1, c2;
-      if (Math.abs(s.cx - e.cx) > 24) {
-        const dir = s.cx < e.cx ? 1 : -1;
-        x1 = dir > 0 ? s.r : s.l;
-        x2 = dir > 0 ? e.l : e.r;
-        const k = Math.max(28, Math.abs(x2 - x1) * .5);
-        c1 = [x1 + dir * k, s.cy];
-        c2 = [x2 - dir * k, e.cy];
-      } else {
-        x1 = s.r - 6; x2 = e.r - 6;
-        const k = 26 + Math.min(40, Math.abs(e.cy - s.cy) * .15);
-        c1 = [x1 + k, s.cy];
-        c2 = [x2 + k, e.cy];
-      }
-      const off = s.off || e.off;
-      const path = document.createElementNS(SVGNS, 'path');
-      path.setAttribute('d', `M${x1},${s.cy} C${c1[0]},${c1[1]} ${c2[0]},${c2[1]} ${x2},${e.cy}`);
-      path.setAttribute('pathLength', '100');
-      path.setAttribute('class', `tkb-wire tkb-wire--${kind}${off ? ' is-off' : ''}`);
-      wires.append(path);
-      [[x1, s.cy], [x2, e.cy]].forEach(([x, y]) => {
-        const c = document.createElementNS(SVGNS, 'circle');
-        c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 2.6);
-        c.setAttribute('class', `tkb-wire-dot tkb-wire--${kind}`);
-        wires.append(c);
-      });
-    });
+    const focusEl = cards.get(id);
+    up.forEach(u => appendProtoWire(cards.get(u), focusEl, vm.map.get(u).status === 'completed' ? 'up-done' : 'up-open', rr));
+    down.forEach(d => appendProtoWire(focusEl, cards.get(d), 'down', rr));
   }
   function showLineage(id) {
     if (!vm || spot) return;
@@ -2857,7 +3312,7 @@ function createBoard(mount) {
     cards.get(id).classList.add('is-lin', 'is-focus');
     up.forEach(u => { const el = cards.get(u); if (el) el.classList.add('is-lin', vm.map.get(u).status === 'completed' ? 'is-up-done' : 'is-up-open'); });
     down.forEach(d => { const el = cards.get(d); if (el) el.classList.add('is-lin', 'is-down'); });
-    if (root.clientWidth >= 540) drawWires(id, up, down);
+    drawWires(id, up, down);
   }
   function clearLineage() {
     if (!root.hasAttribute('data-lineage')) return;
@@ -2986,7 +3441,7 @@ function createBoard(mount) {
   const sig = t => (t ? [t.status, t.ready, t.revision, t.ownerId || ''].join('|') : '');
   function markAway() {
     awaySnap = new Map();
-    prev.forEach((t, id) => awaySnap.set(id, sig(t)));
+    prev.forEach((t, id) => awaySnap.set(id, { status: t.status, ready: !!t.ready }));
   }
   function markBack() {
     if (!awaySnap) return;
@@ -2994,12 +3449,28 @@ function createBoard(mount) {
     awaySnap = null;
     requestAnimationFrame(() => {
       measureAll();
-      let i = 0;
-      cards.forEach((el, id) => {
-        if (snap.get(id) === sig(prev.get(id))) return;
-        el.style.setProperty('--tkb-cd', `${ms(i * 80)}ms`);
-        pulse(el, 'is-catchup', 1800 + i * 80);
-        i++;
+      let doneN = 0, activeN = 0;
+      const unlocked = [], changed = [];
+      prev.forEach((cur, id) => {
+        const b = snap.get(id);
+        if (cur.status === 'completed' && (!b || b.status !== 'completed')) { doneN++; changed.push(id); }
+        else if (cur.status === 'in_progress' && (!b || b.status !== 'in_progress')) { activeN++; changed.push(id); }
+        else if (cur.status === 'pending' && cur.ready && (!b || !b.ready)) { unlocked.push(id); changed.push(id); }
+      });
+      if (!changed.length) return;
+      const parts = [];
+      if (doneN) parts.push(tx('catchup.done', { count: doneN }));
+      if (activeN) parts.push(tx('catchup.active', { count: activeN }));
+      if (unlocked.length) parts.push(tx('catchup.unlocked', { ids: unlocked.slice(0, 2).map(x => '#' + shortId(x)).join(' ') }));
+      catchupTxt.textContent = tx('catchup.prefix') + parts.join(' · ');
+      catchupTargetId = changed[0];
+      catchupWrap.setAttribute('data-open', '');
+      clearTimeout(catchupHideTimer);
+      catchupHideTimer = setTimeout(() => catchupWrap.removeAttribute('data-open'), 3600);
+      changed.forEach((id, i) => {
+        const el = cards.get(id);
+        if (!el) return;
+        later(() => pulse(el, unlocked.includes(id) ? 'is-unlocked' : 'is-landed', 640), ms(i * 60));
       });
     });
   }

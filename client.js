@@ -79,6 +79,33 @@ window.__ModuleLoader__.load({
       'card.provisioning': '启动中',
       'card.failed': '启动失败',
       'card.lead': '主智能体',
+      'card.stalled': '待确认',
+      'card.stalledSub': '负责智能体已空闲，但任务仍处于进行中',
+      'card.elapsed': '{min}m',
+      'card.elapsedSub': '已持续执行 {min} 分钟',
+      'card.steer': '复制协调指令',
+      'card.copied': '已复制',
+      'card.copyFailed': '复制失败',
+      'card.copyPath': '复制路径 {path}',
+      'catchup.prefix': '刚刚推进 · ',
+      'catchup.done': '+{count} 完成',
+      'catchup.active': '+{count} 开始',
+      'catchup.unlocked': '解锁 {ids}',
+      'debrief.summary': '关键路径 {depth} 级 · {mates} 成员 · {scopes} 处路径',
+      'debrief.summaryNoScope': '关键路径 {depth} 级 · {mates} 成员',
+      'debrief.replay': '星图',
+      'debrief.replayAria': '回放关键路径星图',
+      'debrief.copy': '战报',
+      'debrief.copyAria': '复制团队协作战报',
+      'debrief.mdTitle': '### 智能体团队协作战报（{total}/{total} 已完成）',
+      'debrief.mdCrit': '- 关键路径：{path}（共 {depth} 级）',
+      'debrief.mdMates': '- 参与成员：{names}',
+      'debrief.mdScopes': '- 涉及路径：{scopes}',
+      'debrief.mdTasks': '- 任务清单：',
+      'debrief.sep': '、',
+      'steer.conflict': '请协调任务 #{id}（{subject}）的写入范围冲突：{warning}。请明确先后顺序或拆分写入边界。',
+      'steer.failed': '任务 #{id}（{subject}）的负责队友 {owner} 启动异常（{error}），请排查或重新指派继续推进。',
+      'steer.stalled': '请检查任务 #{id}（{subject}，负责人：{owner}）：该队友当前已空闲但任务仍处于进行中，请确认是否已完成并更新状态，或继续推进收口。',
       'column.collapse': '折叠{lane}',
       'column.expand': '展开{lane}',
       'error.title': '任务记录异常',
@@ -126,6 +153,33 @@ window.__ModuleLoader__.load({
       'card.provisioning': 'Starting',
       'card.failed': 'Failed',
       'card.lead': 'Lead agent',
+      'card.stalled': 'Idle',
+      'card.stalledSub': 'Owner stopped running while task is still in progress',
+      'card.elapsed': '{min}m',
+      'card.elapsedSub': 'Running for {min} min',
+      'card.steer': 'Copy steer prompt',
+      'card.copied': 'Copied',
+      'card.copyFailed': 'Copy failed',
+      'card.copyPath': 'Copy path {path}',
+      'catchup.prefix': 'Catch-up · ',
+      'catchup.done': '+{count} done',
+      'catchup.active': '+{count} started',
+      'catchup.unlocked': 'unlocked {ids}',
+      'debrief.summary': 'Critical path {depth} · {mates} members · {scopes} scopes',
+      'debrief.summaryNoScope': 'Critical path {depth} · {mates} members',
+      'debrief.replay': 'Replay',
+      'debrief.replayAria': 'Replay critical-path DAG',
+      'debrief.copy': 'Debrief',
+      'debrief.copyAria': 'Copy team debrief markdown',
+      'debrief.mdTitle': '### Agent Team Debrief ({total}/{total} completed)',
+      'debrief.mdCrit': '- Critical path: {path} ({depth} stages)',
+      'debrief.mdMates': '- Members: {names}',
+      'debrief.mdScopes': '- Write scopes: {scopes}',
+      'debrief.mdTasks': '- Tasks:',
+      'debrief.sep': ', ',
+      'steer.conflict': 'Please resolve the write-scope conflict on task #{id} ({subject}): {warning}. Clarify execution order or split write boundaries.',
+      'steer.failed': 'Teammate {owner} assigned to task #{id} ({subject}) failed ({error}). Please inspect or reassign to continue.',
+      'steer.stalled': 'Please check task #{id} ({subject}, owner: {owner}): the teammate is idle while the task remains in_progress. Confirm completion and update status, or resume work.',
       'column.collapse': 'Collapse {lane}',
       'column.expand': 'Expand {lane}',
       'error.title': 'Invalid task record',
@@ -375,6 +429,102 @@ window.__ModuleLoader__.load({
         focusable: 'false',
       },
       h('path', { d: 'M3 4.5 6 7.5 9 4.5' }));
+    }
+
+    function CopyIcon({ className }) {
+      return h('svg', {
+        viewBox: '0 0 14 14',
+        className: className,
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.4,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': 'true',
+        focusable: 'false',
+      },
+      h('rect', { x: 4.5, y: 4.5, width: 7, height: 7, rx: 1.5 }),
+      h('path', { d: 'M9.5 4.5V3a1.5 1.5 0 0 0-1.5-1.5H3A1.5 1.5 0 0 0 1.5 3v5A1.5 1.5 0 0 0 3 9.5h1.5' }));
+    }
+
+    function CheckSmallIcon({ className }) {
+      return h('svg', {
+        viewBox: '0 0 14 14',
+        className: className,
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.7,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': 'true',
+        focusable: 'false',
+      },
+      h('path', { d: 'M2.8 7.3 5.7 10.2 11.2 4.2' }));
+    }
+
+    function SteerIcon({ className }) {
+      return h('svg', {
+        viewBox: '0 0 14 14',
+        className: className,
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.4,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': 'true',
+        focusable: 'false',
+      },
+      h('path', { d: 'M11.5 3.5v4a2 2 0 0 1-2 2H3' }),
+      h('path', { d: 'M5.5 7 3 9.5 5.5 12' }));
+    }
+
+    function ReplayIcon({ className }) {
+      return h('svg', {
+        viewBox: '0 0 14 14',
+        className: className,
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.4,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': 'true',
+        focusable: 'false',
+      },
+      h('circle', { cx: 3.2, cy: 7, r: 1.5 }),
+      h('circle', { cx: 10.8, cy: 3.5, r: 1.5 }),
+      h('circle', { cx: 10.8, cy: 10.5, r: 1.5 }),
+      h('path', { d: 'M4.6 6.3 9.4 4.2' }),
+      h('path', { d: 'M4.6 7.7 9.4 9.8' }));
+    }
+
+    function legacyCopy(text) {
+      if (typeof document === 'undefined' || !document.body) return false;
+      const field = document.createElement('textarea');
+      field.value = text;
+      field.setAttribute('readonly', '');
+      field.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+      document.body.appendChild(field);
+      field.select();
+      try {
+        return !!(document.execCommand && document.execCommand('copy'));
+      } catch (error) {
+        return false;
+      } finally {
+        field.remove();
+      }
+    }
+
+    async function copyToClipboard(text) {
+      if (!text) return false;
+      try {
+        if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          await navigator.clipboard.writeText(text);
+          return true;
+        }
+      } catch (error) {
+        /* Fall through to synchronous execCommand fallback on custom schemes. */
+      }
+      return legacyCopy(text);
     }
 
     /* ------------------------------------------------------------------ *
@@ -841,6 +991,240 @@ window.__ModuleLoader__.load({
     }
 
     /* ------------------------------------------------------------------ *
+     * Temporal pulse, catch-up diff, critical path & debrief synthesis
+     * ------------------------------------------------------------------ */
+
+    const STALL_IDLE_MS = 4000;
+    const LONG_RUN_MS = 180000;
+    const AWAY_MIN_MS = 4000;
+
+    const sessionTaskClocks = new Map();
+    const awaySnapshots = new Map();
+    let lastAnnouncedCopy = '';
+
+    function getSessionClock(sessionId) {
+      let clock = sessionTaskClocks.get(sessionId);
+      if (!clock) {
+        clock = new Map();
+        sessionTaskClocks.set(sessionId, clock);
+        while (sessionTaskClocks.size > FALLBACK_LIMIT) {
+          sessionTaskClocks.delete(sessionTaskClocks.keys().next().value);
+        }
+      }
+      return clock;
+    }
+
+    function syncSessionClock(sessionId, model, now) {
+      const clock = getSessionClock(sessionId);
+      const seen = new Set();
+      model.tasks.forEach((task) => {
+        seen.add(task.id);
+        const running = task.ownerId ? model.isRunning(task.ownerId) : false;
+        let rec = clock.get(task.id);
+        if (!rec) {
+          rec = {
+            startedAt: task.status === 'in_progress' ? now : 0,
+            idleSince: task.status === 'in_progress' && !running ? now : 0,
+          };
+          clock.set(task.id, rec);
+          return;
+        }
+        if (task.status === 'in_progress') {
+          if (!rec.startedAt) rec.startedAt = now;
+          if (!running) {
+            if (!rec.idleSince) rec.idleSince = now;
+          } else {
+            rec.idleSince = 0;
+          }
+        } else {
+          rec.startedAt = 0;
+          rec.idleSince = 0;
+        }
+      });
+      Array.from(clock.keys()).forEach((id) => {
+        if (!seen.has(id)) clock.delete(id);
+      });
+      return clock;
+    }
+
+    function detectStall(task, running, mate, idleMs, elapsedMs) {
+      if (!task || task.status !== 'in_progress') return null;
+      if (mate && mate.phase === 'failed') {
+        return { kind: 'error', reason: mate.error || '' };
+      }
+      if (task.ownerId && !running && (!mate || mate.phase !== 'provisioning') && idleMs >= STALL_IDLE_MS) {
+        return { kind: 'stalled' };
+      }
+      if (running && elapsedMs >= LONG_RUN_MS) {
+        return { kind: 'long', minutes: Math.max(3, Math.floor(elapsedMs / 60000)) };
+      }
+      return null;
+    }
+
+    function snapshotTaskStates(tasks) {
+      const snap = new Map();
+      (Array.isArray(tasks) ? tasks : EMPTY).forEach((task) => {
+        if (task && task.id) snap.set(task.id, { status: task.status, ready: !!task.ready });
+      });
+      return snap;
+    }
+
+    function diffCatchup(beforeMap, tasks) {
+      const doneIds = [];
+      const activeIds = [];
+      const unlockedIds = [];
+      if (!beforeMap || !(beforeMap instanceof Map)) {
+        return { doneIds, activeIds, unlockedIds, totalChanges: 0 };
+      }
+      (Array.isArray(tasks) ? tasks : EMPTY).forEach((task) => {
+        if (!task || !task.id) return;
+        const prev = beforeMap.get(task.id);
+        if (task.status === 'completed' && (!prev || prev.status !== 'completed')) {
+          doneIds.push(task.id);
+        } else if (task.status === 'in_progress' && (!prev || prev.status !== 'in_progress')) {
+          activeIds.push(task.id);
+        } else if (task.status === 'pending' && task.ready && (!prev || !prev.ready)) {
+          unlockedIds.push(task.id);
+        }
+      });
+      return {
+        doneIds,
+        activeIds,
+        unlockedIds,
+        totalChanges: doneIds.length + activeIds.length + unlockedIds.length,
+      };
+    }
+
+    function computeCriticalPath(tasks) {
+      const list = Array.isArray(tasks) ? tasks.slice().sort(byNum) : [];
+      if (!list.length) {
+        return { depth: 0, pathIds: EMPTY, criticalSet: new Set(), stages: new Map(), maxStage: 0, scopes: EMPTY };
+      }
+      const byId = new Map(list.map((task) => [task.id, task]));
+      const memo = new Map();
+      const visiting = new Set();
+
+      const solve = (id) => {
+        if (memo.has(id)) return memo.get(id);
+        const task = byId.get(id);
+        if (!task) return { len: 0, prev: null };
+        visiting.add(id);
+        let bestLen = 1;
+        let bestPrev = null;
+        (Array.isArray(task.blockedBy) ? task.blockedBy : EMPTY).forEach((depId) => {
+          if (!byId.has(depId) || visiting.has(depId)) return;
+          const sub = solve(depId);
+          if (sub.len + 1 > bestLen || (sub.len + 1 === bestLen && bestPrev && numId(depId) < numId(bestPrev))) {
+            bestLen = sub.len + 1;
+            bestPrev = depId;
+          }
+        });
+        visiting.delete(id);
+        const res = { len: bestLen, prev: bestPrev };
+        memo.set(id, res);
+        return res;
+      };
+
+      const stages = new Map();
+      let maxStage = 0;
+      let sinkId = list[0].id;
+      let sinkLen = 0;
+      list.forEach((task) => {
+        const res = solve(task.id);
+        const stage = Math.max(0, res.len - 1);
+        stages.set(task.id, stage);
+        if (stage > maxStage) maxStage = stage;
+        if (res.len > sinkLen || (res.len === sinkLen && numId(task.id) > numId(sinkId))) {
+          sinkLen = res.len;
+          sinkId = task.id;
+        }
+      });
+
+      const pathIds = [];
+      const seen = new Set();
+      let cursor = sinkId;
+      while (cursor && !seen.has(cursor)) {
+        seen.add(cursor);
+        pathIds.push(cursor);
+        const entry = memo.get(cursor);
+        cursor = entry ? entry.prev : null;
+      }
+      pathIds.reverse();
+
+      const scopeSet = new Set();
+      list.forEach((task) => {
+        (Array.isArray(task.writeScopes) ? task.writeScopes : EMPTY).forEach((s) => {
+          if (s) scopeSet.add(s);
+        });
+      });
+
+      return {
+        depth: pathIds.length,
+        pathIds,
+        criticalSet: new Set(pathIds),
+        stages,
+        maxStage,
+        scopes: Array.from(scopeSet),
+      };
+    }
+
+    function buildSteerPrompt(task, model, stall, t) {
+      if (!task) return null;
+      const warnings = Array.isArray(task.writeScopeWarnings) ? task.writeScopeWarnings : EMPTY;
+      const id = shortId(task.id);
+      if (task.status !== 'completed' && warnings.length > 0) {
+        return t('steer.conflict', { id, subject: task.subject, warning: warnings[0] });
+      }
+      const owner = ownerDisplay(task, model, t) || t('card.unowned');
+      if (stall && stall.kind === 'error') {
+        return t('steer.failed', { id, subject: task.subject, owner, error: stall.reason || t('card.failed') });
+      }
+      if (stall && stall.kind === 'stalled') {
+        return t('steer.stalled', { id, subject: task.subject, owner });
+      }
+      return null;
+    }
+
+    function buildDebriefMarkdown(model, crit, t) {
+      const sorted = model.tasks.slice().sort(byNum);
+      const pathLabel = crit.pathIds.map((id) => '#' + shortId(id)).join(' → ');
+      const memberNames = [];
+      const seenNames = new Set();
+      model.mates.forEach((mate) => {
+        const name = mate.lead ? t('card.lead') : mate.label;
+        if (name && !seenNames.has(name)) {
+          seenNames.add(name);
+          memberNames.push(name);
+        }
+      });
+      sorted.forEach((task) => {
+        const owner = ownerDisplay(task, model, t);
+        if (owner && !seenNames.has(owner)) {
+          seenNames.add(owner);
+          memberNames.push(owner);
+        }
+      });
+      const lines = [
+        t('debrief.mdTitle', { total: model.total }),
+        t('debrief.mdCrit', { path: pathLabel || '—', depth: crit.depth }),
+      ];
+      const sep = t('debrief.sep');
+      if (memberNames.length) {
+        lines.push(t('debrief.mdMates', { names: memberNames.join(sep) }));
+      }
+      if (crit.scopes.length) {
+        const formatted = crit.scopes.map((s) => '`' + s + '`').join(sep);
+        lines.push(t('debrief.mdScopes', { scopes: formatted }));
+      }
+      lines.push(t('debrief.mdTasks'));
+      sorted.forEach((task) => {
+        const owner = ownerDisplay(task, model, t);
+        lines.push('  - [x] #' + shortId(task.id) + ' ' + task.subject + (owner ? ' (' + owner + ')' : ''));
+      });
+      return lines.join('\n');
+    }
+
+    /* ------------------------------------------------------------------ *
      * Board
      * ------------------------------------------------------------------ */
 
@@ -884,6 +1268,10 @@ window.__ModuleLoader__.load({
       const [teamError, setTeamError] = useState(null);
       const [narrowMates, setNarrowMates] = useState(false);
       const [showAllMates, setShowAllMates] = useState(false);
+      const [clockNow, setClockNow] = useState(() => Date.now());
+      const [catchupInfo, setCatchupInfo] = useState(null);
+      const [copiedState, setCopiedState] = useState(null);
+      const [critStage, setCritStage] = useState(-1);
 
       const rootRef = useRef(null);
       const gridRef = useRef(null);
@@ -891,6 +1279,8 @@ window.__ModuleLoader__.load({
       const tipRef = useRef(null);
       const cardRectsRef = useRef(null);
       const activeFlightsRef = useRef([]);
+      const replayTimersRef = useRef([]);
+      const latestModelRef = useRef(null);
       const tipTimer = useRef(0);
       const lineageTimer = useRef(0);
       const uiTimers = useRef({});
@@ -902,6 +1292,13 @@ window.__ModuleLoader__.load({
       const model = useMemo(
         () => buildModel(team, catalog, statuses, summaries, sessionId),
         [team, catalog, catalogSignature, statuses, summaries, sessionId],
+      );
+      latestModelRef.current = model;
+      const nowMs = clockNow || Date.now();
+      const taskClock = syncSessionClock(sessionId, model, nowMs);
+      const crit = useMemo(
+        () => (model.allDone ? computeCriticalPath(model.tasks) : null),
+        [model.allDone, model.tasks],
       );
 
       useEffect(() => {
@@ -1184,15 +1581,47 @@ window.__ModuleLoader__.load({
         return () => clearTimeout(timer);
       }, []);
 
+      const clearReplayTimers = useCallback(() => {
+        replayTimersRef.current.forEach(clearTimeout);
+        replayTimersRef.current = [];
+      }, []);
+
       useEffect(() => {
         const timers = uiTimers.current;
         return () => {
           cleanupFlights();
+          clearReplayTimers();
           clearTimeout(tipTimer.current);
           clearTimeout(lineageTimer.current);
           Object.keys(timers).forEach((key) => clearTimeout(timers[key]));
         };
-      }, [cleanupFlights]);
+      }, [cleanupFlights, clearReplayTimers]);
+
+      useEffect(() => {
+        if (!hasVisibleBoard || model.active.length === 0) return undefined;
+        const id = setInterval(() => setClockNow(Date.now()), 4200);
+        return () => clearInterval(id);
+      }, [hasVisibleBoard, model.active.length]);
+
+      useEffect(() => {
+        if (!model.allDone && critStage !== -1) {
+          clearReplayTimers();
+          setCritStage(-1);
+        }
+      }, [model.allDone, critStage, clearReplayTimers]);
+
+      const handleCopy = useCallback((key, text) => {
+        if (!text) return;
+        copyToClipboard(text).then((ok) => {
+          clearTimeout(uiTimers.current.copy);
+          setCopiedState({ key, ok });
+          let msg = ok ? t('card.copied') : t('card.copyFailed');
+          if (msg === lastAnnouncedCopy) msg += '\u00A0';
+          lastAnnouncedCopy = msg;
+          setAnnouncement(msg);
+          uiTimers.current.copy = setTimeout(() => setCopiedState(null), 1800);
+        });
+      }, [t]);
 
       useEffect(() => {
         const tab = tabInfo && tabInfo.tab;
@@ -1213,7 +1642,12 @@ window.__ModuleLoader__.load({
       const computeBezierWires = useCallback((root, edges) => {
         if (!root || typeof root.getBoundingClientRect !== 'function') return EMPTY;
         const rr = root.getBoundingClientRect();
-        if (rr.width < 540) return EMPTY;
+        if (rr.width < 200) return EMPTY;
+        const wide = rr.width >= 540;
+        const lanesNode = gridRef.current;
+        const lanesRect = !wide && lanesNode && typeof lanesNode.getBoundingClientRect === 'function'
+          ? lanesNode.getBoundingClientRect()
+          : null;
         const cardMap = new Map();
         Array.from(root.querySelectorAll('.tkb-card')).forEach((node) => {
           const id = node.getAttribute('data-task-id');
@@ -1226,7 +1660,7 @@ window.__ModuleLoader__.load({
           if (lane && lane.hasAttribute('data-collapsed')) return null;
           const r = card.getBoundingClientRect();
           if (!r.width && !r.height) return null;
-          const br = card.parentElement.getBoundingClientRect();
+          const br = wide ? card.parentElement.getBoundingClientRect() : (lanesRect || card.parentElement.getBoundingClientRect());
           let cy = (r.top - rr.top) + Math.min(r.height / 2, 20);
           let off = false;
           const minY = br.top - rr.top + 4;
@@ -1250,7 +1684,13 @@ window.__ModuleLoader__.load({
           let x2;
           let c1x;
           let c2x;
-          if (Math.abs(start.cx - end.cx) > 24) {
+          if (!wide) {
+            x1 = Math.max(4, start.l - 1);
+            x2 = Math.max(4, end.l - 1);
+            const bow = Math.min(8.5, 4.5 + Math.abs(end.cy - start.cy) * 0.035);
+            c1x = Math.max(1.5, x1 - bow);
+            c2x = Math.max(1.5, x2 - bow);
+          } else if (Math.abs(start.cx - end.cx) > 24) {
             const dir = start.cx < end.cx ? 1 : -1;
             x1 = dir > 0 ? start.r : start.l;
             x2 = dir > 0 ? end.l : end.r;
@@ -1279,6 +1719,159 @@ window.__ModuleLoader__.load({
         });
         return out.length ? out : EMPTY;
       }, []);
+
+      const runCatchupVisuals = useCallback((diff) => {
+        const curModel = latestModelRef.current;
+        if (!curModel || diff.totalChanges === 0) return;
+        const chunks = [];
+        if (diff.doneIds.length) chunks.push(t('catchup.done', { count: diff.doneIds.length }));
+        if (diff.activeIds.length) chunks.push(t('catchup.active', { count: diff.activeIds.length }));
+        if (diff.unlockedIds.length) {
+          chunks.push(t('catchup.unlocked', {
+            ids: diff.unlockedIds.slice(0, 2).map((id) => '#' + shortId(id)).join(' '),
+          }));
+        }
+        const focusIds = diff.doneIds.concat(diff.activeIds, diff.unlockedIds);
+        setCatchupInfo({ text: t('catchup.prefix') + chunks.join(' · '), ids: focusIds });
+        clearTimeout(uiTimers.current.catchup);
+        uiTimers.current.catchup = setTimeout(() => setCatchupInfo(null), 3600);
+
+        if (reducedMotion()) return;
+        if (diff.unlockedIds.length) {
+          setUnlockedIds(new Set(diff.unlockedIds));
+          clearTimeout(uiTimers.current.unlock);
+          uiTimers.current.unlock = setTimeout(() => setUnlockedIds(null), 700);
+        }
+        const root = rootRef.current;
+        if (root && typeof root.querySelectorAll === 'function') {
+          const cardMap = new Map();
+          Array.from(root.querySelectorAll('.tkb-card')).forEach((el) => {
+            const id = el.getAttribute('data-task-id');
+            if (id) cardMap.set(id, el);
+          });
+          diff.doneIds.concat(diff.activeIds).slice(0, 8).forEach((id, idx) => {
+            const el = cardMap.get(id);
+            if (!el || !el.classList) return;
+            const t1 = setTimeout(() => {
+              el.classList.add('is-landed');
+              const t2 = setTimeout(() => el.classList.remove('is-landed'), 240);
+              replayTimersRef.current.push(t2);
+            }, idx * 55);
+            replayTimersRef.current.push(t1);
+          });
+          if (diff.doneIds.length) {
+            const lastDone = diff.doneIds[diff.doneIds.length - 1];
+            const edges = (curModel.dependents.get(lastDone) || EMPTY).map((did) => ({
+              key: 'relay:' + lastDone + ':' + did,
+              from: lastDone,
+              to: did,
+              kind: 'relay',
+            }));
+            if (edges.length) {
+              const nextRelays = computeBezierWires(root, edges);
+              if (nextRelays.length) {
+                setRelayWires(nextRelays);
+                clearTimeout(uiTimers.current.relay);
+                uiTimers.current.relay = setTimeout(() => setRelayWires(EMPTY), 950);
+              }
+            }
+          }
+        }
+      }, [t, computeBezierWires]);
+
+      useEffect(() => {
+        if (!hasVisibleBoard) return undefined;
+        const saved = awaySnapshots.get(sessionId);
+        const now = Date.now();
+        if (saved && saved.hiddenAt && now - saved.hiddenAt >= AWAY_MIN_MS) {
+          const diff = diffCatchup(saved.snapshot, latestModelRef.current ? latestModelRef.current.tasks : EMPTY);
+          if (diff.totalChanges > 0) runCatchupVisuals(diff);
+        }
+        const putSnapshot = (hiddenAt) => {
+          const tasks = latestModelRef.current ? latestModelRef.current.tasks : EMPTY;
+          awaySnapshots.delete(sessionId);
+          awaySnapshots.set(sessionId, { snapshot: snapshotTaskStates(tasks), hiddenAt });
+          while (awaySnapshots.size > FALLBACK_LIMIT) {
+            awaySnapshots.delete(awaySnapshots.keys().next().value);
+          }
+        };
+        putSnapshot(null);
+
+        if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') {
+          return () => putSnapshot(Date.now());
+        }
+        const onVis = () => {
+          if (document.visibilityState === 'hidden') {
+            putSnapshot(Date.now());
+          } else if (document.visibilityState === 'visible') {
+            const cur = awaySnapshots.get(sessionId);
+            if (cur && cur.hiddenAt && Date.now() - cur.hiddenAt >= AWAY_MIN_MS) {
+              const diff = diffCatchup(cur.snapshot, latestModelRef.current ? latestModelRef.current.tasks : EMPTY);
+              if (diff.totalChanges > 0) runCatchupVisuals(diff);
+            }
+            putSnapshot(null);
+          }
+        };
+        document.addEventListener('visibilitychange', onVis);
+        return () => {
+          document.removeEventListener('visibilitychange', onVis);
+          putSnapshot(Date.now());
+        };
+      }, [hasVisibleBoard, sessionId, runCatchupVisuals]);
+
+      useEffect(() => {
+        if (!hasVisibleBoard) return;
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+        const cur = awaySnapshots.get(sessionId);
+        if (cur && cur.hiddenAt === null) {
+          cur.snapshot = snapshotTaskStates(model.tasks);
+        }
+      }, [hasVisibleBoard, sessionId, model.tasks]);
+
+      const runConstellationReplay = useCallback(() => {
+        if (!crit || !crit.pathIds.length) return;
+        clearReplayTimers();
+        hideTip();
+        setLineageId(null);
+        if (collapsed.completed) {
+          setCollapsed((prev) => Object.assign({}, prev, { completed: false }));
+        }
+        if (reducedMotion()) {
+          const targetId = crit.pathIds[crit.pathIds.length - 1];
+          if (targetId) {
+            setFlashId(targetId);
+            clearTimeout(uiTimers.current.flash);
+            uiTimers.current.flash = setTimeout(() => setFlashId(null), 1000);
+          }
+          return;
+        }
+        const totalStages = Math.max(1, crit.maxStage + 1);
+        const stepMs = Math.min(260, Math.floor(1100 / totalStages));
+        for (let s = 0; s <= crit.maxStage; s += 1) {
+          const stageIdx = s;
+          const timer = setTimeout(() => {
+            setCritStage(stageIdx);
+            const edges = [];
+            for (let i = 0; i < crit.pathIds.length - 1; i += 1) {
+              const fromId = crit.pathIds[i];
+              const toId = crit.pathIds[i + 1];
+              const toStage = crit.stages.get(toId) || (i + 1);
+              if (toStage <= stageIdx || stageIdx === crit.maxStage) {
+                edges.push({ key: 'constel:' + fromId + ':' + toId, from: fromId, to: toId, kind: 'relay' });
+              }
+            }
+            if (edges.length && rootRef.current) {
+              setRelayWires(computeBezierWires(rootRef.current, edges));
+            }
+          }, stageIdx * stepMs + 30);
+          replayTimersRef.current.push(timer);
+        }
+        const endTimer = setTimeout(() => {
+          setCritStage(-1);
+          setRelayWires(EMPTY);
+        }, crit.maxStage * stepMs + 980);
+        replayTimersRef.current.push(endTimer);
+      }, [crit, collapsed.completed, clearReplayTimers, hideTip, computeBezierWires]);
 
       useEffect(() => {
         const previous = previousTasks.current;
@@ -1468,6 +2061,11 @@ window.__ModuleLoader__.load({
             const hit = card && card.querySelector('.tkb-card__hit');
             if (hit) hit.focus({ preventScroll: true });
             event.preventDefault();
+          } else if (critStage >= 0) {
+            clearReplayTimers();
+            setCritStage(-1);
+            setRelayWires(EMPTY);
+            event.preventDefault();
           } else if (spot) {
             pinnedRef.current = false;
             setPinned(false);
@@ -1512,11 +2110,13 @@ window.__ModuleLoader__.load({
         event.preventDefault();
         next.focus({ preventScroll: true });
         next.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
-      }, [expandedId, spot]);
+      }, [expandedId, spot, critStage, clearReplayTimers]);
 
       const handleScroll = useCallback(() => {
         hideTip();
         clearTimeout(lineageTimer.current);
+        clearReplayTimers();
+        setCritStage(-1);
         setLineageId(null);
         setFocusedDepId(null);
         setConflictPair(null);
@@ -1529,7 +2129,7 @@ window.__ModuleLoader__.load({
           });
           cardRectsRef.current = stored;
         }
-      }, [hideTip, snapshotRects]);
+      }, [hideTip, clearReplayTimers, snapshotRects]);
 
       if (!team || team.enabled !== true || model.tasks.length === 0) return null;
 
@@ -1585,11 +2185,15 @@ window.__ModuleLoader__.load({
           })),
         ];
 
-      function renderDetail(task, expanded) {
+      function renderDetail(task, expanded, stall) {
         const blockers = Array.isArray(task.blockedBy) ? task.blockedBy : EMPTY;
         const scopes = Array.isArray(task.writeScopes) ? task.writeScopes : EMPTY;
         const warnings = Array.isArray(task.writeScopeWarnings) ? task.writeScopeWarnings : EMPTY;
         const downstream = model.dependents.get(task.id) || EMPTY;
+        const steerPrompt = buildSteerPrompt(task, model, stall, t);
+        const steerKey = 'steer:' + task.id;
+        const steerCopied = copiedState && copiedState.key === steerKey && copiedState.ok;
+        const steerFailed = copiedState && copiedState.key === steerKey && !copiedState.ok;
 
         function refRow(kind, label, ids) {
           return h('div', { className: 'tkb-detail__row' },
@@ -1627,22 +2231,57 @@ window.__ModuleLoader__.load({
               ? h('div', { className: 'tkb-detail__row' },
                 h('span', { className: 'tkb-detail__icw', title: t('card.writeScopes') }, h(ScopeIcon)),
                 h('div', { className: 'tkb-detail__items' },
-                  scopes.map((scope, index) => h('span', {
-                    key: scope + ':' + index,
-                    className: 'tkb-scope',
-                  }, scope))))
+                  scopes.map((scope, index) => {
+                    const sKey = 'scope:' + task.id + ':' + index;
+                    const sCopied = copiedState && copiedState.key === sKey && copiedState.ok;
+                    return h('button', {
+                      key: scope + ':' + index,
+                      type: 'button',
+                      className: 'tkb-scope',
+                      tabIndex: expanded ? undefined : -1,
+                      'data-copied': sCopied ? '' : undefined,
+                      'aria-label': t('card.copyPath', { path: scope }),
+                      onClick: (event) => {
+                        event.stopPropagation();
+                        handleCopy(sKey, scope);
+                      },
+                    },
+                    sCopied ? h(CheckSmallIcon, { className: 'tkb-scope__check' }) : null,
+                    h('span', { className: 'tkb-scope__txt' }, scope));
+                  })))
               : null,
             warnings.map((warning, index) => h('div', {
               key: warning + ':' + index,
               className: 'tkb-warnline',
             },
             h(WarnIcon),
-            h('span', null, warning))))));
+            h('span', null, warning))),
+            steerPrompt
+              ? h('div', { className: 'tkb-nudge' },
+                h('button', {
+                  type: 'button',
+                  className: 'tkb-nudge__btn',
+                  tabIndex: expanded ? undefined : -1,
+                  'data-copied': steerCopied ? '' : undefined,
+                  'data-failed': steerFailed ? '' : undefined,
+                  onClick: (event) => {
+                    event.stopPropagation();
+                    handleCopy(steerKey, steerPrompt);
+                  },
+                },
+                steerCopied ? h(CheckSmallIcon) : h(SteerIcon),
+                h('span', null, steerCopied ? t('card.copied') : (steerFailed ? t('card.copyFailed') : t('card.steer')))))
+              : null)));
       }
 
       function renderCard(task, laneIndex, cardIndex) {
         const owner = ownerDisplay(task, model, t);
         const running = task.ownerId ? model.isRunning(task.ownerId) : false;
+        const mateInfo = task.ownerId ? model.mateById.get(task.ownerId) : undefined;
+        const rec = taskClock.get(task.id);
+        const idleMs = rec && rec.idleSince ? Math.max(0, nowMs - rec.idleSince) : 0;
+        const elapsedMs = rec && rec.startedAt ? Math.max(0, nowMs - rec.startedAt) : 0;
+        const stall = detectStall(task, running, mateInfo, idleMs, elapsedMs);
         const expanded = expandedId === task.id;
         const status = statusText(task, t, owner);
         const blockers = Array.isArray(task.blockedBy) ? task.blockedBy : EMPTY;
@@ -1668,6 +2307,11 @@ window.__ModuleLoader__.load({
           }
           if (lineage.down.has(task.id)) className += ' is-lin is-down';
         }
+        if (critStage >= 0 && crit) {
+          const tStage = crit.stages.get(task.id) || 0;
+          if (crit.criticalSet.has(task.id) && tStage <= critStage) className += ' is-crit-node';
+          else if (tStage <= critStage) className += ' is-stage-lit';
+        }
         if (flashId === task.id) className += ' is-flash';
         if (unlockedIds && unlockedIds.has(task.id)) className += ' is-unlocked';
         if (conflictPair && conflictPair.has(task.id)) className += ' is-conflict-pair';
@@ -1675,7 +2319,6 @@ window.__ModuleLoader__.load({
         const ownerChildren = [];
         if (task.ownerId) {
           const isLead = task.ownerId === model.leadId;
-          const mateInfo = model.mateById.get(task.ownerId);
           const mono = isLead
             ? initialOf(owner)
             : (model.monoById.get(task.ownerId) || initialOf(owner));
@@ -1798,6 +2441,29 @@ window.__ModuleLoader__.load({
             h(DownIcon, { className: 'tkb-unlocks__icon' }),
             String(openDownstream.length))
             : null,
+          stall && (stall.kind === 'stalled' || stall.kind === 'error')
+            ? h('span', {
+              className: 'tkb-stall',
+              'data-kind': stall.kind,
+              onPointerEnter: (event) => queueTip(
+                event.currentTarget,
+                stall.kind === 'error' ? t('card.failed') : t('card.stalled'),
+                stall.kind === 'error' ? (stall.reason || mateStatusText(mateInfo, running, t)) : t('card.stalledSub'),
+              ),
+              onPointerLeave: hideTip,
+            }, stall.kind === 'error' ? t('card.failed') : t('card.stalled'))
+            : null,
+          stall && stall.kind === 'long'
+            ? h('span', {
+              className: 'tkb-elapsed',
+              onPointerEnter: (event) => queueTip(
+                event.currentTarget,
+                t('card.elapsedSub', { min: stall.minutes }),
+                '',
+              ),
+              onPointerLeave: hideTip,
+            }, t('card.elapsed', { min: stall.minutes }))
+            : null,
           task.status !== 'completed' && warnings.length > 0
             ? h('span', {
               className: 'tkb-conflict',
@@ -1825,7 +2491,7 @@ window.__ModuleLoader__.load({
         firstLine(task.description)
           ? h('div', { className: 'tkb-card__preview' }, firstLine(task.description))
           : null,
-        renderDetail(task, expanded));
+        renderDetail(task, expanded, stall));
       }
 
       function renderLane(key, laneIndex) {
@@ -1899,6 +2565,21 @@ window.__ModuleLoader__.load({
       const hiddenMatesCount = model.mates.length - visibleMates.length;
       const activeWires = wires.length ? wires : relayWires;
 
+      const debriefCopied = copiedState && copiedState.key === 'debrief' && copiedState.ok;
+      const debriefFailed = copiedState && copiedState.key === 'debrief' && !copiedState.ok;
+      const debriefText = crit
+        ? (crit.scopes.length
+          ? t('debrief.summary', {
+            depth: crit.depth,
+            mates: Math.max(1, model.mates.length),
+            scopes: crit.scopes.length,
+          })
+          : t('debrief.summaryNoScope', {
+            depth: crit.depth,
+            mates: Math.max(1, model.mates.length),
+          }))
+        : '';
+
       return h('div', {
         ref: rootRef,
         className: 'tkb-root',
@@ -1907,6 +2588,7 @@ window.__ModuleLoader__.load({
         'aria-label': t('a11y.board'),
         'data-tkb-rev': CLIENT_REV,
         'data-alldone': model.allDone ? '' : undefined,
+        'data-constellation': critStage >= 0 ? '' : undefined,
         'data-spot': spot || undefined,
         'data-lineage': lineage ? '' : undefined,
         'data-entering': entering ? '' : undefined,
@@ -2071,6 +2753,54 @@ window.__ModuleLoader__.load({
               confirmDisarm();
             },
           }, teamBusy ? t('team.working') : t('team.confirm')))) : null)),
+      h('div', {
+        className: 'tkb-catchup',
+        'data-open': catchupInfo ? '' : undefined,
+      },
+      h('div', { className: 'tkb-catchup__clip', 'aria-hidden': catchupInfo ? undefined : 'true' },
+        h('button', {
+          type: 'button',
+          className: 'tkb-catchup__pill',
+          tabIndex: catchupInfo ? undefined : -1,
+          onClick: () => {
+            const targetId = catchupInfo && catchupInfo.ids && catchupInfo.ids[0];
+            setCatchupInfo(null);
+            if (targetId) jumpTo(targetId);
+          },
+        },
+        h('span', { className: 'tkb-catchup__dot', 'aria-hidden': 'true' }),
+        h('span', { className: 'tkb-catchup__txt' }, catchupInfo ? catchupInfo.text : '')))),
+      h('div', {
+        className: 'tkb-debrief',
+        'data-open': model.allDone && crit ? '' : undefined,
+      },
+      h('div', { className: 'tkb-debrief__clip', 'aria-hidden': model.allDone && crit ? undefined : 'true' },
+        h('div', { className: 'tkb-debrief__bar' },
+          h('span', { className: 'tkb-debrief__meta' }, debriefText),
+          h('div', { className: 'tkb-debrief__actions' },
+            h('button', {
+              type: 'button',
+              className: 'tkb-debrief__btn',
+              tabIndex: model.allDone && crit ? undefined : -1,
+              'aria-label': t('debrief.replayAria'),
+              'data-active': critStage >= 0 ? '' : undefined,
+              onClick: runConstellationReplay,
+            },
+            h(ReplayIcon),
+            h('span', null, t('debrief.replay'))),
+            h('button', {
+              type: 'button',
+              className: 'tkb-debrief__btn',
+              tabIndex: model.allDone && crit ? undefined : -1,
+              'aria-label': t('debrief.copyAria'),
+              'data-copied': debriefCopied ? '' : undefined,
+              'data-failed': debriefFailed ? '' : undefined,
+              onClick: () => {
+                if (crit) handleCopy('debrief', buildDebriefMarkdown(model, crit, t));
+              },
+            },
+            debriefCopied ? h(CheckSmallIcon) : h(CopyIcon),
+            h('span', null, debriefCopied ? t('card.copied') : (debriefFailed ? t('card.copyFailed') : t('debrief.copy')))))))),
       h('div', {
         className: 'tkb-banner',
         'data-open': failure !== null ? '' : undefined,
@@ -3000,6 +3730,133 @@ window.__ModuleLoader__.load({
 }
 
 /* =====================================================================
+   离席追帧微胶囊与收口战报条（Catch-up Pill & Mission Debrief Strip）
+   ===================================================================== */
+.tkb-catchup,
+.tkb-debrief {
+  flex: none;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--tkb-d2) var(--tkb-ease);
+}
+.tkb-catchup[data-open],
+.tkb-debrief[data-open] { grid-template-rows: 1fr; }
+.tkb-catchup__clip,
+.tkb-debrief__clip { min-height: 0; overflow: hidden; }
+.tkb-catchup__pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: calc(100% - 20px);
+  min-height: 28px;
+  margin: 8px 10px 0;
+  padding: 4px 10px;
+  border-radius: var(--dsw-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--tkb-c-active) 28%, var(--dsw-alias-border-l1));
+  background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 36%, var(--dsw-alias-bg-base));
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color var(--tkb-d1) var(--tkb-ease), transform var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-catchup__pill:hover {
+  background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 52%, var(--dsw-alias-bg-base));
+}
+.tkb-catchup__pill:active { transform: scale(0.99); }
+.tkb-catchup__pill:focus-visible {
+  outline: 2px solid var(--tkb-c-active);
+  outline-offset: 1px;
+}
+.tkb-catchup__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tkb-c-active);
+  box-shadow: 0 0 6px var(--tkb-c-active);
+}
+.tkb-catchup__txt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tkb-debrief__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: color-mix(in srgb, var(--tkb-c-done) 6%, var(--dsw-alias-bg-base));
+}
+.tkb-debrief__meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.tkb-debrief__actions {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.tkb-debrief__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color var(--tkb-d1) var(--tkb-ease),
+              border-color var(--tkb-d1) var(--tkb-ease),
+              color var(--tkb-d1) var(--tkb-ease),
+              transform var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-debrief__btn svg { width: 11.5px; height: 11.5px; }
+.tkb-debrief__btn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l3);
+}
+.tkb-debrief__btn:active { transform: scale(0.96); }
+.tkb-debrief__btn:focus-visible {
+  outline: 2px solid var(--tkb-c-active);
+  outline-offset: 1px;
+}
+.tkb-debrief__btn[data-active] {
+  color: color-mix(in srgb, var(--tkb-c-done) 58%, var(--dsw-alias-label-primary));
+  border-color: color-mix(in srgb, var(--tkb-c-done) 45%, var(--dsw-alias-border-l2));
+  background: color-mix(in srgb, var(--tkb-c-done) 10%, var(--dsw-alias-bg-base));
+}
+.tkb-debrief__btn[data-copied] {
+  color: color-mix(in srgb, var(--tkb-c-done) 58%, var(--dsw-alias-label-primary));
+  border-color: color-mix(in srgb, var(--tkb-c-done) 45%, var(--dsw-alias-border-l2));
+}
+.tkb-debrief__btn[data-failed] {
+  color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 85%, var(--dsw-alias-label-primary));
+  border-color: var(--dsw-alias-state-error-primary);
+}
+
+/* =====================================================================
    异常横幅
    ===================================================================== */
 .tkb-banner {
@@ -3557,6 +4414,40 @@ window.__ModuleLoader__.load({
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-warn) 22%, transparent);
 }
 .tkb-conflict__icon { width: 11px; height: 11px; }
+.tkb-stall {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 5px;
+  pointer-events: auto;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--dsw-alias-state-warn-label) 60%, var(--dsw-alias-label-primary));
+  background: var(--dsw-alias-state-warn-tertiary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-warn) 22%, transparent);
+}
+.tkb-stall[data-kind="error"] {
+  color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 85%, var(--dsw-alias-label-primary));
+  background: color-mix(in srgb, var(--tkb-c-error) 10%, var(--dsw-alias-bg-base));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-error) 28%, transparent);
+}
+.tkb-elapsed {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  pointer-events: auto;
+  font-family: var(--tkb-mono);
+  font-size: 10px;
+  color: var(--dsw-alias-label-tertiary);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, var(--dsw-alias-bg-base));
+  font-variant-numeric: tabular-nums;
+}
 
 /* =====================================================================
    展开抽屉（Drawer Physics）
@@ -3632,14 +4523,40 @@ window.__ModuleLoader__.load({
 .tkb-scope {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   max-width: 100%;
-  height: 20px;
+  min-height: 22px;
   padding: 0 7px;
   border-radius: 5px;
   border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
   font-family: var(--tkb-mono);
   font-size: 10.5px;
   color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  appearance: none;
+  transition: background-color var(--tkb-d1) var(--tkb-ease),
+              border-color var(--tkb-d1) var(--tkb-ease),
+              color var(--tkb-d1) var(--tkb-ease),
+              transform var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-scope:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l3);
+}
+.tkb-scope:active { transform: scale(0.97); }
+.tkb-scope:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tkb-c-active) 60%, transparent);
+  outline-offset: 1px;
+}
+.tkb-scope[data-copied] {
+  color: color-mix(in srgb, var(--tkb-c-done) 58%, var(--dsw-alias-label-primary));
+  border-color: color-mix(in srgb, var(--tkb-c-done) 45%, var(--dsw-alias-border-l2));
+}
+.tkb-scope__check { width: 10.5px; height: 10.5px; }
+.tkb-scope__txt {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3657,6 +4574,49 @@ window.__ModuleLoader__.load({
   line-height: 1.5;
 }
 .tkb-warnline svg { width: 13px; height: 13px; margin-top: 2px; }
+.tkb-nudge {
+  display: flex;
+  justify-content: flex-end;
+}
+.tkb-nudge__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color var(--tkb-d1) var(--tkb-ease),
+              border-color var(--tkb-d1) var(--tkb-ease),
+              color var(--tkb-d1) var(--tkb-ease),
+              transform var(--tkb-d1) var(--tkb-ease);
+}
+.tkb-nudge__btn svg { width: 12px; height: 12px; }
+.tkb-nudge__btn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l3);
+}
+.tkb-nudge__btn:active { transform: scale(0.97); }
+.tkb-nudge__btn:focus-visible {
+  outline: 2px solid var(--tkb-c-active);
+  outline-offset: 1px;
+}
+.tkb-nudge__btn[data-copied] {
+  color: color-mix(in srgb, var(--tkb-c-done) 58%, var(--dsw-alias-label-primary));
+  border-color: color-mix(in srgb, var(--tkb-c-done) 45%, var(--dsw-alias-border-l2));
+}
+.tkb-nudge__btn[data-failed] {
+  color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 85%, var(--dsw-alias-label-primary));
+  border-color: var(--dsw-alias-state-error-primary);
+}
 
 /* =====================================================================
    神经网络血缘与聚焦矩阵（免除 blur 离屏卷积开销，保持字体锐利）
@@ -3702,6 +4662,24 @@ window.__ModuleLoader__.load({
   border-color: var(--tkb-c-active);
   background: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 45%, var(--dsw-alias-card-fill));
   box-shadow: 0 2px 8px color-mix(in srgb, var(--tkb-c-active) 18%, transparent);
+}
+
+/* 收口关键路径星图回放 */
+.tkb-root[data-constellation] .tkb-card:not(.is-crit-node):not(.is-stage-lit) {
+  opacity: .32;
+  filter: saturate(0.6);
+  transform: scale(0.99);
+}
+.tkb-root[data-constellation] .tkb-card.is-stage-lit {
+  opacity: .72;
+}
+.tkb-root[data-constellation] .tkb-card.is-crit-node {
+  z-index: 3;
+  transform: translateY(-1.5px);
+  border-color: var(--tkb-c-done);
+  background: color-mix(in srgb, var(--tkb-c-done) 11%, var(--dsw-alias-card-fill));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tkb-c-done) 42%, transparent),
+              0 4px 14px -2px color-mix(in srgb, var(--tkb-c-done) 20%, transparent);
 }
 
 /* 卡片跳转高亮、冲突成对高亮、解扣脉冲与贝塞尔血缘连线 / 飞行层 */
@@ -4154,6 +5132,11 @@ window.__ModuleLoader__.load({
         buildModel,
         disambiguateMonos,
         ownerDisplay,
+        detectStall,
+        diffCatchup,
+        computeCriticalPath,
+        buildSteerPrompt,
+        buildDebriefMarkdown,
         disableTeam,
         requestSettle,
         FALLBACK_LIMIT,

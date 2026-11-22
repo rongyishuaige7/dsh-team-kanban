@@ -293,6 +293,26 @@ test('header renders odometer score wheel, mates wrapper, and critical bottlenec
   assert.ok(unlocks && unlocks.props['data-critical'] === '', 'blocking >=2 downstream tasks sets data-critical');
 });
 
+test('board renders interactive scope chips, conflict steer nudge, and all-done debrief strip', () => {
+  const { slots } = boot({ agentTeam: rcTeam });
+  const partialBoard = slots['sidebar.right.pane.tab'](sessionProps(rcTeam));
+  const scopeBtn = findByClass(partialBoard, 'tkb-scope');
+  assert.ok(scopeBtn && scopeBtn.type === 'button', 'writeScopes render as copyable buttons');
+  const nudgeBtn = findByClass(partialBoard, 'tkb-nudge__btn');
+  assert.ok(nudgeBtn, 'conflicting task drawer surfaces contextual steer prompt button');
+  const closedDebrief = findByClass(partialBoard, 'tkb-debrief');
+  assert.ok(closedDebrief && closedDebrief.props['data-open'] === undefined, 'debrief stays collapsed before allDone');
+
+  const doneTeam = {
+    enabled: true,
+    tasks: rcTeam.tasks.map((task) => ({ ...task, status: 'completed', writeScopeWarnings: [] })),
+  };
+  const doneBoard = slots['sidebar.right.pane.tab'](sessionProps(doneTeam));
+  const openDebrief = findByClass(doneBoard, 'tkb-debrief');
+  assert.ok(openDebrief && openDebrief.props['data-open'] === '', 'debrief opens automatically when all tasks complete');
+  assert.ok(findByClass(openDebrief, 'tkb-debrief__btn'), 'debrief exposes constellation replay and markdown copy buttons');
+});
+
 test('failed and colliding teammates expose phase markers and disambiguated monograms', () => {
   const rosterTeam = {
     members: [
@@ -700,6 +720,15 @@ test('semantic elements satisfy WCAG AA / non-text mathematical contrast thresho
   const darkUnlocksBg = mix(parseHex(HOST_FIXTURE.dark['--dsw-alias-label-primary']), parseHex(HOST_FIXTURE.dark['--dsw-alias-bg-base']), 0.06);
   const darkUnlocksCR = cr(parseHex(HOST_FIXTURE.dark['--dsw-alias-label-secondary']), darkUnlocksBg);
   assert.ok(darkUnlocksCR >= 4.5, `dark unlocks pill contrast ${darkUnlocksCR.toFixed(2)}:1 must satisfy WCAG AA (>= 4.5:1)`);
+
+  // 6. Copied / active constellation button text (58% success green + 42% label-primary) against bg-base
+  const lightCopiedText = mix(parseHex(HOST_FIXTURE.light['--dsw-alias-state-success-primary']), parseHex(HOST_FIXTURE.light['--dsw-alias-label-primary']), 0.58);
+  const lightCopiedCR = cr(lightCopiedText, parseHex(HOST_FIXTURE.light['--dsw-alias-bg-base']));
+  assert.ok(lightCopiedCR >= 4.5, `light copied button contrast ${lightCopiedCR.toFixed(2)}:1 must satisfy WCAG AA (>= 4.5:1)`);
+
+  const darkCopiedText = mix(parseHex(HOST_FIXTURE.dark['--dsw-alias-state-success-primary']), parseHex(HOST_FIXTURE.dark['--dsw-alias-label-primary']), 0.58);
+  const darkCopiedCR = cr(darkCopiedText, parseHex(HOST_FIXTURE.dark['--dsw-alias-bg-base']));
+  assert.ok(darkCopiedCR >= 4.5, `dark copied button contrast ${darkCopiedCR.toFixed(2)}:1 must satisfy WCAG AA (>= 4.5:1)`);
 });
 
 test('prototype mock tokens adhere strictly to host design-platform fixture (anti-drift)', () => {
