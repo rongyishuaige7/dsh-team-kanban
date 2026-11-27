@@ -5149,7 +5149,15 @@ window.__ModuleLoader__.load({
         const teamNow = useTeamSource(props);
         const taskCount = teamNow && teamNow.enabled === true ? teamNow.tasks.length : 0;
         if (taskCount === 0) return null;
-        const { t } = props;
+        /* header.actions is not a localized slot: the host renders it with an
+           empty object, so `t` only shows up once this registration declares
+           `locale`. Keep a literal fallback so the entry never throws on a
+           host that does not inject it. */
+        const t = typeof props.t === 'function' ? props.t : ((key) => ({
+          'entry.button': 'Board',
+          'entry.label': 'Open or collapse the agent task board',
+          'entry.hint': 'Click to toggle · right-click to float',
+        }[key] ?? key));
         const sid = props && props.sessionId;
 
         const findBoard = () => (ctx.sidebarRight.tabsIn(sid) || [])
@@ -5254,6 +5262,7 @@ window.__ModuleLoader__.load({
           name: 'conversation.session.header.actions',
           id: 'team-kanban-watcher',
           order: 50,
+          locale: NS,
         }, WatcherSlot)),
         'team-kanban: visibility watcher',
       );
