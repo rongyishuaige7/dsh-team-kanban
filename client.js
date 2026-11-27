@@ -50,6 +50,9 @@ window.__ModuleLoader__.load({
     const zh = {
       'tab.title': '任务板',
       'tab.titleCount': '任务板（{completed}/{total}）',
+      'entry.button': '任务板',
+      'entry.label': '打开/收起智能体任务板',
+      'entry.hint': '左键打开 / 收起 · 右键浮出为浮窗',
       'header.progress': '{completed}/{total} 已完成',
       'header.summary': '{completed} 已完成 · {active} 进行中 · {pending} 待处理',
       'header.teammates': '队友运行中 {running}/{total}',
@@ -125,6 +128,9 @@ window.__ModuleLoader__.load({
     const en = {
       'tab.title': 'Task board',
       'tab.titleCount': 'Task board ({completed}/{total})',
+      'entry.button': 'Board',
+      'entry.label': 'Open or collapse the agent task board',
+      'entry.hint': 'Click to toggle · right-click to float',
       'header.progress': '{completed}/{total} completed',
       'header.summary': '{completed} completed · {active} in progress · {pending} pending',
       'header.teammates': 'Teammates active {running}/{total}',
@@ -5135,7 +5141,102 @@ window.__ModuleLoader__.load({
 
       function WatcherSlot(props) {
         useTeamKanbanWatcher(ctx, props);
-        return null;
+        /* Manual entry point. The watcher alone keeps this slot invisible, so
+           once the user closes the board the only way back is a full restart
+           (`dismissedSessions` is deliberately sticky). Render a small toggle
+           in the session header, and only while the team actually has tasks —
+           same predicate the board title uses. */
+        const teamNow = useTeamSource(props);
+        const taskCount = teamNow && teamNow.enabled === true ? teamNow.tasks.length : 0;
+        if (taskCount === 0) return null;
+        /* header.actions is not a localized slot: the host renders it with an
+           empty object, so `t` only shows up once this registration declares
+           `locale`. Keep a literal fallback so the entry never throws on a
+           host that does not inject it. */
+        const t = typeof props.t === 'function' ? props.t : ((key) => ({
+          'entry.button': 'Board',
+          'entry.label': 'Open or collapse the agent task board',
+          'entry.hint': 'Click to toggle · right-click to float',
+        }[key] ?? key));
+        const sid = props && props.sessionId;
+
+        const findBoard = () => (ctx.sidebarRight.tabsIn(sid) || [])
+          .find((tab) => tab && isBoardKind(tab.kind) && tab.id);
+
+        /* Click: toggle. Closing has to record the dismissal first, otherwise
+           the next watcher frame re-opens the column the user just folded. */
+        const toggleBoard = (event) => {
+          if (event && typeof event.preventDefault === 'function') event.preventDefault();
+          if (!sid) return;
+          try {
+            const opened = findBoard();
+            if (opened) {
+              dismissedSessions.add(sid);
+              closeBoardTab(ctx, sid, opened.id);
+              /* The board is the column's own switch: folding it also folds the
+                 column, or the guide page is left standing alone. Deferred one
+                 tick so the tab store has settled. */
+              setTimeout(() => {
+                try {
+                  const api = ctx.sidebarRight;
+                  if (typeof api.toggleExpanded === 'function'
+                    && typeof api.isExpanded === 'function'
+                    && api.isExpanded() === true) {
+                    api.toggleExpanded();
+                  }
+                } catch (error) { /* Presentation is best effort. */ }
+              }, 80);
+            } else {
+              dismissedSessions.delete(sid);
+              ctx.sidebarRight.openTabIn(sid, KIND);
+            }
+          } catch (error) { /* Presentation is best effort. */ }
+        };
+
+        /* Right-click: float the board as a free-standing panel. float()
+           requires the tab to be docked already, so open first and float on
+           the following tick. */
+        const floatBoard = (event) => {
+          if (event && typeof event.preventDefault === 'function') event.preventDefault();
+          if (!sid) return;
+          try {
+            const opened = findBoard();
+            if (opened) {
+              ctx.sidebarRight.float(opened.id);
+              return;
+            }
+            dismissedSessions.delete(sid);
+            ctx.sidebarRight.openTabIn(sid, KIND);
+            setTimeout(() => {
+              try {
+                const tab = findBoard();
+                if (tab) ctx.sidebarRight.float(tab.id);
+              } catch (error) { /* Presentation is best effort. */ }
+            }, 150);
+          } catch (error) { /* Presentation is best effort. */ }
+        };
+
+        return h('button', {
+          type: 'button',
+          title: t('entry.hint'),
+          'aria-label': t('entry.label'),
+          onClick: toggleBoard,
+          onContextMenu: floatBoard,
+          style: {
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '1px 8px',
+            marginLeft: '4px',
+            fontSize: '12px',
+            lineHeight: '18px',
+            color: 'inherit',
+            background: 'transparent',
+            border: '1px solid currentColor',
+            borderRadius: '6px',
+            opacity: '0.65',
+            cursor: 'pointer',
+          },
+        }, t('entry.button'));
       }
 
       ctx.effect(
@@ -5161,6 +5262,7 @@ window.__ModuleLoader__.load({
           name: 'conversation.session.header.actions',
           id: 'team-kanban-watcher',
           order: 50,
+          locale: NS,
         }, WatcherSlot)),
         'team-kanban: visibility watcher',
       );
